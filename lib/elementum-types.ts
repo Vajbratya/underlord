@@ -272,3 +272,32 @@ export function powerValue(id: PowerUpId, level: number): number {
 
 /** Loadout deck size — power-ups carried into the run as starting items. */
 export const LOADOUT_SIZE = 3
+
+/* ----------------------------------------------------------------------- */
+/* CHAIN CAST core mechanic                                                 */
+/* ----------------------------------------------------------------------- */
+
+/** Each round both players cast a 3-spell sequence. */
+export const CHAIN_LENGTH = 3
+
+/**
+ * Position-based damage multipliers.
+ * Slot 1 (probe) is weak/cheap, slot 3 (finisher) is the heavy hit.
+ * Encourages strategic ordering: sandbag the probe, commit the finisher.
+ */
+export const POSITION_MULT: number[] = [0.7, 1.0, 1.4]
+
+/** Bonus damage on PERFECT CAST (winning all 3 positions in a single chain). */
+export const PERFECT_CHAIN_BONUS = 30
+
+/** Bonus rage on PERFECT CAST. */
+export const PERFECT_CHAIN_RAGE = 20
+
+/** Position label shown in UI. */
+export const POSITION_LABELS = ['I', 'II', 'III']
+
+/** Compares two moves and returns the result from move A's perspective. */
+export function compareMove(a: Move, b: Move): Result {
+  if (a === b) return 'draw'
+  return MOVES[a].beats === b ? 'win' : 'lose'
+}

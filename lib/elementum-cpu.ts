@@ -1,4 +1,4 @@
-import { MOVES, MOVE_LIST, type Move } from './elementum-types'
+import { CHAIN_LENGTH, MOVES, MOVE_LIST, type Move } from './elementum-types'
 
 export type CPULevel = 'novice' | 'smart' | 'predictive' | 'boss'
 
@@ -87,4 +87,85 @@ export function cpuPick(level: CPULevel, history: Move[]): Move {
 
 export function cpuRollsCrit(stats: CPUStats): boolean {
   return Math.random() < stats.critChance
+}
+
+/**
+ * Position-aware history bucket — counts how often each move appeared
+ * at each chain position in the player's previous casts.
+ */
+function positionFrequency(chainHistory: Move[][]): Record<number, Record<Move, number>> {
+  const buckets: Record<number, Record<Move, number>> = {}
+  for (let i = 0; i < CHAIN_LENGTH; i++) {
+    buckets[i] = { hydro: 0, terra: 0, pyro: 0 }
+  }
+  for (const chain of chainHistory) {
+    chain.forEach((m, i) => {
+      if (i < CHAIN_LENGTH && buckets[i]) buckets[i][m]++
+    })
+  }
+  return buckets
+}
+
+function topAtPosition(buckets: Record<Move, number>): Move {
+  let best: Move = 'hydro'
+  let bestC = -1
+  for (const m of MOVE_LIST) {
+    if (buckets[m] > bestC) {
+      bestC = buckets[m]
+      best = m
+    }
+  }
+  return best
+}
+
+/**
+ * CPU builds a 3-move chain.
+ * - novice: 3 random
+ * - smart: 50% counters most-frequent OVERALL move at each slot, 50% random
+ * - predictive: counters position-by-position based on history at that exact slot
+ * - boss: counters slot-by-slot with 80% accuracy + occasionally counters the
+ *         player's last chain at that slot
+ */
+export function cpuPickChain(
+  level: CPULevel,
+  flatHistory: Move[],
+  chainHistory: Move[][],
+): Move[] {
+  const out: Move[] = []
+
+  if (level === 'novice') {
+    for (let i = 0; i < CHAIN_LENGTH; i++) out.push(randomMove())
+    return out
+  }
+
+  const buckets = positionFrequency(chainHistory)
+  const lastChain = chainHistory[chainHistory.length - 1] ?? null
+  const overallTop = mostFrequent(flatHistory) ?? randomMove()
+  const counterOverall = MOVES[overallTop].counter
+
+  for (let i = 0; i < CHAIN_LENGTH; i++) {
+    const slotTop = topAtPosition(buckets[i])
+    const counterSlot = MOVES[slotTop].counter
+    const lastAtSlot = lastChain ? lastChain[i] : null
+    const counterLast = lastAtSlot ? MOVES[lastAtSlot].counter : null
+
+    let pick: Move
+    if (level === 'smart') {
+      pick = Math.random() < 0.5 ? counterOverall : randomMove()
+    } else if (level === 'predictive') {
+      const r = Math.random()
+      if (r < 0.55) pick = counterSlot
+      else if (counterLast && r < 0.8) pick = counterLast
+      else pick = randomMove()
+    } else {
+      // boss
+      const r = Math.random()
+      if (r < 0.7) pick = counterSlot
+      else if (counterLast && r < 0.9) pick = counterLast
+      else pick = randomMove()
+    }
+    out.push(pick)
+  }
+
+  return out
 }

@@ -41,6 +41,11 @@ import {
   SHIELD_CAP,
   LOADOUT_SIZE,
   MAX_CARD_LEVEL,
+  CHAIN_LENGTH,
+  POSITION_MULT,
+  POSITION_LABELS,
+  PERFECT_CHAIN_BONUS,
+  PERFECT_CHAIN_RAGE,
   getCombo,
   getTier,
   getNextTier,
@@ -55,7 +60,7 @@ import {
   type PowerUp,
   type Tier,
 } from "@/lib/elementum-types"
-import { cpuPick, cpuRollsCrit, getCPUStats, type CPUStats } from "@/lib/elementum-cpu"
+import { cpuPickChain, cpuRollsCrit, getCPUStats, type CPUStats } from "@/lib/elementum-cpu"
 import {
   loadRecords,
   saveRecords,
@@ -211,17 +216,20 @@ export function ElementumGame() {
   const [playerShield, setPlayerShield] = useState(0)
   const [cpuStats, setCpuStats] = useState<CPUStats>(() => getCPUStats(1))
   const [cpuHP, setCpuHP] = useState<number>(() => getCPUStats(1).hp)
-  const [playerChoice, setPlayerChoice] = useState<Move | null>(null)
-  const [cpuChoice, setCpuChoice] = useState<Move | null>(null)
-  const [result, setResult] = useState<Result | null>(null)
-  const [history, setHistory] = useState<Move[]>([])
-  const [cpuHistory, setCpuHistory] = useState<Move[]>([])
+  // CHAIN CAST core: each round both casters build a 3-spell chain
+  const [playerChain, setPlayerChain] = useState<Move[]>([])
+  const [cpuChain, setCpuChain] = useState<Move[]>([])
+  const [chainResults, setChainResults] = useState<(Result | null)[]>([null, null, null])
+  const [revealIndex, setRevealIndex] = useState<number>(-1) // -1 = not revealing
+  const [history, setHistory] = useState<Move[]>([]) // flat history of every move
+  const [chainHistory, setChainHistory] = useState<Move[][]>([]) // last few full chains for AI
+  const [cpuHistory, setCpuHistory] = useState<Move[]>([]) // flat CPU history (HUD strip)
 
   // Power systems
   const [inventory, setInventory] = useState<PowerUpId[]>([])
   const [buffs, setBuffs] = useState<Buffs>(EMPTY_BUFFS)
   const [rage, setRage] = useState(0)
-  const [spyPeek, setSpyPeek] = useState<Move | null>(null)
+  const [spyPeek, setSpyPeek] = useState<Move[] | null>(null)
   const [shopOffers, setShopOffers] = useState<PowerUpId[]>([])
 
   // FX state
@@ -349,10 +357,12 @@ export function ElementumGame() {
       const stats = getCPUStats(stageNumber)
       setCpuStats(stats)
       setCpuHP(stats.hp)
-      setPlayerChoice(null)
-      setCpuChoice(null)
-      setResult(null)
+      setPlayerChain([])
+      setCpuChain([])
+      setChainResults([null, null, null])
+      setRevealIndex(-1)
       setHistory([])
+      setChainHistory([])
       setCpuHistory([])
       setBuffs(EMPTY_BUFFS)
       setSpyPeek(null)
@@ -393,6 +403,7 @@ export function ElementumGame() {
     setPlayerHP(MAX_HP)
     setPlayerShield(0)
     setCpuHistory([])
+    setChainHistory([])
     setStageReward(null)
     play("click")
     startStage(1)
@@ -429,11 +440,13 @@ export function ElementumGame() {
   )
 
   // Detect HP-zero -> stage clear or game over
+  // Only fires after a chain fully resolves (phase back to "choosing")
+  // so mid-cascade HP zeroing waits for the PERFECT CAST / DRENO tail.
   useEffect(() => {
-    if (phase === "gameover" || phase === "menu" || phase === "shop") return
+    if (phase !== "choosing") return
     if (playerHP <= 0) {
       // game over
-      setTimeout(() => finishGame(false), 600)
+      setTimeout(() => finishGame(false), 200)
     } else if (cpuHP <= 0) {
       // stage cleared, open shop with chest reward
       setTimeout(() => {
@@ -563,12 +576,15 @@ export function ElementumGame() {
       }
 
       if (id === "spy") {
-        const peek = cpuPick(cpuStats.level, history)
+        const peek = cpuPickChain(cpuStats.level, history, chainHistory)
         setSpyPeek(peek)
         setBuffs((b) => ({ ...b, spy: true }))
         play("powerup")
         haptic(15)
-        pushToast(`VIDÊNCIA: oponente lançará ${MOVES[peek].label}`, "good")
+        pushToast(
+          `VIDÊNCIA: ${peek.map((m) => MOVES[m].label).join(" → ")}`,
+          "good",
+        )
       } else if (id === "shield") {
         setBuffs((b) => ({ ...b, shield: true }))
         play("powerup")
@@ -601,6 +617,7 @@ export function ElementumGame() {
       playerHP,
       cpuStats,
       history,
+      chainHistory,
       records.cardLevels,
       addRage,
       burstParticles,
@@ -614,202 +631,308 @@ export function ElementumGame() {
 
   /* ---------------- core round resolution --------------------------- */
 
-  const runRound = useCallback(
-    (move: Move, cpuMove: Move, opts?: { ultimate?: boolean }) => {
-      setPlayerChoice(move)
-      setCpuChoice(cpuMove)
-      setPhase("shaking")
-      play(opts?.ultimate ? "ultimate" : "click")
-      haptic(opts?.ultimate ? [50, 80, 200] : 12)
+  /**
+   * Resolves a 3-spell chain. Pre-computes all outcomes synchronously for the
+   * given player + cpu chains, then schedules per-position cascade VFX.
+   * Each position's WIN counts toward streak (so combo can ramp mid-chain).
+   * All 3 wins = PERFECT CAST → bonus damage + bonus rage.
+   */
+  const runChain = useCallback(
+    (pChain: Move[], cChain: Move[]) => {
+      if (pChain.length !== CHAIN_LENGTH || cChain.length !== CHAIN_LENGTH) return
 
-      // shake/countdown
+      setPlayerChain(pChain)
+      setCpuChain(cChain)
+      setChainResults([null, null, null])
+      setPhase("shaking")
+      play("click")
+      haptic(12)
+
+      // Quick shake telegraph
       let shakeCount = 0
       const shakeInterval = setInterval(() => {
         shakeCount++
         play("shake")
-        if (shakeCount >= 3) clearInterval(shakeInterval)
-      }, 280)
+        if (shakeCount >= 2) clearInterval(shakeInterval)
+      }, 220)
 
       window.setTimeout(() => {
         clearInterval(shakeInterval)
         play("reveal")
-
-        let outcome: Result = opts?.ultimate ? "win" : decide(move, cpuMove)
-        let luckyConsumed = false
-        if (outcome === "draw" && buffs.lucky && !opts?.ultimate) {
-          outcome = "win"
-          luckyConsumed = true
-        }
-
-        setResult(outcome)
         setPhase("reveal")
 
-        // Track move history (don't push the auto-counter on ultimate)
-        if (!opts?.ultimate) {
-          setHistory((h) => [...h, move].slice(-12))
-          setCpuHistory((h) => [...h, cpuMove].slice(-12))
-        } else {
-          // Ultimate still reveals the cpu pick — useful intel
-          setCpuHistory((h) => [...h, cpuMove].slice(-12))
+        // Capture per-chain buffs (consumed at end)
+        const luckyOn = buffs.lucky
+        const surtoOn = buffs.crit
+        const barrierOn = buffs.shield
+        const siphonOn = buffs.siphon
+        const surtoMult = surtoOn ? powerValue("crit", records.cardLevels.crit) : 1
+
+        // Pre-compute per-position outcomes + damages (uses local running streak)
+        let runStreak = streak
+        let perfect = true
+        let totalDealt = 0
+        type Slot = {
+          outcome: Result
+          dmgDealt: number
+          dmgTakenRaw: number
+          isCpuCrit: boolean
+          shieldOnDraw: number
+          rageOnFlow: number
+          recoilOnLose: number
+          comboLabel: string
+          comboLevel: number
+          comboLevelUp: boolean
+          luckyConsumed: boolean
+        }
+        const slots: Slot[] = []
+        for (let i = 0; i < CHAIN_LENGTH; i++) {
+          const pmove = pChain[i]
+          const cmove = cChain[i]
+          const pProfile = ELEMENT_PROFILE[pmove]
+          const cProfile = ELEMENT_PROFILE[cmove]
+
+          const raw = decide(pmove, cmove)
+          const luckyConsumed = raw === "draw" && luckyOn
+          const outcome: Result = luckyConsumed ? "win" : raw
+
+          if (outcome === "win") {
+            const oldCombo = getCombo(runStreak)
+            const newStreak = runStreak + 1
+            const newCombo = getCombo(newStreak)
+            const elementBase = pProfile.baseDamage
+            const dmg = Math.max(
+              1,
+              Math.round(elementBase * newCombo.mult * POSITION_MULT[i] * surtoMult),
+            )
+            runStreak = newStreak
+            totalDealt += dmg
+            slots.push({
+              outcome,
+              dmgDealt: dmg,
+              dmgTakenRaw: 0,
+              isCpuCrit: false,
+              shieldOnDraw: 0,
+              rageOnFlow: pProfile.onWinFlowRage ?? 0,
+              recoilOnLose: 0,
+              comboLabel: newCombo.label,
+              comboLevel: newCombo.level,
+              comboLevelUp: newCombo.level > oldCombo.level,
+              luckyConsumed,
+            })
+          } else if (outcome === "lose") {
+            perfect = false
+            runStreak = 0
+            const isCpuCrit = cpuRollsCrit(cpuStats)
+            const baseDmg = isCpuCrit ? cProfile.baseDamage * 2 : cProfile.baseDamage
+            const dmg = Math.max(1, Math.round(baseDmg * POSITION_MULT[i]))
+            slots.push({
+              outcome,
+              dmgDealt: 0,
+              dmgTakenRaw: dmg,
+              isCpuCrit,
+              shieldOnDraw: 0,
+              rageOnFlow: 0,
+              recoilOnLose: pProfile.onLoseRecoil ?? 0,
+              comboLabel: "",
+              comboLevel: 0,
+              comboLevelUp: false,
+              luckyConsumed: false,
+            })
+          } else {
+            perfect = false
+            slots.push({
+              outcome,
+              dmgDealt: 0,
+              dmgTakenRaw: 0,
+              isCpuCrit: false,
+              shieldOnDraw: pProfile.onDrawShield ?? 0,
+              rageOnFlow: 0,
+              recoilOnLose: 0,
+              comboLabel: "",
+              comboLevel: 0,
+              comboLevelUp: false,
+              luckyConsumed: false,
+            })
+          }
         }
 
-        const profile = ELEMENT_PROFILE[move]
+        // Mutable BARREIRA flag — absorbs FIRST damage taken in this chain
+        let barrierLeft = barrierOn
 
-        window.setTimeout(() => {
-          if (outcome === "win") {
-            const newCombo = getCombo(streak + 1)
-            const critMult = buffs.crit ? powerValue("crit", records.cardLevels.crit) : 1
-            const elementBase = opts?.ultimate ? ULTIMATE_DAMAGE : profile.baseDamage
-            const dmg = opts?.ultimate
-              ? ULTIMATE_DAMAGE
-              : Math.round(elementBase * newCombo.mult * critMult)
+        // Track move history (input for future CPU AI)
+        setHistory((h) => [...h, ...pChain].slice(-18))
+        setChainHistory((h) => [...h, pChain].slice(-6))
+        setCpuHistory((h) => [...h, ...cChain].slice(-12))
 
-            setCpuHP((hp) => Math.max(0, hp - dmg))
-            setDamageDealt((d) => d + dmg)
+        // Schedule cascade — each slot resolves with stagger
+        const POS_DELAY = 620
+        slots.forEach((slot, i) => {
+          window.setTimeout(() => {
+            setRevealIndex(i)
+            setChainResults((r) => {
+              const n = [...r]
+              n[i] = slot.outcome
+              return n
+            })
 
-            const labelParts: string[] = [`-${dmg}`]
-            if (opts?.ultimate) labelParts.push("ULT")
-            else if (buffs.crit) labelParts.push("CRIT")
-            else if (newCombo.level >= 2) labelParts.push(newCombo.label)
-            pushFloat(labelParts.join(" "), "cpu", opts?.ultimate ? "ultimate" : buffs.crit ? "crit" : "damage")
+            if (slot.outcome === "win") {
+              setCpuHP((hp) => Math.max(0, hp - slot.dmgDealt))
+              setDamageDealt((d) => d + slot.dmgDealt)
+              const labelParts = [`-${slot.dmgDealt}`]
+              if (surtoOn) labelParts.push("SURTO")
+              else if (slot.comboLevel >= 2) labelParts.push(slot.comboLabel)
+              pushFloat(
+                labelParts.join(" "),
+                "cpu",
+                surtoOn ? "crit" : slot.comboLevel >= 3 ? "ultimate" : "damage",
+              )
+              flashHP("cpu")
+              burstParticles("cpu", surtoOn ? "destructive" : "primary", 8)
+              play("win")
+              haptic(20)
 
-            flashHP("cpu")
-            burstParticles("cpu", opts?.ultimate ? "destructive" : "primary", opts?.ultimate ? 18 : 10)
-            if (opts?.ultimate) triggerScreenShake()
+              if (slot.comboLevelUp) {
+                play("combo", slot.comboLevel)
+                haptic([20, 30, 60])
+                const tier = COMBO_TIERS.find((t) => t.level === slot.comboLevel)
+                if (tier?.word) pushToast(`${tier.word}!  ${tier.label}`, "epic")
+              }
 
-            play(opts?.ultimate ? "ultimate" : "win")
-            haptic(opts?.ultimate ? [60, 80, 60, 80, 200] : 25)
+              // FLUXO: HYDRO win → bonus rage
+              if (slot.rageOnFlow > 0) {
+                addRage(slot.rageOnFlow)
+                pushFloat(`FLUXO +${slot.rageOnFlow}`, "player", "info")
+              }
 
-            // FLUXO: Hydro grants bonus rage on win
-            if (!opts?.ultimate && profile.onWinFlowRage) {
-              addRage(profile.onWinFlowRage)
-              pushFloat(`${profile.passiveLabel} +${profile.onWinFlowRage} FÚRIA`, "player", "info")
-              play("rageGain")
+              setWins((w) => w + 1)
+              setStreak((s) => {
+                const next = s + 1
+                setBestStreak((b) => Math.max(b, next))
+                if (next % 4 === 0 && next >= 4) {
+                  window.setTimeout(() => dropPowerUpFromStreak(), 250)
+                }
+                return next
+              })
+              addRage(RAGE_GAIN_WIN)
+            } else if (slot.outcome === "lose") {
+              if (barrierLeft) {
+                barrierLeft = false
+                pushFloat("BARREIRA", "player", "info")
+                burstParticles("player", "accent", 8)
+                play("powerup")
+                haptic([15, 25, 15])
+                pushToast("BARREIRA repele o feitiço!", "good")
+              } else {
+                let incoming = slot.dmgTakenRaw
+                setPlayerShield((s) => {
+                  if (s <= 0) return s
+                  const absorbed = Math.min(s, incoming)
+                  incoming -= absorbed
+                  if (absorbed > 0) pushFloat(`ESCUDO -${absorbed}`, "player", "info")
+                  return s - absorbed
+                })
+                if (incoming > 0) {
+                  setPlayerHP((hp) => Math.max(0, hp - incoming))
+                  pushFloat(
+                    `-${incoming}${slot.isCpuCrit ? " CRIT!" : ""}`,
+                    "player",
+                    slot.isCpuCrit ? "crit" : "damage",
+                  )
+                  flashHP("player")
+                  if (slot.isCpuCrit) triggerScreenShake()
+                  play("damage")
+                  haptic(slot.isCpuCrit ? [40, 60, 80] : 30)
+                  addRage(RAGE_GAIN_DAMAGE + (slot.isCpuCrit ? 12 : 0))
+                  if (slot.isCpuCrit) pushToast("FEITIÇO CRÍTICO!", "bad")
+                } else {
+                  play("powerup")
+                  haptic([10, 20])
+                }
+
+                // RECUO: PYRO loss recoil
+                if (slot.recoilOnLose > 0) {
+                  setPlayerHP((hp) => Math.max(0, hp - slot.recoilOnLose))
+                  pushFloat(`RECUO -${slot.recoilOnLose}`, "player", "damage")
+                  flashHP("player")
+                  play("damage")
+                  haptic([20, 40])
+                  addRage(RAGE_GAIN_DRAW)
+                }
+              }
+              setLosses((l) => l + 1)
+              setStreak(0)
+            } else {
+              // draw
+              play("draw")
+              haptic(10)
+              setDraws((d) => d + 1)
+              addRage(RAGE_GAIN_DRAW)
+              if (slot.shieldOnDraw > 0) {
+                setPlayerShield((s) => Math.min(SHIELD_CAP, s + slot.shieldOnDraw))
+                pushFloat(`RAÍZ +${slot.shieldOnDraw}`, "player", "info")
+                burstParticles("player", "accent", 5)
+              }
             }
+          }, i * POS_DELAY)
+        })
 
-            // Siphon: heal player for a % of damage dealt (scales with card level)
-            if (buffs.siphon) {
-              const pct = powerValue("siphon", records.cardLevels.siphon) / 100
-              const heal = Math.round(dmg * pct)
+        // After all positions: PERFECT bonus + DRENO + buff cleanup + reset
+        const tailDelay = CHAIN_LENGTH * POS_DELAY + 200
+        window.setTimeout(() => {
+          let finalDealt = totalDealt
+          if (perfect) {
+            setCpuHP((hp) => Math.max(0, hp - PERFECT_CHAIN_BONUS))
+            setDamageDealt((d) => d + PERFECT_CHAIN_BONUS)
+            finalDealt += PERFECT_CHAIN_BONUS
+            pushFloat(`PERFECT CAST -${PERFECT_CHAIN_BONUS}`, "cpu", "ultimate")
+            flashHP("cpu")
+            triggerScreenShake()
+            burstParticles("cpu", "destructive", 18)
+            play("ultimate")
+            haptic([60, 80, 60, 80, 200])
+            addRage(PERFECT_CHAIN_RAGE)
+            pushToast("PERFECT CAST!", "epic")
+          }
+
+          // DRENO siphon: lifesteal % of total chain damage
+          if (siphonOn && finalDealt > 0) {
+            const pct = powerValue("siphon", records.cardLevels.siphon) / 100
+            const heal = Math.round(finalDealt * pct)
+            if (heal > 0) {
               setPlayerHP((hp) => Math.min(MAX_HP, hp + heal))
               pushFloat(`+${heal}`, "player", "heal")
               burstParticles("player", "primary", 6)
               play("heal")
-              setBuffs((b) => ({ ...b, siphon: false }))
               pushToast(`DRENO +${heal}`, "good")
             }
-
-            setWins((w) => w + 1)
-            // Combo / streak
-            setStreak((s) => {
-              const next = s + 1
-              setBestStreak((b) => Math.max(b, next))
-              const tierNext = getCombo(next)
-              const tierOld = getCombo(s)
-              if (tierNext.level > tierOld.level) {
-                play("combo", tierNext.level)
-                haptic([20, 30, 60])
-                pushToast(tierNext.word ? `${tierNext.word}!  ${tierNext.label}` : tierNext.label, "epic")
-              }
-              if (next % 2 === 0 && next >= 2) {
-                window.setTimeout(() => dropPowerUpFromStreak(), 350)
-              }
-              return next
-            })
-
-            addRage(RAGE_GAIN_WIN)
-            if (buffs.crit) setBuffs((b) => ({ ...b, crit: false }))
-          } else if (outcome === "lose") {
-            const isCpuCrit = cpuRollsCrit(cpuStats)
-            const baseDmg = isCpuCrit ? BASE_DAMAGE * 2 : BASE_DAMAGE
-
-            if (buffs.shield) {
-              // BARREIRA: full block, ignores numeric shield entirely
-              setBuffs((b) => ({ ...b, shield: false }))
-              pushFloat("BARREIRA", "player", "info")
-              burstParticles("player", "accent", 8)
-              play("powerup")
-              haptic([15, 25, 15])
-              pushToast("BARREIRA absorveu o feitiço!", "good")
-            } else {
-              // Numeric shield (from RAÍZ procs) absorbs first
-              let incoming = baseDmg
-              setPlayerShield((s) => {
-                if (s <= 0) return s
-                const absorbed = Math.min(s, incoming)
-                incoming -= absorbed
-                if (absorbed > 0) {
-                  pushFloat(`ESCUDO -${absorbed}`, "player", "info")
-                }
-                return s - absorbed
-              })
-              if (incoming > 0) {
-                setPlayerHP((hp) => Math.max(0, hp - incoming))
-                pushFloat(`-${incoming}${isCpuCrit ? " CRIT!" : ""}`, "player", isCpuCrit ? "crit" : "damage")
-                flashHP("player")
-                if (isCpuCrit) triggerScreenShake()
-                play("damage")
-                haptic(isCpuCrit ? [40, 60, 80] : 30)
-                addRage(RAGE_GAIN_DAMAGE + (isCpuCrit ? 12 : 0))
-                if (isCpuCrit) pushToast("FEITIÇO CRÍTICO!", "bad")
-              } else {
-                play("powerup")
-                haptic([10, 20])
-              }
-
-              // RECUO: Pyro recoil after full damage application — bypasses shield entirely
-              if (!opts?.ultimate && profile.onLoseRecoil) {
-                const recoil = profile.onLoseRecoil
-                setPlayerHP((hp) => Math.max(0, hp - recoil))
-                pushFloat(`${profile.passiveLabel} -${recoil}`, "player", "damage")
-                flashHP("player")
-                play("damage")
-                haptic([20, 40])
-                pushToast(`${profile.passiveLabel}: PYRO consumiu você.`, "bad")
-                addRage(RAGE_GAIN_DRAW)
-              }
-            }
-            setLosses((l) => l + 1)
-            setStreak(0)
-          } else {
-            // draw
-            play("draw")
-            haptic(12)
-            setDraws((d) => d + 1)
-            addRage(RAGE_GAIN_DRAW)
-
-            // RAÍZ: Terra grants shield on draw
-            if (!opts?.ultimate && profile.onDrawShield) {
-              const gain = profile.onDrawShield
-              setPlayerShield((s) => Math.min(SHIELD_CAP, s + gain))
-              pushFloat(`${profile.passiveLabel} +${gain} ESCUDO`, "player", "info")
-              burstParticles("player", "accent", 6)
-              play("powerup")
-              haptic([12, 18])
-            }
           }
 
-          if (luckyConsumed) {
-            setBuffs((b) => ({ ...b, lucky: false }))
-            pushToast("SORTE: empate virou vitória!", "good")
+          // Consume buffs spent this chain
+          if (luckyOn || surtoOn || barrierOn || siphonOn || buffs.spy) {
+            setBuffs((b) => ({
+              ...b,
+              lucky: luckyOn ? false : b.lucky,
+              crit: surtoOn ? false : b.crit,
+              shield: barrierOn ? false : b.shield,
+              siphon: siphonOn ? false : b.siphon,
+              spy: false,
+            }))
           }
-
-          if (buffs.spy) {
-            setBuffs((b) => ({ ...b, spy: false }))
-            setSpyPeek(null)
-          }
+          if (buffs.spy) setSpyPeek(null)
 
           setRound((r) => r + 1)
 
           window.setTimeout(() => {
+            setRevealIndex(-1)
             ultimateInProgress.current = false
-            setPlayerChoice(null)
-            setCpuChoice(null)
-            setResult(null)
+            setPlayerChain([])
+            setCpuChain([])
+            setChainResults([null, null, null])
             setPhase((p) => (p === "gameover" || p === "shop" ? p : "choosing"))
-          }, 1100)
-        }, 350)
-      }, 1100)
+          }, 900)
+        }, tailDelay)
+      }, 600)
     },
     [
       addRage,
@@ -827,27 +950,70 @@ export function ElementumGame() {
     ],
   )
 
-  const choose = useCallback(
-    (move: Move) => {
+  /* ---------------- chain build callbacks --------------------------- */
+
+  const addToChain = useCallback(
+    (m: Move) => {
       if (phase !== "choosing") return
-      const cpu = buffs.spy && spyPeek ? spyPeek : cpuPick(cpuStats.level, history)
-      runRound(move, cpu)
+      setPlayerChain((c) => {
+        if (c.length >= CHAIN_LENGTH) return c
+        return [...c, m]
+      })
+      play("click")
+      haptic(6)
     },
-    [phase, buffs.spy, spyPeek, cpuStats, history, runRound],
+    [phase, play],
   )
+
+  const undoChain = useCallback(() => {
+    if (phase !== "choosing") return
+    setPlayerChain((c) => {
+      if (c.length === 0) return c
+      return c.slice(0, -1)
+    })
+    play("click")
+    haptic(4)
+  }, [phase, play])
+
+  const commitChain = useCallback(() => {
+    if (phase !== "choosing") return
+    if (playerChain.length !== CHAIN_LENGTH) return
+    const cpu = buffs.spy && spyPeek ? spyPeek : cpuPickChain(cpuStats.level, history, chainHistory)
+    runChain(playerChain, cpu)
+  }, [phase, playerChain, buffs.spy, spyPeek, cpuStats, history, chainHistory, runChain])
 
   const triggerUltimate = useCallback(() => {
     if (phase !== "choosing") return
     if (rage < RAGE_MAX) return
     if (ultimateInProgress.current) return
     ultimateInProgress.current = true
-    const cpuMove = buffs.spy && spyPeek ? spyPeek : cpuPick(cpuStats.level, history)
-    const playerMove = MOVES[cpuMove].counter
     pushToast("ULTIMATE!", "epic")
     setRage(0)
     rageWasFull.current = false
-    runRound(playerMove, cpuMove, { ultimate: true })
-  }, [phase, rage, buffs.spy, spyPeek, cpuStats, history, runRound, pushToast])
+
+    // Big single-hit burst — ignores chain
+    setCpuHP((hp) => Math.max(0, hp - ULTIMATE_DAMAGE))
+    setDamageDealt((d) => d + ULTIMATE_DAMAGE)
+    pushFloat(`-${ULTIMATE_DAMAGE} ULT`, "cpu", "ultimate")
+    flashHP("cpu")
+    triggerScreenShake()
+    burstParticles("cpu", "destructive", 22)
+    play("ultimate")
+    haptic([60, 80, 60, 80, 200])
+
+    window.setTimeout(() => {
+      ultimateInProgress.current = false
+    }, 1200)
+  }, [
+    phase,
+    rage,
+    pushToast,
+    pushFloat,
+    flashHP,
+    triggerScreenShake,
+    burstParticles,
+    play,
+  ])
 
   /* ---------------- shop -------------------------------------------- */
 
@@ -961,23 +1127,26 @@ export function ElementumGame() {
           cpuHP={cpuHP}
           cpuStats={cpuStats}
           cpuHistory={cpuHistory}
-          playerChoice={playerChoice}
-            cpuChoice={cpuChoice}
-            result={result}
-            round={round}
-            streak={streak}
-            combo={combo}
-            rage={rage}
-            inventory={inventory}
-            buffs={buffs}
-            spyPeek={spyPeek}
-            hpFlash={hpFlash}
-            floats={floats}
-            particles={particles}
-            ultimateReady={ultimateReady}
-            onChoose={choose}
-            onUsePowerUp={usePowerUp}
-            onUltimate={triggerUltimate}
+          playerChain={playerChain}
+          cpuChain={cpuChain}
+          chainResults={chainResults}
+          revealIndex={revealIndex}
+          round={round}
+          streak={streak}
+          combo={combo}
+          rage={rage}
+          inventory={inventory}
+          buffs={buffs}
+          spyPeek={spyPeek}
+          hpFlash={hpFlash}
+          floats={floats}
+          particles={particles}
+          ultimateReady={ultimateReady}
+          onAddToChain={addToChain}
+          onUndoChain={undoChain}
+          onCommitChain={commitChain}
+          onUsePowerUp={usePowerUp}
+          onUltimate={triggerUltimate}
           />
         )}
       </main>
@@ -1608,9 +1777,10 @@ function ArenaScreen({
   cpuHP,
   cpuStats,
   cpuHistory,
-  playerChoice,
-  cpuChoice,
-  result,
+  playerChain,
+  cpuChain,
+  chainResults,
+  revealIndex,
   round,
   streak,
   combo,
@@ -1622,7 +1792,9 @@ function ArenaScreen({
   floats,
   particles,
   ultimateReady,
-  onChoose,
+  onAddToChain,
+  onUndoChain,
+  onCommitChain,
   onUsePowerUp,
   onUltimate,
 }: {
@@ -1632,29 +1804,36 @@ function ArenaScreen({
   cpuHP: number
   cpuStats: CPUStats
   cpuHistory: Move[]
-  playerChoice: Move | null
-  cpuChoice: Move | null
-  result: Result | null
+  playerChain: Move[]
+  cpuChain: Move[]
+  chainResults: (Result | null)[]
+  revealIndex: number
   round: number
   streak: number
   combo: ComboTierLite
   rage: number
   inventory: PowerUpId[]
   buffs: Buffs
-  spyPeek: Move | null
+  spyPeek: Move[] | null
   hpFlash: "player" | "cpu" | null
   floats: FloatingNumber[]
   particles: Particle[]
   ultimateReady: boolean
-  onChoose: (m: Move) => void
+  onAddToChain: (m: Move) => void
+  onUndoChain: () => void
+  onCommitChain: () => void
   onUsePowerUp: (i: number) => void
   onUltimate: () => void
 }) {
-  const canChoose = phase === "choosing"
+  const canBuild = phase === "choosing"
+  const chainFull = playerChain.length === CHAIN_LENGTH
+  const canCommit = canBuild && chainFull
+  const canUndo = canBuild && playerChain.length > 0
+  const isResolving = phase === "shaking" || phase === "reveal"
 
   return (
     <section className="flex flex-1 flex-col gap-1.5 sm:gap-3">
-      {/* HP strip mirror */}
+      {/* HP strip */}
       <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
         <HPBar
           name="VOCÊ"
@@ -1675,73 +1854,310 @@ function ArenaScreen({
         />
       </div>
 
-      {/* Meters row */}
+      {/* Meters */}
       <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
         <ComboMeter combo={combo} streak={streak} />
         <RageMeter rage={rage} ready={ultimateReady} onUltimate={onUltimate} />
       </div>
 
-      {/* Battle stage */}
+      {/* CHAIN STAGE */}
       <div
         className={cn(
-          "relative grid min-h-[180px] flex-1 grid-cols-2 items-center gap-2 overflow-hidden rounded-xl border border-border bg-card/40 p-2 backdrop-blur sm:gap-4 sm:p-6",
+          "relative flex flex-1 flex-col justify-between gap-1.5 overflow-hidden rounded-xl border border-border bg-card/40 p-2 backdrop-blur sm:gap-2 sm:p-3",
           phase === "shaking" && "flash-damage",
         )}
       >
-        <BattleSide
-          side="player"
-          phase={phase}
-          choice={playerChoice}
-          result={result}
-          floats={floats.filter((f) => f.side === "player")}
-          particles={particles.filter((p) => p.side === "player")}
-        />
-        <BattleSide
-          side="cpu"
-          phase={phase}
-          choice={cpuChoice}
-          result={result}
-          floats={floats.filter((f) => f.side === "cpu")}
-          particles={particles.filter((p) => p.side === "cpu")}
-        />
-
-        {/* VS / Result badge */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <ResultBadge phase={phase} result={result} />
-        </div>
-
-        {/* Round counter pill */}
-        <div className="absolute left-1.5 top-1.5 rounded-md border border-border bg-background/80 px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-muted-foreground backdrop-blur sm:left-2 sm:top-2 sm:px-2 sm:text-[10px]">
+        {/* Top corners: round + cpu level */}
+        <div className="absolute left-1.5 top-1.5 z-10 rounded-md border border-border bg-background/80 px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-muted-foreground backdrop-blur sm:left-2 sm:top-2 sm:px-2 sm:text-[10px]">
           R{String(round).padStart(2, "0")}
         </div>
-
-        {/* CPU level chip */}
-        <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md border border-border bg-background/80 px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-muted-foreground backdrop-blur sm:right-2 sm:top-2 sm:px-2 sm:text-[10px]">
+        <div className="absolute right-1.5 top-1.5 z-10 flex items-center gap-1 rounded-md border border-border bg-background/80 px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-muted-foreground backdrop-blur sm:right-2 sm:top-2 sm:px-2 sm:text-[10px]">
           <Cpu className="size-3" />
           {cpuStats.level.toUpperCase()}
         </div>
 
-        {/* Spy peek hint */}
-        {spyPeek && phase === "choosing" ? (
-          <div className="absolute inset-x-0 bottom-1.5 mx-auto w-fit max-w-[90%] rounded-md border border-accent/60 bg-accent/20 px-2 py-0.5 text-center font-mono text-[10px] font-bold tracking-wider text-accent sm:bottom-2 sm:px-2.5 sm:py-1">
-            VIDÊNCIA: lançará {MOVES[spyPeek].label}
+        {/* CPU CHAIN */}
+        <ChainStrip
+          side="cpu"
+          chain={cpuChain}
+          spyPreview={buffs.spy ? spyPeek : null}
+          results={chainResults}
+          revealIndex={revealIndex}
+          phase={phase}
+          floats={floats.filter((f) => f.side === "cpu")}
+          particles={particles.filter((p) => p.side === "cpu")}
+        />
+
+        {/* Position multipliers ribbon */}
+        <div className="z-0 flex items-center justify-center gap-1 font-mono text-[9px] tracking-[0.3em] text-muted-foreground sm:gap-2 sm:text-[10px]">
+          {POSITION_MULT.map((m, i) => (
+            <span
+              key={i}
+              className={cn(
+                "rounded-sm border border-border bg-background/60 px-1.5 py-0.5 transition",
+                revealIndex === i && "border-primary text-primary",
+              )}
+            >
+              {POSITION_LABELS[i]} · x{m.toFixed(1)}
+            </span>
+          ))}
+        </div>
+
+        {/* PLAYER CHAIN */}
+        <ChainStrip
+          side="player"
+          chain={playerChain}
+          spyPreview={null}
+          results={chainResults}
+          revealIndex={revealIndex}
+          phase={phase}
+          floats={floats.filter((f) => f.side === "player")}
+          particles={particles.filter((p) => p.side === "player")}
+        />
+
+        {/* CAST overlay during shake */}
+        {phase === "shaking" ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="slam-in rounded-md border-2 border-primary bg-background/80 px-3 py-1 font-mono text-sm font-black tracking-[0.3em] text-primary backdrop-blur sm:text-base">
+              CAST!
+            </div>
           </div>
         ) : null}
 
-        {/* Active buffs floating */}
         <ActiveBuffsFloat buffs={buffs} />
       </div>
 
-      {/* Inventory chip strip */}
-      <Inventory inventory={inventory} buffs={buffs} disabled={!canChoose} onUse={onUsePowerUp} />
+      {/* Inventory */}
+      <Inventory inventory={inventory} buffs={buffs} disabled={!canBuild} onUse={onUsePowerUp} />
 
-      {/* Choice buttons */}
+      {/* Element selectors */}
       <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
         {MOVE_LIST.map((m) => (
-          <ChoiceButton key={m} move={m} disabled={!canChoose} onClick={() => onChoose(m)} />
+          <ChoiceButton
+            key={m}
+            move={m}
+            disabled={!canBuild || chainFull}
+            onClick={() => onAddToChain(m)}
+          />
         ))}
       </div>
+
+      {/* Undo + Commit row */}
+      <div className="grid grid-cols-[1fr_2fr] gap-1.5 sm:gap-2">
+        <button
+          type="button"
+          onClick={onUndoChain}
+          disabled={!canUndo}
+          className={cn(
+            "flex items-center justify-center gap-1.5 rounded-md border-2 border-border bg-card py-2 font-mono text-[10px] font-bold tracking-[0.2em] text-muted-foreground transition active:scale-95 sm:py-2.5 sm:text-xs",
+            canUndo && "hover:border-destructive/60 hover:text-destructive",
+            !canUndo && "cursor-not-allowed opacity-40",
+          )}
+          aria-label="Desfazer último feitiço da sequência"
+        >
+          <RotateCcw className="size-3.5 sm:size-4" />
+          DESFAZER
+        </button>
+        <button
+          type="button"
+          onClick={onCommitChain}
+          disabled={!canCommit}
+          className={cn(
+            "relative flex items-center justify-center gap-2 overflow-hidden rounded-md py-2 font-mono text-xs font-black tracking-[0.25em] transition active:scale-95 sm:py-2.5 sm:text-sm",
+            canCommit
+              ? "pulse-glow bg-primary text-primary-foreground shadow-[0_0_24px_oklch(0.78_0.17_205/0.4)]"
+              : isResolving
+                ? "cursor-not-allowed bg-secondary text-muted-foreground"
+                : "cursor-not-allowed bg-secondary/60 text-muted-foreground",
+          )}
+          aria-label="Lançar sequência de feitiços"
+        >
+          <Swords className="size-4 sm:size-5" />
+          {isResolving ? "LANÇANDO..." : canCommit ? "LANÇAR CADEIA" : `MONTE ${CHAIN_LENGTH - playerChain.length} FEITIÇO${CHAIN_LENGTH - playerChain.length === 1 ? "" : "S"}`}
+        </button>
+      </div>
     </section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Chain strip                                                          */
+/* ------------------------------------------------------------------ */
+
+function ChainStrip({
+  side,
+  chain,
+  spyPreview,
+  results,
+  revealIndex,
+  phase,
+  floats,
+  particles,
+}: {
+  side: "player" | "cpu"
+  chain: Move[]
+  spyPreview: Move[] | null
+  results: (Result | null)[]
+  revealIndex: number
+  phase: Phase
+  floats: FloatingNumber[]
+  particles: Particle[]
+}) {
+  const isCpu = side === "cpu"
+  // CPU hides chain until reveal; player chain visible during build
+  const showCpuChain = isCpu && (phase === "shaking" || phase === "reveal")
+
+  return (
+    <div className="relative grid grid-cols-3 items-center gap-1 sm:gap-2">
+      {/* particle layer */}
+      <div className="pointer-events-none absolute inset-0 z-10">
+        {particles.map((p) => (
+          <span
+            key={p.id}
+            className={cn(
+              "absolute top-1/2 size-1.5 rounded-full sm:size-2",
+              p.color === "primary"
+                ? "bg-primary"
+                : p.color === "accent"
+                  ? "bg-accent"
+                  : "bg-destructive",
+            )}
+            style={{
+              left: `${p.left}%`,
+              animation: `particle 1.4s ease-out ${p.delay}s forwards`,
+              ["--tx" as string]: `${p.tx}px`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* floating labels (relative to whole strip) */}
+      <div className="pointer-events-none absolute inset-0 z-20">
+        {floats.map((f) => (
+          <span
+            key={f.id}
+            className={cn(
+              "absolute left-1/2 top-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-base font-black tabular-nums sm:text-xl",
+              "float-up",
+              f.tone === "damage" && "text-destructive",
+              f.tone === "heal" && "text-primary",
+              f.tone === "info" && "text-accent",
+              f.tone === "crit" && "text-accent",
+              f.tone === "ultimate" && "text-destructive drop-shadow-[0_0_8px_oklch(0.66_0.24_22/0.8)]",
+            )}
+          >
+            {f.value}
+          </span>
+        ))}
+      </div>
+
+      {Array.from({ length: CHAIN_LENGTH }, (_, i) => {
+        const filled = chain[i]
+        const result = results[i]
+        const revealed = revealIndex >= i || phase === "reveal" && revealIndex === -1 && filled !== undefined
+        const showSpyPreview = isCpu && !showCpuChain && spyPreview?.[i]
+        const cpuMove = showCpuChain ? chain[i] : showSpyPreview ? spyPreview![i] : null
+        const playerMove = !isCpu ? filled : null
+        const move = isCpu ? cpuMove : playerMove
+        return (
+          <ChainSlot
+            key={i}
+            position={i}
+            move={move}
+            result={revealIndex >= i ? result : null}
+            isCurrent={revealIndex === i}
+            isCpu={isCpu}
+            isSpyPreview={!!showSpyPreview && !showCpuChain}
+            phase={phase}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+function ChainSlot({
+  position,
+  move,
+  result,
+  isCurrent,
+  isCpu,
+  isSpyPreview,
+  phase,
+}: {
+  position: number
+  move: Move | null
+  result: Result | null
+  isCurrent: boolean
+  isCpu: boolean
+  isSpyPreview: boolean
+  phase: Phase
+}) {
+  const empty = !move
+  const tone =
+    result === "win"
+      ? isCpu
+        ? "border-destructive bg-destructive/15"
+        : "border-primary bg-primary/15"
+      : result === "lose"
+        ? isCpu
+          ? "border-primary bg-primary/15"
+          : "border-destructive bg-destructive/15"
+        : result === "draw"
+          ? "border-accent/60 bg-accent/10"
+          : empty
+            ? "border-border/50 border-dashed bg-secondary/30"
+            : "border-border bg-card"
+
+  const resultLabel = result === "win" ? (isCpu ? "−" : "+") : result === "lose" ? (isCpu ? "+" : "−") : result === "draw" ? "=" : ""
+
+  return (
+    <div
+      className={cn(
+        "relative flex aspect-[5/4] flex-col items-center justify-center overflow-hidden rounded-lg border-2 transition",
+        tone,
+        isCurrent && "scale-[1.04] shadow-[0_0_18px_oklch(0.78_0.17_205/0.45)]",
+        isSpyPreview && "opacity-60",
+      )}
+    >
+      <span className="absolute left-1 top-0.5 font-mono text-[8px] font-black tracking-wider text-muted-foreground sm:left-1.5 sm:text-[9px]">
+        {POSITION_LABELS[position]}
+      </span>
+      {move ? (
+        <span
+          className={cn(
+            "text-3xl leading-none transition sm:text-5xl",
+            phase === "shaking" && "animate-pulse",
+            isSpyPreview && "blur-[1px]",
+          )}
+          aria-label={MOVES[move].label}
+        >
+          {MOVES[move].emoji}
+        </span>
+      ) : (
+        <span className="font-mono text-2xl font-black text-muted-foreground/40 sm:text-4xl" aria-hidden="true">
+          ?
+        </span>
+      )}
+      {result ? (
+        <span
+          className={cn(
+            "absolute right-1 top-0.5 font-mono text-sm font-black sm:right-1.5 sm:text-base",
+            result === "win"
+              ? isCpu
+                ? "text-destructive"
+                : "text-primary"
+              : result === "lose"
+                ? isCpu
+                  ? "text-primary"
+                  : "text-destructive"
+                : "text-accent",
+          )}
+        >
+          {resultLabel}
+        </span>
+      ) : null}
+    </div>
   )
 }
 
