@@ -1,0 +1,119 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Arcade neon theme */
+  --background: oklch(0.14 0.03 255);
+  --foreground: oklch(0.98 0.005 240);
+  --card: oklch(0.19 0.04 255);
+  --card-foreground: oklch(0.98 0.005 240);
+  --popover: oklch(0.19 0.04 255);
+  --popover-foreground: oklch(0.98 0.005 240);
+  --primary: oklch(0.78 0.17 205);
+  --primary-foreground: oklch(0.14 0.03 255);
+  --secondary: oklch(0.25 0.04 255);
+  --secondary-foreground: oklch(0.98 0.005 240);
+  --muted: oklch(0.24 0.03 255);
+  --muted-foreground: oklch(0.72 0.02 240);
+  --accent: oklch(0.86 0.18 92);
+  --accent-foreground: oklch(0.14 0.03 255);
+  --destructive: oklch(0.66 0.24 22);
+  --destructive-foreground: oklch(0.98 0.005 240);
+  --border: oklch(0.28 0.04 255);
+  --input: oklch(0.25 0.04 255);
+  --ring: oklch(0.78 0.17 205);
+  --radius: 0.75rem;
+
+  /* Game-specific tokens */
+  --win: oklch(0.78 0.17 205);
+  --lose: oklch(0.66 0.24 22);
+  --gold: oklch(0.86 0.18 92);
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-win: var(--win);
+  --color-lose: var(--lose);
+  --color-gold: var(--gold);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at 20% 0%, oklch(0.78 0.17 205 / 0.12), transparent 45%),
+      radial-gradient(circle at 80% 100%, oklch(0.86 0.18 92 / 0.08), transparent 45%),
+      radial-gradient(circle at 50% 50%, oklch(0.66 0.24 22 / 0.05), transparent 60%);
+    background-attachment: fixed;
+  }
+}
+
+/* Game animations */
+@keyframes shake-hand {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-12px) rotate(-8deg); }
+  50% { transform: translateY(0) rotate(0deg); }
+  75% { transform: translateY(-12px) rotate(8deg); }
+}
+
+@keyframes float-up {
+  0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+  20% { transform: translate(-50%, -20px) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -120px) scale(1); opacity: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--tw-shadow-color, oklch(0.78 0.17 205 / 0.6)); }
+  50% { box-shadow: 0 0 40px 8px var(--tw-shadow-color, oklch(0.78 0.17 205 / 0.6)); }
+}
+
+@keyframes slam-in {
+  0% { transform: scale(2.5) rotate(-15deg); opacity: 0; }
+  60% { transform: scale(0.9) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes flash-damage {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: oklch(0.66 0.24 22 / 0.25); }
+}
+
+.shake-hand { animation: shake-hand 0.4s ease-in-out infinite; }
+.float-up { animation: float-up 1.4s ease-out forwards; }
+.pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.slam-in { animation: slam-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.flash-damage { animation: flash-damage 0.5s ease-in-out; }
