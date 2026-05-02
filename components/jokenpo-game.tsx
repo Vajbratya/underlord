@@ -14,108 +14,110 @@ import {
   Zap,
   Skull,
   RotateCcw,
+  Flame,
+  Droplet,
+  ShoppingBag,
+  ChevronRight,
+  Cpu,
+  Star,
+  Lock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { sfx } from "@/lib/jokenpo-sounds"
+import {
+  POWER_UPS,
+  POWER_UP_POOL,
+  MOVES,
+  MOVE_LIST,
+  MAX_HP,
+  BASE_DAMAGE,
+  INVENTORY_LIMIT,
+  RAGE_MAX,
+  RAGE_GAIN_DAMAGE,
+  RAGE_GAIN_DRAW,
+  RAGE_GAIN_WIN,
+  ULTIMATE_DAMAGE,
+  SHOP_HEAL_SKIP,
+  STAGE_HEAL_BONUS,
+  getCombo,
+  type Move,
+  type Result,
+  type Phase,
+  type PowerUpId,
+  type PowerUp,
+} from "@/lib/jokenpo-types"
+import { cpuPick, cpuRollsCrit, getCPUStats, type CPUStats } from "@/lib/jokenpo-cpu"
+import { loadRecords, saveRecords, mergeRunIntoRecords, type Records } from "@/lib/jokenpo-storage"
 
-type Move = "pedra" | "papel" | "tesoura"
-type Result = "win" | "lose" | "draw"
-type Phase = "menu" | "choosing" | "shaking" | "reveal" | "gameover"
-
-type PowerUpId = "shield" | "crit" | "spy" | "bomb" | "lucky" | "heal"
-
-type PowerUp = {
-  id: PowerUpId
-  name: string
-  desc: string
-  Icon: typeof Shield
-  color: "primary" | "accent" | "destructive"
-  instant?: boolean
-}
-
-const POWER_UPS: Record<PowerUpId, PowerUp> = {
-  shield: {
-    id: "shield",
-    name: "ESCUDO",
-    desc: "Bloqueia o próximo dano recebido.",
-    Icon: Shield,
-    color: "primary",
-  },
-  crit: {
-    id: "crit",
-    name: "CRÍTICO",
-    desc: "Próxima vitória causa dano DOBRADO.",
-    Icon: Zap,
-    color: "accent",
-  },
-  spy: {
-    id: "spy",
-    name: "ESPIÃO",
-    desc: "Revela a jogada da CPU antes de você escolher.",
-    Icon: Eye,
-    color: "primary",
-  },
-  bomb: {
-    id: "bomb",
-    name: "BOMBA",
-    desc: "Causa 25 de dano instantâneo na CPU.",
-    Icon: Bomb,
-    color: "destructive",
-    instant: true,
-  },
-  lucky: {
-    id: "lucky",
-    name: "SORTE",
-    desc: "Próximo empate vira vitória.",
-    Icon: Sparkles,
-    color: "accent",
-  },
-  heal: {
-    id: "heal",
-    name: "CURA",
-    desc: "Recupera 30 de HP imediatamente.",
-    Icon: Heart,
-    color: "primary",
-    instant: true,
-  },
-}
-
-const POWER_UP_POOL: PowerUpId[] = ["shield", "crit", "spy", "bomb", "lucky", "heal"]
-
-const MOVES: Record<Move, { label: string; emoji: string; beats: Move }> = {
-  pedra: { label: "PEDRA", emoji: "✊", beats: "tesoura" },
-  papel: { label: "PAPEL", emoji: "✋", beats: "pedra" },
-  tesoura: { label: "TESOURA", emoji: "✌️", beats: "papel" },
-}
-
-const MAX_HP = 100
-const BASE_DAMAGE = 20
-const INVENTORY_LIMIT = 3
-const STREAK_FOR_DROP = 2
+/* ------------------------------------------------------------------ */
+/* Helpers                                                              */
+/* ------------------------------------------------------------------ */
 
 type Buffs = {
   shield: boolean
   crit: boolean
   spy: boolean
   lucky: boolean
+  siphon: boolean
 }
+
+type FloatTone = "damage" | "heal" | "info" | "ultimate" | "crit"
 
 type FloatingNumber = {
   id: number
   value: string
   side: "player" | "cpu"
-  tone: "damage" | "heal" | "info"
+  tone: FloatTone
 }
 
 type Toast = {
   id: number
   text: string
-  tone: "good" | "bad" | "info"
+  tone: "good" | "bad" | "info" | "epic"
+}
+
+type Particle = {
+  id: number
+  side: "player" | "cpu"
+  left: number
+  tx: number
+  delay: number
+  color: "primary" | "accent" | "destructive"
+}
+
+type Banner = {
+  id: number
+  title: string
+  sub: string
+  tone: "primary" | "accent" | "destructive"
+}
+
+const EMPTY_BUFFS: Buffs = {
+  shield: false,
+  crit: false,
+  spy: false,
+  lucky: false,
+  siphon: false,
 }
 
 function randomMove(): Move {
-  const list: Move[] = ["pedra", "papel", "tesoura"]
-  return list[Math.floor(Math.random() * 3)]
+  return MOVE_LIST[Math.floor(Math.random() * 3)]
+}
+
+function rollPowerUp(): PowerUpId {
+  return POWER_UP_POOL[Math.floor(Math.random() * POWER_UP_POOL.length)]
+}
+
+function rollShopOffer(): PowerUpId[] {
+  const pool = [...POWER_UP_POOL]
+  const out: PowerUpId[] = []
+  for (let i = 0; i < 3; i++) {
+    const idx = Math.floor(Math.random() * pool.length)
+    out.push(pool[idx])
+    pool.splice(idx, 1)
+    if (pool.length === 0) pool.push(...POWER_UP_POOL)
+  }
+  return out
 }
 
 function decide(player: Move, cpu: Move): Result {
@@ -123,32 +125,76 @@ function decide(player: Move, cpu: Move): Result {
   return MOVES[player].beats === cpu ? "win" : "lose"
 }
 
-function rollPowerUp(): PowerUpId {
-  return POWER_UP_POOL[Math.floor(Math.random() * POWER_UP_POOL.length)]
+function haptic(pattern: number | number[]) {
+  if (typeof navigator === "undefined" || !("vibrate" in navigator)) return
+  try {
+    navigator.vibrate(pattern)
+  } catch {
+    /* ignore */
+  }
 }
+
+/* ------------------------------------------------------------------ */
+/* Main component                                                       */
+/* ------------------------------------------------------------------ */
 
 export function JokenpoGame() {
   const [phase, setPhase] = useState<Phase>("menu")
-  const [playerHP, setPlayerHP] = useState(MAX_HP)
-  const [cpuHP, setCpuHP] = useState(MAX_HP)
-  const [playerChoice, setPlayerChoice] = useState<Move | null>(null)
-  const [cpuChoice, setCpuChoice] = useState<Move | null>(null)
+
+  // Run stats
+  const [stage, setStage] = useState(1)
   const [round, setRound] = useState(1)
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
   const [wins, setWins] = useState(0)
   const [losses, setLosses] = useState(0)
   const [draws, setDraws] = useState(0)
-  const [inventory, setInventory] = useState<PowerUpId[]>([])
-  const [buffs, setBuffs] = useState<Buffs>({ shield: false, crit: false, spy: false, lucky: false })
+  const [damageDealt, setDamageDealt] = useState(0)
+  const [powerUpsUsed, setPowerUpsUsed] = useState(0)
+
+  // Battle state
+  const [playerHP, setPlayerHP] = useState(MAX_HP)
+  const [cpuStats, setCpuStats] = useState<CPUStats>(() => getCPUStats(1))
+  const [cpuHP, setCpuHP] = useState<number>(() => getCPUStats(1).hp)
+  const [playerChoice, setPlayerChoice] = useState<Move | null>(null)
+  const [cpuChoice, setCpuChoice] = useState<Move | null>(null)
   const [result, setResult] = useState<Result | null>(null)
+  const [history, setHistory] = useState<Move[]>([])
+
+  // Power systems
+  const [inventory, setInventory] = useState<PowerUpId[]>([])
+  const [buffs, setBuffs] = useState<Buffs>(EMPTY_BUFFS)
+  const [rage, setRage] = useState(0)
+  const [spyPeek, setSpyPeek] = useState<Move | null>(null)
+  const [shopOffers, setShopOffers] = useState<PowerUpId[]>([])
+
+  // FX state
   const [floats, setFloats] = useState<FloatingNumber[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
-  const [muted, setMuted] = useState(false)
-  const [spyPeek, setSpyPeek] = useState<Move | null>(null)
+  const [particles, setParticles] = useState<Particle[]>([])
+  const [banner, setBanner] = useState<Banner | null>(null)
   const [hpFlash, setHpFlash] = useState<"player" | "cpu" | null>(null)
+  const [screenShake, setScreenShake] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const [records, setRecords] = useState<Records>({
+    bestStage: 0,
+    bestStreak: 0,
+    totalWins: 0,
+    totalRuns: 0,
+    totalDamage: 0,
+    totalPowerUps: 0,
+  })
 
   const idRef = useRef(0)
+  const ultimateInProgress = useRef(false)
+  const rageWasFull = useRef(false)
+
+  // Load records on mount
+  useEffect(() => {
+    setRecords(loadRecords())
+  }, [])
+
+  /* ---------------- helpers tied to component ----------------------- */
 
   const play = useCallback(
     (sound: keyof typeof sfx) => {
@@ -159,7 +205,7 @@ export function JokenpoGame() {
     [muted],
   )
 
-  const pushFloat = useCallback((value: string, side: "player" | "cpu", tone: FloatingNumber["tone"]) => {
+  const pushFloat = useCallback((value: string, side: "player" | "cpu", tone: FloatTone) => {
     const id = ++idRef.current
     setFloats((f) => [...f, { id, value, side, tone }])
     setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1400)
@@ -168,7 +214,8 @@ export function JokenpoGame() {
   const pushToast = useCallback((text: string, tone: Toast["tone"] = "info") => {
     const id = ++idRef.current
     setToasts((t) => [...t, { id, text, tone }])
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2200)
+    const ttl = tone === "epic" ? 2400 : 1900
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), ttl)
   }, [])
 
   const flashHP = useCallback((side: "player" | "cpu") => {
@@ -176,32 +223,153 @@ export function JokenpoGame() {
     setTimeout(() => setHpFlash(null), 500)
   }, [])
 
-  const reset = useCallback(() => {
-    setPlayerHP(MAX_HP)
-    setCpuHP(MAX_HP)
-    setPlayerChoice(null)
-    setCpuChoice(null)
+  const triggerScreenShake = useCallback(() => {
+    setScreenShake(true)
+    setTimeout(() => setScreenShake(false), 450)
+  }, [])
+
+  const burstParticles = useCallback(
+    (
+      side: "player" | "cpu",
+      color: "primary" | "accent" | "destructive" = "primary",
+      count = 12,
+    ) => {
+      const newOnes: Particle[] = Array.from({ length: count }, () => ({
+        id: ++idRef.current,
+        side,
+        left: 30 + Math.random() * 40,
+        tx: (Math.random() - 0.5) * 160,
+        delay: Math.random() * 0.2,
+        color,
+      }))
+      setParticles((p) => [...p, ...newOnes])
+      setTimeout(() => {
+        const ids = new Set(newOnes.map((n) => n.id))
+        setParticles((p) => p.filter((x) => !ids.has(x.id)))
+      }, 1800)
+    },
+    [],
+  )
+
+  const showBanner = useCallback((title: string, sub: string, tone: Banner["tone"] = "primary") => {
+    const id = ++idRef.current
+    setBanner({ id, title, sub, tone })
+    setTimeout(() => {
+      setBanner((b) => (b && b.id === id ? null : b))
+    }, 1700)
+  }, [])
+
+  /* ---------------- rage handling ----------------------------------- */
+
+  const addRage = useCallback(
+    (amount: number) => {
+      setRage((r) => {
+        const next = Math.min(RAGE_MAX, r + amount)
+        if (next >= RAGE_MAX && !rageWasFull.current) {
+          rageWasFull.current = true
+          setTimeout(() => {
+            play("rageReady")
+            haptic([20, 40, 20, 40])
+            pushToast("ULTIMATE PRONTO!", "epic")
+          }, 50)
+        } else if (next < RAGE_MAX) {
+          rageWasFull.current = false
+        }
+        return next
+      })
+    },
+    [play, pushToast],
+  )
+
+  /* ---------------- run lifecycle ----------------------------------- */
+
+  const startStage = useCallback(
+    (stageNumber: number, options?: { keepHP?: boolean }) => {
+      const stats = getCPUStats(stageNumber)
+      setCpuStats(stats)
+      setCpuHP(stats.hp)
+      setPlayerChoice(null)
+      setCpuChoice(null)
+      setResult(null)
+      setHistory([])
+      setBuffs(EMPTY_BUFFS)
+      setSpyPeek(null)
+      if (!options?.keepHP) {
+        setPlayerHP(MAX_HP)
+      }
+      setPhase("choosing")
+      const tone: Banner["tone"] =
+        stats.level === "boss" ? "destructive" : stats.level === "predictive" ? "accent" : "primary"
+      showBanner(`STAGE ${stageNumber}`, `${stats.name} · ${stats.intro}`, tone)
+      if (stats.level === "boss") {
+        play("bossIntro")
+        haptic([30, 30, 30, 30, 80])
+      } else {
+        play("drop")
+      }
+    },
+    [play, showBanner],
+  )
+
+  const newRun = useCallback(() => {
+    sfx.resume()
+    setStage(1)
     setRound(1)
     setStreak(0)
     setBestStreak(0)
     setWins(0)
     setLosses(0)
     setDraws(0)
+    setDamageDealt(0)
+    setPowerUpsUsed(0)
     setInventory([])
-    setBuffs({ shield: false, crit: false, spy: false, lucky: false })
-    setResult(null)
-    setSpyPeek(null)
-  }, [])
-
-  const start = useCallback(() => {
-    sfx.resume()
-    reset()
-    setPhase("choosing")
+    setRage(0)
+    rageWasFull.current = false
+    setPlayerHP(MAX_HP)
     play("click")
-  }, [play, reset])
+    startStage(1)
+  }, [play, startStage])
 
-  // Add power-up drop, respecting inventory limit
-  const dropPowerUp = useCallback(() => {
+  const finishGame = useCallback(
+    (won: boolean) => {
+      ultimateInProgress.current = false
+      setPhase("gameover")
+      const stageReached = won ? stage + 1 : stage
+      const updated = mergeRunIntoRecords(records, {
+        stageReached,
+        bestStreak,
+        wins,
+        damageDealt,
+        powerUpsUsed,
+      })
+      setRecords(updated)
+      saveRecords(updated)
+      setTimeout(() => (won ? play("victory") : play("defeat")), 200)
+    },
+    [bestStreak, damageDealt, play, powerUpsUsed, records, stage, wins],
+  )
+
+  // Detect HP-zero -> stage clear or game over
+  useEffect(() => {
+    if (phase === "gameover" || phase === "menu" || phase === "shop") return
+    if (playerHP <= 0) {
+      // game over
+      setTimeout(() => finishGame(false), 600)
+    } else if (cpuHP <= 0) {
+      // stage cleared, open shop
+      setTimeout(() => {
+        play("stageClear")
+        haptic([30, 60, 30, 80])
+        showBanner("STAGE LIMPO", `Vai pra loja, escolhe sua arma.`, "accent")
+        setShopOffers(rollShopOffer())
+        setPhase("shop")
+      }, 600)
+    }
+  }, [playerHP, cpuHP, phase, finishGame, play, showBanner])
+
+  /* ---------------- power-up usage ---------------------------------- */
+
+  const dropPowerUpFromStreak = useCallback(() => {
     setInventory((inv) => {
       if (inv.length >= INVENTORY_LIMIT) {
         pushToast("Inventário cheio — bônus perdido!", "bad")
@@ -210,19 +378,10 @@ export function JokenpoGame() {
       const id = rollPowerUp()
       pushToast(`POWER-UP: ${POWER_UPS[id].name}!`, "good")
       play("drop")
+      haptic(20)
       return [...inv, id]
     })
   }, [play, pushToast])
-
-  // Trigger gameover when HP hits zero
-  useEffect(() => {
-    if (phase === "gameover" || phase === "menu") return
-    if (playerHP <= 0 || cpuHP <= 0) {
-      const won = cpuHP <= 0 && playerHP > 0
-      setPhase("gameover")
-      setTimeout(() => (won ? play("victory") : play("defeat")), 200)
-    }
-  }, [playerHP, cpuHP, phase, play])
 
   const usePowerUp = useCallback(
     (idx: number) => {
@@ -230,15 +389,20 @@ export function JokenpoGame() {
       const id = inventory[idx]
       if (!id) return
 
-      // Instant power-ups
+      // Instant
       if (id === "bomb") {
         const dmg = 25
         setCpuHP((hp) => Math.max(0, hp - dmg))
+        setDamageDealt((d) => d + dmg)
         pushFloat(`-${dmg}`, "cpu", "damage")
         flashHP("cpu")
+        triggerScreenShake()
+        burstParticles("cpu", "destructive", 10)
         play("bomb")
+        haptic([20, 30, 60])
         pushToast("BOMBA detonada!", "good")
         setInventory((inv) => inv.filter((_, i) => i !== idx))
+        setPowerUpsUsed((n) => n + 1)
         return
       }
       if (id === "heal") {
@@ -246,9 +410,22 @@ export function JokenpoGame() {
         const next = Math.min(MAX_HP, playerHP + 30)
         setPlayerHP(next)
         pushFloat(`+${next - before}`, "player", "heal")
+        burstParticles("player", "primary", 8)
         play("heal")
+        haptic(20)
         pushToast("CURA aplicada!", "good")
         setInventory((inv) => inv.filter((_, i) => i !== idx))
+        setPowerUpsUsed((n) => n + 1)
+        return
+      }
+      if (id === "rage") {
+        addRage(50)
+        pushFloat("+50 RAGE", "player", "ultimate")
+        play("rageGain")
+        haptic([10, 20, 10, 20])
+        pushToast("FÚRIA acumulada.", "good")
+        setInventory((inv) => inv.filter((_, i) => i !== idx))
+        setPowerUpsUsed((n) => n + 1)
         return
       }
 
@@ -269,45 +446,71 @@ export function JokenpoGame() {
         pushToast("Espião já em campo.", "info")
         return
       }
+      if (id === "siphon" && buffs.siphon) {
+        pushToast("Sifão já armado.", "info")
+        return
+      }
 
       if (id === "spy") {
-        const peek = randomMove()
+        const peek = cpuPick(cpuStats.level, history)
         setSpyPeek(peek)
         setBuffs((b) => ({ ...b, spy: true }))
         play("powerup")
-        pushToast("ESPIÃO: jogada revelada!", "good")
+        haptic(15)
+        pushToast(`ESPIÃO: CPU vai jogar ${MOVES[peek].label}`, "good")
       } else if (id === "shield") {
         setBuffs((b) => ({ ...b, shield: true }))
         play("powerup")
+        haptic(15)
         pushToast("ESCUDO ativado.", "good")
       } else if (id === "crit") {
         setBuffs((b) => ({ ...b, crit: true }))
         play("powerup")
+        haptic(15)
         pushToast("CRÍTICO armado.", "good")
       } else if (id === "lucky") {
         setBuffs((b) => ({ ...b, lucky: true }))
         play("powerup")
+        haptic(15)
         pushToast("SORTE ativada.", "good")
+      } else if (id === "siphon") {
+        setBuffs((b) => ({ ...b, siphon: true }))
+        play("powerup")
+        haptic(15)
+        pushToast("SIFÃO armado.", "good")
       }
 
       setInventory((inv) => inv.filter((_, i) => i !== idx))
+      setPowerUpsUsed((n) => n + 1)
     },
-    [phase, inventory, buffs, playerHP, play, pushFloat, pushToast, flashHP],
+    [
+      phase,
+      inventory,
+      buffs,
+      playerHP,
+      cpuStats,
+      history,
+      addRage,
+      burstParticles,
+      flashHP,
+      play,
+      pushFloat,
+      pushToast,
+      triggerScreenShake,
+    ],
   )
 
-  const choose = useCallback(
-    (move: Move) => {
-      if (phase !== "choosing") return
+  /* ---------------- core round resolution --------------------------- */
 
-      // If spy peek was active, lock CPU choice to peek
-      const cpu = buffs.spy && spyPeek ? spyPeek : randomMove()
-
+  const runRound = useCallback(
+    (move: Move, cpuMove: Move, opts?: { ultimate?: boolean }) => {
       setPlayerChoice(move)
-      setCpuChoice(cpu)
+      setCpuChoice(cpuMove)
       setPhase("shaking")
-      play("click")
+      play(opts?.ultimate ? "ultimate" : "click")
+      haptic(opts?.ultimate ? [50, 80, 200] : 12)
 
-      // Shake/countdown phase
+      // shake/countdown
       let shakeCount = 0
       const shakeInterval = setInterval(() => {
         shakeCount++
@@ -318,11 +521,10 @@ export function JokenpoGame() {
       window.setTimeout(() => {
         clearInterval(shakeInterval)
         play("reveal")
-        let outcome = decide(move, cpu)
 
-        // Apply lucky buff: draw becomes win
+        let outcome: Result = opts?.ultimate ? "win" : decide(move, cpuMove)
         let luckyConsumed = false
-        if (outcome === "draw" && buffs.lucky) {
+        if (outcome === "draw" && buffs.lucky && !opts?.ultimate) {
           outcome = "win"
           luckyConsumed = true
         }
@@ -330,43 +532,95 @@ export function JokenpoGame() {
         setResult(outcome)
         setPhase("reveal")
 
-        // Resolve outcome after a beat
+        // Track player's move history for CPU AI (don't push the auto-counter on ultimate)
+        if (!opts?.ultimate) {
+          setHistory((h) => [...h, move].slice(-12))
+        }
+
         window.setTimeout(() => {
           if (outcome === "win") {
-            const dmg = buffs.crit ? BASE_DAMAGE * 2 : BASE_DAMAGE
+            const newCombo = getCombo(streak + 1)
+            const critMult = buffs.crit ? 2 : 1
+            const dmg = opts?.ultimate
+              ? ULTIMATE_DAMAGE
+              : Math.round(BASE_DAMAGE * newCombo.mult * critMult)
+
             setCpuHP((hp) => Math.max(0, hp - dmg))
-            pushFloat(`-${dmg}${buffs.crit ? " CRIT!" : ""}`, "cpu", "damage")
+            setDamageDealt((d) => d + dmg)
+
+            const labelParts: string[] = [`-${dmg}`]
+            if (opts?.ultimate) labelParts.push("ULT")
+            else if (buffs.crit) labelParts.push("CRIT")
+            else if (newCombo.level >= 2) labelParts.push(newCombo.label)
+            pushFloat(labelParts.join(" "), "cpu", opts?.ultimate ? "ultimate" : buffs.crit ? "crit" : "damage")
+
             flashHP("cpu")
-            play("win")
+            burstParticles("cpu", opts?.ultimate ? "destructive" : "primary", opts?.ultimate ? 18 : 10)
+            if (opts?.ultimate) triggerScreenShake()
+
+            play(opts?.ultimate ? "ultimate" : "win")
+            haptic(opts?.ultimate ? [60, 80, 60, 80, 200] : 25)
+
+            // Siphon: heal player for 50% of damage dealt
+            if (buffs.siphon) {
+              const heal = Math.round(dmg * 0.5)
+              setPlayerHP((hp) => Math.min(MAX_HP, hp + heal))
+              pushFloat(`+${heal}`, "player", "heal")
+              burstParticles("player", "primary", 6)
+              play("heal")
+              setBuffs((b) => ({ ...b, siphon: false }))
+              pushToast("SIFÃO drenou HP da CPU!", "good")
+            }
+
             setWins((w) => w + 1)
+            // Combo / streak
             setStreak((s) => {
               const next = s + 1
               setBestStreak((b) => Math.max(b, next))
-              if (next % STREAK_FOR_DROP === 0) {
-                window.setTimeout(() => dropPowerUp(), 400)
+              const tierNext = getCombo(next)
+              const tierOld = getCombo(s)
+              if (tierNext.level > tierOld.level) {
+                play("combo")
+                haptic([20, 30, 60])
+                pushToast(tierNext.word ? `${tierNext.word}!  ${tierNext.label}` : tierNext.label, "epic")
+              }
+              if (next % 2 === 0 && next >= 2) {
+                window.setTimeout(() => dropPowerUpFromStreak(), 350)
               }
               return next
             })
+
+            addRage(RAGE_GAIN_WIN)
             if (buffs.crit) setBuffs((b) => ({ ...b, crit: false }))
           } else if (outcome === "lose") {
+            const isCpuCrit = cpuRollsCrit(cpuStats)
+            const baseDmg = isCpuCrit ? BASE_DAMAGE * 2 : BASE_DAMAGE
+
             if (buffs.shield) {
               setBuffs((b) => ({ ...b, shield: false }))
               pushFloat("BLOCK", "player", "info")
+              burstParticles("player", "accent", 8)
               play("powerup")
+              haptic([15, 25, 15])
               pushToast("Escudo absorveu o dano!", "good")
             } else {
-              const dmg = BASE_DAMAGE
-              setPlayerHP((hp) => Math.max(0, hp - dmg))
-              pushFloat(`-${dmg}`, "player", "damage")
+              setPlayerHP((hp) => Math.max(0, hp - baseDmg))
+              pushFloat(`-${baseDmg}${isCpuCrit ? " CRIT!" : ""}`, "player", isCpuCrit ? "crit" : "damage")
               flashHP("player")
+              if (isCpuCrit) triggerScreenShake()
               play("damage")
+              haptic(isCpuCrit ? [40, 60, 80] : 30)
+              addRage(RAGE_GAIN_DAMAGE + (isCpuCrit ? 12 : 0))
+              if (isCpuCrit) pushToast("CPU CRÍTICO!", "bad")
             }
             setLosses((l) => l + 1)
             setStreak(0)
           } else {
             // draw
             play("draw")
+            haptic(12)
             setDraws((d) => d + 1)
+            addRage(RAGE_GAIN_DRAW)
           }
 
           if (luckyConsumed) {
@@ -374,7 +628,6 @@ export function JokenpoGame() {
             pushToast("SORTE: empate virou vitória!", "good")
           }
 
-          // Spy was for THIS round only — clear after reveal
           if (buffs.spy) {
             setBuffs((b) => ({ ...b, spy: false }))
             setSpyPeek(null)
@@ -382,98 +635,180 @@ export function JokenpoGame() {
 
           setRound((r) => r + 1)
 
-          // Move on after a short pause unless game just ended
           window.setTimeout(() => {
+            ultimateInProgress.current = false
             setPlayerChoice(null)
             setCpuChoice(null)
             setResult(null)
-            setPhase((p) => (p === "gameover" ? p : "choosing"))
+            setPhase((p) => (p === "gameover" || p === "shop" ? p : "choosing"))
           }, 1100)
         }, 350)
       }, 1100)
     },
-    [phase, buffs, spyPeek, play, pushFloat, pushToast, dropPowerUp, flashHP],
+    [
+      addRage,
+      buffs,
+      burstParticles,
+      cpuStats,
+      dropPowerUpFromStreak,
+      flashHP,
+      play,
+      pushFloat,
+      pushToast,
+      streak,
+      triggerScreenShake,
+    ],
   )
 
-  const playerWonGame = phase === "gameover" && cpuHP <= 0 && playerHP > 0
+  const choose = useCallback(
+    (move: Move) => {
+      if (phase !== "choosing") return
+      const cpu = buffs.spy && spyPeek ? spyPeek : cpuPick(cpuStats.level, history)
+      runRound(move, cpu)
+    },
+    [phase, buffs.spy, spyPeek, cpuStats, history, runRound],
+  )
+
+  const triggerUltimate = useCallback(() => {
+    if (phase !== "choosing") return
+    if (rage < RAGE_MAX) return
+    if (ultimateInProgress.current) return
+    ultimateInProgress.current = true
+    const cpuMove = buffs.spy && spyPeek ? spyPeek : cpuPick(cpuStats.level, history)
+    const playerMove = MOVES[cpuMove].counter
+    pushToast("ULTIMATE!", "epic")
+    setRage(0)
+    rageWasFull.current = false
+    runRound(playerMove, cpuMove, { ultimate: true })
+  }, [phase, rage, buffs.spy, spyPeek, cpuStats, history, runRound, pushToast])
+
+  /* ---------------- shop -------------------------------------------- */
+
+  const buyShop = useCallback(
+    (id: PowerUpId) => {
+      setInventory((inv) => {
+        if (inv.length >= INVENTORY_LIMIT) {
+          // overwrite first slot
+          const next = [...inv]
+          next.shift()
+          next.push(id)
+          return next
+        }
+        return [...inv, id]
+      })
+      play("shopBuy")
+      haptic(25)
+      pushToast(`${POWER_UPS[id].name} adquirido.`, "good")
+      setShopOffers([])
+      // Heal a bit and advance
+      setPlayerHP((hp) => Math.min(MAX_HP, hp + STAGE_HEAL_BONUS))
+      const nextStage = stage + 1
+      setStage(nextStage)
+      setRound(1)
+      setTimeout(() => startStage(nextStage, { keepHP: true }), 250)
+    },
+    [play, pushToast, stage, startStage],
+  )
+
+  const skipShop = useCallback(() => {
+    play("shopBuy")
+    haptic(15)
+    setPlayerHP((hp) => Math.min(MAX_HP, hp + SHOP_HEAL_SKIP + STAGE_HEAL_BONUS))
+    pushToast(`Recuperou ${SHOP_HEAL_SKIP + STAGE_HEAL_BONUS} HP.`, "good")
+    setShopOffers([])
+    const nextStage = stage + 1
+    setStage(nextStage)
+    setRound(1)
+    setTimeout(() => startStage(nextStage, { keepHP: true }), 250)
+  }, [play, pushToast, stage, startStage])
+
+  /* ---------------- derived ----------------------------------------- */
+
+  const playerWonGame = phase === "gameover" && playerHP > 0
+  const combo = useMemo(() => getCombo(streak), [streak])
+  const ultimateReady = rage >= RAGE_MAX && phase === "choosing"
+
+  /* ---------------- render ------------------------------------------ */
 
   return (
-    <div className="min-h-dvh w-full">
-      {/* Scanline overlay */}
+    <div className={cn("relative flex min-h-dvh flex-col", screenShake && "screen-shake")}>
+      {/* Scanline */}
       <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden opacity-[0.04] mix-blend-screen">
-        <div
-          className="absolute inset-x-0 h-px bg-primary"
-          style={{ animation: "scanline 6s linear infinite" }}
-        />
+        <div className="absolute inset-x-0 h-px bg-primary" style={{ animation: "scanline 6s linear infinite" }} />
       </div>
 
-      <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-4 sm:pt-6">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/30 sm:size-10">
-            <Swords className="size-4 sm:size-5" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="font-mono text-base font-bold tracking-[0.2em] text-primary sm:text-lg">
-              JOKENPÔ
-              <span className="ml-2 text-foreground/80">ARENA</span>
-            </h1>
-            <p className="hidden text-xs text-muted-foreground sm:block">
-              Pedra · Papel · Tesoura — com power-ups
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setMuted((m) => !m)}
-          className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:text-foreground sm:size-10"
-          aria-label={muted ? "Ativar som" : "Desativar som"}
-          aria-pressed={muted}
-        >
-          {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
-        </button>
-      </header>
+      {/* Top bar */}
+      <Header muted={muted} onToggleMute={() => setMuted((m) => !m)} stage={stage} bestStage={records.bestStage} phase={phase} />
 
-      <main className="mx-auto max-w-6xl px-3 pb-10 pt-4 sm:px-4 sm:pb-20 sm:pt-6">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-3 pb-2 pt-2 sm:px-4 sm:pt-4">
         {phase === "menu" ? (
-          <MenuScreen onStart={start} />
+          <MenuScreen onStart={newRun} records={records} />
+        ) : phase === "shop" ? (
+          <ShopScreen
+            offers={shopOffers}
+            stage={stage}
+            playerHP={playerHP}
+            inventory={inventory}
+            onBuy={buyShop}
+            onSkip={skipShop}
+          />
         ) : phase === "gameover" ? (
           <GameOverScreen
             won={playerWonGame}
-            stats={{ wins, losses, draws, bestStreak, round }}
-            onRestart={start}
+            stats={{
+              wins,
+              losses,
+              draws,
+              bestStreak,
+              stageReached: playerWonGame ? stage + 1 : stage,
+              damageDealt,
+              powerUpsUsed,
+            }}
+            records={records}
+            onRestart={newRun}
           />
         ) : (
           <ArenaScreen
             phase={phase}
             playerHP={playerHP}
             cpuHP={cpuHP}
+            cpuStats={cpuStats}
             playerChoice={playerChoice}
             cpuChoice={cpuChoice}
             result={result}
             round={round}
             streak={streak}
+            combo={combo}
+            rage={rage}
             inventory={inventory}
             buffs={buffs}
             spyPeek={spyPeek}
             hpFlash={hpFlash}
             floats={floats}
+            particles={particles}
+            ultimateReady={ultimateReady}
             onChoose={choose}
             onUsePowerUp={usePowerUp}
+            onUltimate={triggerUltimate}
           />
         )}
       </main>
 
+      {/* Banner overlay */}
+      {banner ? <BannerOverlay banner={banner} key={banner.id} /> : null}
+
       {/* Toasts */}
-      <div className="pointer-events-none fixed inset-x-0 top-16 z-40 flex flex-col items-center gap-2 px-3 sm:top-20 sm:px-4">
+      <div className="pointer-events-none fixed inset-x-0 top-16 z-40 flex flex-col items-center gap-2 px-4 sm:top-20">
         {toasts.map((t) => (
           <div
             key={t.id}
             className={cn(
-              "pointer-events-none max-w-[90vw] rounded-md border px-3 py-2 text-center font-mono text-[11px] font-bold tracking-wider shadow-lg backdrop-blur sm:px-4 sm:text-xs",
+              "pointer-events-none rounded-md border px-3 py-1.5 font-mono text-[11px] font-bold tracking-wider shadow-lg backdrop-blur sm:text-xs",
               "slam-in",
               t.tone === "good" && "border-primary/60 bg-primary/15 text-primary",
               t.tone === "bad" && "border-destructive/60 bg-destructive/15 text-destructive",
               t.tone === "info" && "border-border bg-card/80 text-foreground",
+              t.tone === "epic" && "border-accent/70 bg-accent/20 text-accent",
             )}
           >
             {t.text}
@@ -484,58 +819,127 @@ export function JokenpoGame() {
   )
 }
 
-/* ---------------- Sub-components ---------------- */
+/* ------------------------------------------------------------------ */
+/* Header                                                               */
+/* ------------------------------------------------------------------ */
 
-function MenuScreen({ onStart }: { onStart: () => void }) {
+function Header({
+  muted,
+  onToggleMute,
+  stage,
+  bestStage,
+  phase,
+}: {
+  muted: boolean
+  onToggleMute: () => void
+  stage: number
+  bestStage: number
+  phase: Phase
+}) {
+  const inMatch = phase !== "menu" && phase !== "gameover"
   return (
-    <section className="mt-6 flex flex-col items-center text-center sm:mt-10">
-      <div className="relative w-full">
-        <div className="absolute inset-0 -z-10 blur-3xl">
-          <div className="mx-auto h-32 w-60 rounded-full bg-primary/30 sm:h-40 sm:w-80" />
+    <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-2 px-3 pt-2 sm:px-4 sm:pt-4">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="grid size-9 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/30 sm:size-10">
+          <Swords className="size-4 sm:size-5" />
         </div>
-        <h2 className="font-mono font-black leading-[0.95] tracking-tighter">
-          <span className="block text-5xl text-primary sm:inline sm:text-7xl">PEDRA</span>
-          <span className="hidden text-foreground sm:inline">.</span>
-          <span className="block text-5xl text-accent sm:inline sm:text-7xl">PAPEL</span>
-          <span className="hidden text-foreground sm:inline">.</span>
-          <span className="block text-5xl text-destructive sm:inline sm:text-7xl">TESOURA</span>
+        <div className="leading-tight">
+          <h1 className="font-mono text-sm font-bold tracking-[0.2em] text-primary sm:text-base">
+            JOKENPÔ
+            <span className="ml-1.5 text-foreground/80">ARENA</span>
+          </h1>
+          <p className="text-[10px] text-muted-foreground sm:text-[11px]">
+            {inMatch ? `STAGE ${stage}` : "Pedra · Papel · Tesoura"}
+            {bestStage > 0 ? <span className="ml-1.5 text-accent">· Best {bestStage}</span> : null}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onToggleMute}
+        className="grid size-10 shrink-0 place-items-center rounded-md border border-border bg-card text-muted-foreground transition active:scale-95 hover:text-foreground"
+        aria-label={muted ? "Ativar som" : "Desativar som"}
+        aria-pressed={muted}
+      >
+        {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+      </button>
+    </header>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Menu                                                                 */
+/* ------------------------------------------------------------------ */
+
+function MenuScreen({ onStart, records }: { onStart: () => void; records: Records }) {
+  return (
+    <section className="flex flex-1 flex-col items-center pt-4 text-center sm:pt-8">
+      <div className="relative">
+        <div className="absolute inset-0 -z-10 blur-3xl">
+          <div className="mx-auto h-32 w-72 rounded-full bg-primary/30 sm:h-40 sm:w-80" />
+        </div>
+        <h2 className="font-mono text-4xl font-black leading-none tracking-tighter text-balance sm:text-7xl">
+          <span className="text-primary">PEDRA</span>
+          <span className="text-foreground">.</span>
+          <span className="text-accent">PAPEL</span>
+          <span className="text-foreground">.</span>
+          <span className="text-destructive">TESOURA</span>
         </h2>
       </div>
 
-      <p className="mt-5 max-w-xl text-pretty text-sm text-muted-foreground sm:mt-6 sm:text-base">
-        Não é o jokenpô do recreio. Sistema de HP, sequências, escudos, críticos
-        e bombas. Vença a CPU antes que ela vença você.
+      <p className="mt-4 max-w-md text-pretty text-sm text-muted-foreground sm:mt-6 sm:text-base">
+        Sobreviva a stages infinitos. Combo multiplicador, rage meter, ultimate, loja entre stages.
+        Quanto mais longe, mais brutal a CPU.
       </p>
 
       <button
         type="button"
         onClick={onStart}
-        className="pulse-glow group mt-7 inline-flex items-center gap-3 rounded-md bg-primary px-6 py-3.5 font-mono text-base font-black tracking-[0.2em] text-primary-foreground shadow-[0_0_30px_oklch(0.78_0.17_205/0.4)] transition hover:scale-[1.02] sm:mt-10 sm:px-8 sm:py-4 sm:text-lg"
+        className="pulse-glow group mt-8 inline-flex items-center gap-3 rounded-md bg-primary px-8 py-4 font-mono text-lg font-black tracking-[0.2em] text-primary-foreground shadow-[0_0_30px_oklch(0.78_0.17_205/0.4)] transition active:scale-95 hover:scale-[1.02]"
       >
         <Swords className="size-5 transition group-hover:rotate-12" />
         COMEÇAR
       </button>
 
-      <div className="mt-10 grid w-full max-w-4xl grid-cols-1 gap-3 sm:mt-14 sm:grid-cols-3">
+      {records.totalRuns > 0 ? (
+        <div className="mt-6 grid w-full max-w-md grid-cols-3 gap-2 text-center">
+          <RecordChip label="BEST STAGE" value={records.bestStage} accent />
+          <RecordChip label="BEST STREAK" value={records.bestStreak} />
+          <RecordChip label="VITÓRIAS" value={records.totalWins} />
+        </div>
+      ) : null}
+
+      <div className="mt-8 grid w-full max-w-3xl grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
         <FeatureCard
-          icon={Shield}
-          title="HP & Streak"
-          desc="100 HP cada lado. Cada vitória tira 20. Sequências liberam bônus."
+          icon={Flame}
+          title="Combo Multiplicador"
+          desc="Vitórias seguidas multiplicam o dano até x3. Erra uma, perde tudo."
         />
         <FeatureCard
           icon={Zap}
-          title="6 Power-Ups"
-          desc="Escudo, crítico, espião, bomba, sorte e cura. Use a hora certa."
+          title="Rage & Ultimate"
+          desc="Tomar dano enche a Fúria. Cheia, libera ULTIMATE: vitória garantida + 60 dmg."
         />
         <FeatureCard
-          icon={Trophy}
-          title="Arena Sem Pena"
-          desc="HP zera, alguém morre. Reinício em um clique. Ranking da run."
+          icon={ShoppingBag}
+          title="Loja entre Stages"
+          desc="Cada vitória de stage te deixa escolher 1 de 3 power-ups. Skip cura HP."
         />
       </div>
 
       <PowerUpLegend />
     </section>
+  )
+}
+
+function RecordChip({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+  return (
+    <div className="rounded-md border border-border bg-card/60 px-2 py-2 backdrop-blur">
+      <div className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground">{label}</div>
+      <div className={cn("font-mono text-lg font-black tabular-nums", accent ? "text-accent" : "text-primary")}>
+        {value}
+      </div>
+    </div>
   )
 }
 
@@ -549,34 +953,31 @@ function FeatureCard({
   desc: string
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-5 text-left backdrop-blur">
-      <div className="mb-3 grid size-9 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/30">
+    <div className="rounded-lg border border-border bg-card/60 p-3.5 text-left backdrop-blur sm:p-5">
+      <div className="mb-2 grid size-9 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/30 sm:mb-3">
         <Icon className="size-4" />
       </div>
       <h3 className="font-mono text-sm font-bold tracking-wider">{title}</h3>
-      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{desc}</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">{desc}</p>
     </div>
   )
 }
 
 function PowerUpLegend() {
   return (
-    <div className="mt-8 w-full max-w-4xl sm:mt-10">
-      <p className="mb-3 font-mono text-xs font-bold tracking-[0.3em] text-muted-foreground">
+    <div className="mt-8 w-full max-w-3xl">
+      <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground sm:text-xs">
         ARSENAL
       </p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {POWER_UP_POOL.map((id) => {
           const p = POWER_UPS[id]
           return (
-            <div
-              key={id}
-              className="flex items-start gap-3 rounded-md border border-border bg-card/40 p-3 text-left"
-            >
+            <div key={id} className="flex items-start gap-2 rounded-md border border-border bg-card/40 p-2.5 text-left">
               <PowerUpIcon power={p} size="sm" />
               <div className="min-w-0">
-                <div className="font-mono text-xs font-bold tracking-wider">{p.name}</div>
-                <div className="text-xs leading-relaxed text-muted-foreground">{p.desc}</div>
+                <div className="font-mono text-[10px] font-bold tracking-wider sm:text-xs">{p.name}</div>
+                <div className="text-[10px] leading-snug text-muted-foreground sm:text-xs">{p.desc}</div>
               </div>
             </div>
           )
@@ -585,6 +986,10 @@ function PowerUpLegend() {
     </div>
   )
 }
+
+/* ------------------------------------------------------------------ */
+/* Power-up icon                                                        */
+/* ------------------------------------------------------------------ */
 
 function PowerUpIcon({
   power,
@@ -595,10 +1000,8 @@ function PowerUpIcon({
   size?: "sm" | "md" | "lg"
   active?: boolean
 }) {
-  const sizing =
-    size === "sm" ? "size-7 sm:size-8" : size === "lg" ? "size-14" : "size-9 sm:size-11"
-  const iconSize =
-    size === "sm" ? "size-3.5 sm:size-4" : size === "lg" ? "size-6" : "size-4 sm:size-5"
+  const sizing = size === "sm" ? "size-8" : size === "lg" ? "size-14" : "size-10"
+  const iconSize = size === "sm" ? "size-4" : size === "lg" ? "size-6" : "size-5"
   const colorClasses =
     power.color === "primary"
       ? "bg-primary/15 text-primary ring-primary/40"
@@ -607,90 +1010,90 @@ function PowerUpIcon({
         : "bg-destructive/15 text-destructive ring-destructive/40"
   const Icon = power.Icon
   return (
-    <div
-      className={cn(
-        "grid shrink-0 place-items-center rounded-md ring-1 transition",
-        sizing,
-        colorClasses,
-        active && "pulse-glow",
-      )}
-    >
+    <div className={cn("grid shrink-0 place-items-center rounded-md ring-1 transition", sizing, colorClasses, active && "pulse-glow")}>
       <Icon className={iconSize} />
     </div>
   )
 }
 
+/* ------------------------------------------------------------------ */
+/* Arena                                                                */
+/* ------------------------------------------------------------------ */
+
+type ComboTierLite = ReturnType<typeof getCombo>
+
 function ArenaScreen({
   phase,
   playerHP,
   cpuHP,
+  cpuStats,
   playerChoice,
   cpuChoice,
   result,
   round,
   streak,
+  combo,
+  rage,
   inventory,
   buffs,
   spyPeek,
   hpFlash,
   floats,
+  particles,
+  ultimateReady,
   onChoose,
   onUsePowerUp,
+  onUltimate,
 }: {
   phase: Phase
   playerHP: number
   cpuHP: number
+  cpuStats: CPUStats
   playerChoice: Move | null
   cpuChoice: Move | null
   result: Result | null
   round: number
   streak: number
+  combo: ComboTierLite
+  rage: number
   inventory: PowerUpId[]
   buffs: Buffs
   spyPeek: Move | null
   hpFlash: "player" | "cpu" | null
   floats: FloatingNumber[]
+  particles: Particle[]
+  ultimateReady: boolean
   onChoose: (m: Move) => void
   onUsePowerUp: (i: number) => void
+  onUltimate: () => void
 }) {
   const canChoose = phase === "choosing"
 
   return (
-    <section className="space-y-4 sm:space-y-6">
-      {/* Status Bar */}
-      <div className="grid grid-cols-3 items-center gap-2 sm:gap-3">
-        <Stat label="ROUND" value={String(round).padStart(2, "0")} />
-        <Stat label="STREAK" value={`x${streak}`} highlight={streak >= 2} />
-        <Stat
-          label="BUFFS"
-          value={
-            [
-              buffs.shield && "🛡",
-              buffs.crit && "⚡",
-              buffs.spy && "👁",
-              buffs.lucky && "✦",
-            ]
-              .filter(Boolean)
-              .join(" ") || "—"
-          }
-        />
-      </div>
-
+    <section className="flex flex-1 flex-col gap-2 sm:gap-3">
       {/* HP Bars */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-6">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <HPBar name="VOCÊ" hp={playerHP} max={MAX_HP} align="left" flash={hpFlash === "player"} />
         <HPBar
-          name="VOCÊ"
-          hp={playerHP}
-          align="left"
-          flash={hpFlash === "player"}
+          name={cpuStats.name}
+          hp={cpuHP}
+          max={cpuStats.hp}
+          align="right"
+          flash={hpFlash === "cpu"}
+          isBoss={cpuStats.level === "boss"}
         />
-        <HPBar name="CPU" hp={cpuHP} align="right" flash={hpFlash === "cpu"} />
       </div>
 
-      {/* Battle Stage */}
+      {/* Meters row */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <ComboMeter combo={combo} streak={streak} />
+        <RageMeter rage={rage} ready={ultimateReady} onUltimate={onUltimate} />
+      </div>
+
+      {/* Battle stage */}
       <div
         className={cn(
-          "relative grid grid-cols-2 items-center gap-2 overflow-hidden rounded-xl border border-border bg-card/40 p-3 backdrop-blur sm:gap-4 sm:p-8",
+          "relative grid flex-1 grid-cols-2 items-center gap-2 overflow-hidden rounded-xl border border-border bg-card/40 p-2 backdrop-blur sm:gap-4 sm:p-6",
           phase === "shaking" && "flash-damage",
         )}
       >
@@ -700,6 +1103,7 @@ function ArenaScreen({
           choice={playerChoice}
           result={result}
           floats={floats.filter((f) => f.side === "player")}
+          particles={particles.filter((p) => p.side === "player")}
         />
         <BattleSide
           side="cpu"
@@ -707,6 +1111,7 @@ function ArenaScreen({
           choice={cpuChoice}
           result={result}
           floats={floats.filter((f) => f.side === "cpu")}
+          particles={particles.filter((p) => p.side === "cpu")}
         />
 
         {/* VS / Result badge */}
@@ -714,118 +1119,203 @@ function ArenaScreen({
           <ResultBadge phase={phase} result={result} />
         </div>
 
+        {/* Round counter pill */}
+        <div className="absolute left-2 top-2 rounded-md border border-border bg-background/80 px-2 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground backdrop-blur">
+          R{String(round).padStart(2, "0")}
+        </div>
+
+        {/* CPU level chip */}
+        <div className="absolute right-2 top-2 flex items-center gap-1 rounded-md border border-border bg-background/80 px-2 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground backdrop-blur">
+          <Cpu className="size-3" />
+          {cpuStats.level.toUpperCase()}
+        </div>
+
         {/* Spy peek hint */}
         {spyPeek && phase === "choosing" ? (
-          <div className="absolute inset-x-0 bottom-2 mx-auto w-fit max-w-[95%] rounded-md border border-accent/60 bg-accent/15 px-2 py-1 text-center font-mono text-[10px] font-bold tracking-wider text-accent sm:px-3 sm:text-xs">
-            ESPIÃO: CPU joga {MOVES[spyPeek].label}
+          <div className="absolute inset-x-0 bottom-2 mx-auto w-fit rounded-md border border-accent/60 bg-accent/15 px-2.5 py-1 font-mono text-[10px] font-bold tracking-wider text-accent">
+            ESPIÃO: CPU vai jogar {MOVES[spyPeek].label}
           </div>
         ) : null}
       </div>
 
-      {/* Inventory */}
-      <Inventory
-        inventory={inventory}
-        buffs={buffs}
-        disabled={!canChoose}
-        onUse={onUsePowerUp}
-      />
+      {/* Active buffs strip */}
+      <ActiveBuffsBar buffs={buffs} />
 
-      {/* Choice Buttons */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        {(["pedra", "papel", "tesoura"] as Move[]).map((m) => (
-          <ChoiceButton
-            key={m}
-            move={m}
-            disabled={!canChoose}
-            onClick={() => onChoose(m)}
-          />
+      {/* Inventory */}
+      <Inventory inventory={inventory} buffs={buffs} disabled={!canChoose} onUse={onUsePowerUp} />
+
+      {/* Choice buttons */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        {MOVE_LIST.map((m) => (
+          <ChoiceButton key={m} move={m} disabled={!canChoose} onClick={() => onChoose(m)} />
         ))}
       </div>
     </section>
   )
 }
 
-function Stat({
-  label,
-  value,
-  highlight,
+/* ------------------------------------------------------------------ */
+/* HP Bar                                                               */
+/* ------------------------------------------------------------------ */
+
+function HPBar({
+  name,
+  hp,
+  max,
+  align,
+  flash,
+  isBoss,
 }: {
-  label: string
-  value: string
-  highlight?: boolean
+  name: string
+  hp: number
+  max: number
+  align: "left" | "right"
+  flash: boolean
+  isBoss?: boolean
 }) {
+  const pct = Math.max(0, Math.min(100, (hp / max) * 100))
+  const tone = pct > 60 ? "primary" : pct > 30 ? "accent" : "destructive"
+  const toneClass =
+    tone === "primary" ? "bg-primary" : tone === "accent" ? "bg-accent" : "bg-destructive"
   return (
-    <div className="min-w-0 rounded-md border border-border bg-card/60 px-2 py-1.5 text-center backdrop-blur sm:px-3 sm:py-2">
-      <div className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground sm:text-[10px]">
-        {label}
+    <div className={cn("rounded-md border border-border bg-card/60 p-2 backdrop-blur sm:p-3", flash && "flash-damage")}>
+      <div className={cn("mb-1.5 flex items-baseline justify-between gap-2 font-mono", align === "right" && "flex-row-reverse")}>
+        <span className="truncate text-[10px] font-bold tracking-[0.18em] text-muted-foreground sm:text-xs sm:tracking-[0.2em]">
+          {isBoss ? <span className="text-destructive">[BOSS] </span> : null}
+          {name}
+        </span>
+        <span className="text-xs font-bold tabular-nums sm:text-sm">
+          {hp}
+          <span className="text-muted-foreground">/{max}</span>
+        </span>
       </div>
-      <div
-        className={cn(
-          "truncate font-mono text-sm font-bold tabular-nums sm:text-base",
-          highlight ? "text-accent" : "text-foreground",
-        )}
-      >
-        {value}
+      <div className={cn("h-2.5 overflow-hidden rounded-full bg-secondary sm:h-3", align === "right" && "rotate-180")}>
+        <div className={cn("h-full transition-[width] duration-500 ease-out", toneClass)} style={{ width: `${pct}%` }} />
       </div>
     </div>
   )
 }
 
-function HPBar({
-  name,
-  hp,
-  align,
-  flash,
-}: {
-  name: string
-  hp: number
-  align: "left" | "right"
-  flash: boolean
-}) {
-  const pct = Math.max(0, Math.min(100, (hp / MAX_HP) * 100))
-  const tone =
-    hp > 60 ? "primary" : hp > 30 ? "accent" : "destructive"
-  const toneClass =
-    tone === "primary"
-      ? "bg-primary"
-      : tone === "accent"
-        ? "bg-accent"
-        : "bg-destructive"
+/* ------------------------------------------------------------------ */
+/* Combo / Rage meters                                                  */
+/* ------------------------------------------------------------------ */
+
+function ComboMeter({ combo, streak }: { combo: ComboTierLite; streak: number }) {
+  const active = combo.level > 0
   return (
     <div
       className={cn(
-        "rounded-md border border-border bg-card/60 p-2.5 backdrop-blur sm:p-3",
-        flash && "flash-damage",
+        "flex items-center gap-2 rounded-md border bg-card/60 px-2.5 py-1.5 backdrop-blur sm:px-3 sm:py-2",
+        active ? "border-accent/60" : "border-border",
+        active && "combo-pulse",
       )}
     >
       <div
         className={cn(
-          "mb-1.5 flex items-baseline justify-between gap-2 font-mono sm:mb-2",
-          align === "right" && "flex-row-reverse",
+          "grid size-8 place-items-center rounded-md ring-1 sm:size-9",
+          active ? "bg-accent/15 text-accent ring-accent/40" : "bg-muted/50 text-muted-foreground ring-border",
         )}
       >
-        <span className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground sm:text-xs">
-          {name}
-        </span>
-        <span className="text-xs font-bold tabular-nums sm:text-sm">
-          {hp}
-          <span className="text-muted-foreground">/{MAX_HP}</span>
-        </span>
+        <Flame className="size-4" />
       </div>
-      <div
-        className={cn(
-          "h-2.5 overflow-hidden rounded-full bg-secondary sm:h-3",
-          align === "right" && "rotate-180",
-        )}
-      >
-        <div
-          className={cn("h-full transition-[width] duration-500 ease-out", toneClass)}
-          style={{ width: `${pct}%` }}
-        />
+      <div className="min-w-0 leading-tight">
+        <div className="font-mono text-[9px] tracking-[0.25em] text-muted-foreground">COMBO</div>
+        <div className={cn("font-mono text-sm font-black tabular-nums sm:text-base", active ? "text-accent" : "text-muted-foreground")}>
+          {combo.label}
+          <span className="ml-1.5 text-[10px] text-muted-foreground">({streak})</span>
+        </div>
       </div>
     </div>
   )
 }
+
+function RageMeter({ rage, ready, onUltimate }: { rage: number; ready: boolean; onUltimate: () => void }) {
+  const pct = (rage / RAGE_MAX) * 100
+  return (
+    <button
+      type="button"
+      disabled={!ready}
+      onClick={onUltimate}
+      className={cn(
+        "group relative flex items-center gap-2 overflow-hidden rounded-md border bg-card/60 px-2.5 py-1.5 text-left backdrop-blur transition sm:px-3 sm:py-2",
+        ready ? "border-destructive/70 ultimate-charge active:scale-95" : "border-border",
+        !ready && "cursor-default",
+      )}
+      aria-label={ready ? "Disparar ULTIMATE" : "Fúria carregando"}
+    >
+      <div
+        className={cn(
+          "grid size-8 place-items-center rounded-md ring-1 sm:size-9",
+          ready ? "bg-destructive/20 text-destructive ring-destructive/50" : "bg-muted/50 text-muted-foreground ring-border",
+        )}
+      >
+        <Zap className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1 leading-tight">
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-[9px] tracking-[0.25em] text-muted-foreground">RAGE</span>
+          <span className={cn("font-mono text-[10px] font-bold tabular-nums", ready ? "text-destructive" : "text-muted-foreground")}>
+            {rage}/{RAGE_MAX}
+          </span>
+        </div>
+        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
+          <div
+            className={cn("h-full transition-[width] duration-500 ease-out", ready ? "bg-destructive" : "bg-accent/80")}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        {ready ? (
+          <div className="mt-0.5 font-mono text-[10px] font-black tracking-wider text-destructive">TOQUE PARA ULTIMATE</div>
+        ) : null}
+      </div>
+    </button>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Active buffs                                                         */
+/* ------------------------------------------------------------------ */
+
+function ActiveBuffsBar({ buffs }: { buffs: Buffs }) {
+  const items = [
+    buffs.shield && { id: "shield", icon: Shield, label: "ESCUDO", color: "primary" as const },
+    buffs.crit && { id: "crit", icon: Zap, label: "CRIT", color: "accent" as const },
+    buffs.spy && { id: "spy", icon: Eye, label: "ESPIÃO", color: "primary" as const },
+    buffs.lucky && { id: "lucky", icon: Sparkles, label: "SORTE", color: "accent" as const },
+    buffs.siphon && { id: "siphon", icon: Droplet, label: "SIFÃO", color: "primary" as const },
+  ].filter(Boolean) as Array<{
+    id: string
+    icon: typeof Shield
+    label: string
+    color: "primary" | "accent" | "destructive"
+  }>
+
+  if (items.length === 0) return null
+
+  return (
+    <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto rounded-md border border-border bg-card/40 px-2 py-1.5 backdrop-blur">
+      <span className="shrink-0 font-mono text-[9px] tracking-[0.25em] text-muted-foreground">ATIVOS</span>
+      {items.map((it) => (
+        <span
+          key={it.id}
+          className={cn(
+            "drop-in inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider",
+            it.color === "primary" && "border-primary/50 bg-primary/15 text-primary",
+            it.color === "accent" && "border-accent/60 bg-accent/15 text-accent",
+            it.color === "destructive" && "border-destructive/50 bg-destructive/15 text-destructive",
+          )}
+        >
+          <it.icon className="size-3" />
+          {it.label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Battle side                                                          */
+/* ------------------------------------------------------------------ */
 
 function BattleSide({
   side,
@@ -833,12 +1323,14 @@ function BattleSide({
   choice,
   result,
   floats,
+  particles,
 }: {
   side: "player" | "cpu"
   phase: Phase
   choice: Move | null
   result: Result | null
   floats: FloatingNumber[]
+  particles: Particle[]
 }) {
   const isShaking = phase === "shaking"
   const isReveal = phase === "reveal"
@@ -847,9 +1339,9 @@ function BattleSide({
 
   const ringTone =
     isReveal && sideResult === "win"
-      ? "ring-primary shadow-[0_0_30px_oklch(0.78_0.17_205/0.4)]"
+      ? "ring-primary shadow-[0_0_24px_oklch(0.78_0.17_205/0.4)]"
       : isReveal && sideResult === "lose"
-        ? "ring-destructive shadow-[0_0_30px_oklch(0.66_0.24_22/0.4)]"
+        ? "ring-destructive shadow-[0_0_24px_oklch(0.66_0.24_22/0.4)]"
         : isReveal && sideResult === "draw"
           ? "ring-accent"
           : "ring-border"
@@ -857,28 +1349,24 @@ function BattleSide({
   return (
     <div
       className={cn(
-        "relative flex aspect-square min-h-[140px] flex-col items-center justify-center rounded-lg bg-background/60 ring-2 transition sm:min-h-[180px]",
+        "relative flex aspect-square min-h-[140px] flex-col items-center justify-center rounded-lg bg-background/60 ring-2 transition sm:min-h-[200px]",
         ringTone,
       )}
     >
-      <div className="font-mono text-[9px] font-bold tracking-[0.25em] text-muted-foreground sm:text-[10px] sm:tracking-[0.3em]">
+      <div className="font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground sm:text-[10px]">
         {side === "player" ? "VOCÊ" : "CPU"}
       </div>
 
       <div className="relative mt-1 grid place-items-center sm:mt-2">
         <div
           className={cn(
-            "select-none text-5xl leading-none sm:text-8xl",
+            "select-none text-6xl leading-none sm:text-8xl",
             isShaking && "shake-hand",
             isReveal && "slam-in",
           )}
           aria-hidden="true"
         >
-          {isShaking || (!choice && phase === "choosing")
-            ? "✊"
-            : choice
-              ? MOVES[choice].emoji
-              : "✊"}
+          {isShaking || (!choice && phase === "choosing") ? "✊" : choice ? MOVES[choice].emoji : "✊"}
         </div>
 
         {/* Floating numbers */}
@@ -886,15 +1374,36 @@ function BattleSide({
           <span
             key={f.id}
             className={cn(
-              "pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-lg font-black tabular-nums sm:text-2xl",
+              "pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 font-mono text-xl font-black tabular-nums sm:text-2xl",
               "float-up",
               f.tone === "damage" && "text-destructive",
               f.tone === "heal" && "text-primary",
               f.tone === "info" && "text-accent",
+              f.tone === "crit" && "text-accent",
+              f.tone === "ultimate" && "text-destructive drop-shadow-[0_0_8px_oklch(0.66_0.24_22/0.8)]",
             )}
           >
             {f.value}
           </span>
+        ))}
+
+        {/* Particles */}
+        {particles.map((p) => (
+          <span
+            key={p.id}
+            className={cn(
+              "pointer-events-none absolute top-1/2 size-2 rounded-full",
+              "confetti",
+              p.color === "primary" && "bg-primary",
+              p.color === "accent" && "bg-accent",
+              p.color === "destructive" && "bg-destructive",
+            )}
+            style={{
+              left: `${p.left}%`,
+              ["--tx" as string]: `${p.tx}px`,
+              animationDelay: `${p.delay}s`,
+            }}
+          />
         ))}
       </div>
 
@@ -914,14 +1423,14 @@ function BattleSide({
 function ResultBadge({ phase, result }: { phase: Phase; result: Result | null }) {
   if (phase === "choosing") {
     return (
-      <div className="rounded-full border border-border bg-card/80 px-2.5 py-1 font-mono text-[10px] font-bold tracking-[0.2em] text-muted-foreground backdrop-blur sm:px-3 sm:text-xs">
+      <div className="rounded-full border border-border bg-card/80 px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.2em] text-muted-foreground backdrop-blur sm:px-3 sm:py-1 sm:text-xs">
         VS
       </div>
     )
   }
   if (phase === "shaking") {
     return (
-      <div className="rounded-full border border-accent/60 bg-accent/15 px-2.5 py-1 font-mono text-[10px] font-bold tracking-[0.2em] text-accent backdrop-blur sm:px-3 sm:text-xs">
+      <div className="rounded-full border border-accent/60 bg-accent/15 px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.2em] text-accent backdrop-blur sm:px-3 sm:py-1 sm:text-xs">
         JO · KEN · PÔ
       </div>
     )
@@ -933,12 +1442,7 @@ function ResultBadge({ phase, result }: { phase: Phase; result: Result | null })
       draw: { text: "EMPATE", cls: "border-accent/60 bg-accent/20 text-accent" },
     }[result]
     return (
-      <div
-        className={cn(
-          "slam-in rounded-md border px-2.5 py-1.5 font-mono text-xs font-black tracking-[0.25em] backdrop-blur sm:px-4 sm:py-2 sm:text-base sm:tracking-[0.3em]",
-          map.cls,
-        )}
-      >
+      <div className={cn("slam-in rounded-md border px-3 py-1.5 font-mono text-sm font-black tracking-[0.3em] backdrop-blur sm:text-base", map.cls)}>
         {map.text}
       </div>
     )
@@ -946,29 +1450,25 @@ function ResultBadge({ phase, result }: { phase: Phase; result: Result | null })
   return null
 }
 
-function ChoiceButton({
-  move,
-  disabled,
-  onClick,
-}: {
-  move: Move
-  disabled: boolean
-  onClick: () => void
-}) {
+/* ------------------------------------------------------------------ */
+/* Choice button                                                        */
+/* ------------------------------------------------------------------ */
+
+function ChoiceButton({ move, disabled, onClick }: { move: Move; disabled: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "group relative overflow-hidden rounded-lg border-2 border-border bg-card p-3 transition sm:p-4",
-        "hover:-translate-y-1 hover:border-primary hover:bg-card/80 hover:shadow-[0_0_30px_oklch(0.78_0.17_205/0.3)]",
-        "active:translate-y-0 active:scale-95",
-        "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-border disabled:hover:shadow-none",
+        "group relative overflow-hidden rounded-lg border-2 border-border bg-card p-2.5 transition sm:p-4",
+        "hover:border-primary hover:bg-card/80 hover:shadow-[0_0_24px_oklch(0.78_0.17_205/0.3)]",
+        "active:scale-[0.97] active:bg-primary/10",
+        "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:shadow-none disabled:active:scale-100",
       )}
       aria-label={`Jogar ${MOVES[move].label}`}
     >
-      <div className="flex flex-col items-center gap-1.5 sm:gap-2">
+      <div className="flex flex-col items-center gap-1 sm:gap-2">
         <div className="text-4xl leading-none transition group-hover:scale-110 sm:text-6xl" aria-hidden="true">
           {MOVES[move].emoji}
         </div>
@@ -979,6 +1479,10 @@ function ChoiceButton({
     </button>
   )
 }
+
+/* ------------------------------------------------------------------ */
+/* Inventory                                                            */
+/* ------------------------------------------------------------------ */
 
 function Inventory({
   inventory,
@@ -994,16 +1498,14 @@ function Inventory({
   const slots: (PowerUpId | null)[] = Array.from({ length: INVENTORY_LIMIT }, (_, i) => inventory[i] ?? null)
 
   return (
-    <div className="rounded-lg border border-border bg-card/40 p-2.5 backdrop-blur sm:p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="font-mono text-[9px] font-bold tracking-[0.25em] text-muted-foreground sm:text-[10px] sm:tracking-[0.3em]">
-          INVENTÁRIO
-        </span>
-        <span className="font-mono text-[9px] tracking-wider text-muted-foreground sm:text-[10px]">
+    <div className="rounded-md border border-border bg-card/40 p-1.5 backdrop-blur sm:p-2">
+      <div className="mb-1 flex items-center justify-between px-1">
+        <span className="font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground">INVENTÁRIO</span>
+        <span className="font-mono text-[9px] tracking-wider text-muted-foreground">
           {inventory.length}/{INVENTORY_LIMIT}
         </span>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
         {slots.map((id, i) =>
           id ? (
             <PowerUpSlot
@@ -1015,15 +1517,16 @@ function Inventory({
                 (id === "shield" && buffs.shield) ||
                 (id === "crit" && buffs.crit) ||
                 (id === "spy" && buffs.spy) ||
-                (id === "lucky" && buffs.lucky)
+                (id === "lucky" && buffs.lucky) ||
+                (id === "siphon" && buffs.siphon)
               }
             />
           ) : (
             <div
               key={i}
-              className="grid h-14 place-items-center rounded-md border border-dashed border-border/60 text-[10px] text-muted-foreground/60 sm:h-16 sm:text-xs"
+              className="grid h-12 place-items-center rounded-md border border-dashed border-border/60 text-[10px] text-muted-foreground/60 sm:h-14"
             >
-              vazio
+              <Lock className="size-3" />
             </div>
           ),
         )}
@@ -1050,9 +1553,9 @@ function PowerUpSlot({
       disabled={disabled}
       title={power.desc}
       className={cn(
-        "group flex h-14 flex-col items-center justify-center gap-1 rounded-md border bg-background/60 px-1 transition sm:h-16 sm:flex-row sm:gap-2 sm:px-2",
-        "hover:-translate-y-0.5 hover:border-foreground/40 active:scale-95",
-        "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0",
+        "group flex h-12 items-center gap-1.5 rounded-md border bg-background/60 px-1.5 transition sm:h-14 sm:px-2",
+        "active:scale-[0.96] hover:border-foreground/40",
+        "disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100",
         power.color === "primary" && "border-primary/40",
         power.color === "accent" && "border-accent/40",
         power.color === "destructive" && "border-destructive/40",
@@ -1060,32 +1563,121 @@ function PowerUpSlot({
       aria-label={`Usar ${power.name}`}
     >
       <PowerUpIcon power={power} size="sm" active={isActiveBuff} />
-      <div className="min-w-0 text-center sm:text-left">
-        <div className="truncate font-mono text-[9px] font-bold tracking-wider sm:text-[11px]">
-          {power.name}
-        </div>
-        <div className="hidden truncate text-[10px] text-muted-foreground sm:block">
-          {power.instant ? "instantâneo" : isActiveBuff ? "ativo" : "tocar p/ usar"}
+      <div className="min-w-0 text-left">
+        <div className="truncate font-mono text-[10px] font-bold tracking-wider sm:text-[11px]">{power.name}</div>
+        <div className="truncate text-[9px] text-muted-foreground sm:text-[10px]">
+          {power.instant ? "instant" : isActiveBuff ? "ativo" : "tocar"}
         </div>
       </div>
     </button>
   )
 }
 
+/* ------------------------------------------------------------------ */
+/* Shop                                                                 */
+/* ------------------------------------------------------------------ */
+
+function ShopScreen({
+  offers,
+  stage,
+  playerHP,
+  inventory,
+  onBuy,
+  onSkip,
+}: {
+  offers: PowerUpId[]
+  stage: number
+  playerHP: number
+  inventory: PowerUpId[]
+  onBuy: (id: PowerUpId) => void
+  onSkip: () => void
+}) {
+  const inventoryFull = inventory.length >= INVENTORY_LIMIT
+  return (
+    <section className="flex flex-1 flex-col items-center justify-center gap-4 py-4 text-center sm:gap-6">
+      <div className="pop-in inline-flex items-center gap-2 rounded-md border border-accent/60 bg-accent/15 px-3 py-1 font-mono text-[10px] font-bold tracking-[0.3em] text-accent sm:text-xs">
+        <Star className="size-3.5" />
+        STAGE {stage} CONCLUÍDO
+      </div>
+
+      <div>
+        <h2 className="font-mono text-2xl font-black tracking-tighter text-balance sm:text-4xl">ESCOLHA UMA RECOMPENSA</h2>
+        <p className="mt-1.5 text-xs text-muted-foreground sm:text-sm">
+          HP atual: <span className="font-bold text-foreground tabular-nums">{playerHP}/{MAX_HP}</span>
+          {inventoryFull ? (
+            <span className="ml-2 text-destructive">· inventário cheio: substitui o item mais antigo</span>
+          ) : null}
+        </p>
+      </div>
+
+      <div className="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
+        {offers.map((id) => {
+          const p = POWER_UPS[id]
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onBuy(id)}
+              className={cn(
+                "drop-in group flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition active:scale-[0.97] sm:p-6",
+                p.color === "primary" && "border-primary/40 bg-primary/5 hover:bg-primary/15 hover:shadow-[0_0_30px_oklch(0.78_0.17_205/0.3)]",
+                p.color === "accent" && "border-accent/50 bg-accent/5 hover:bg-accent/15 hover:shadow-[0_0_30px_oklch(0.86_0.18_92/0.3)]",
+                p.color === "destructive" && "border-destructive/40 bg-destructive/5 hover:bg-destructive/15 hover:shadow-[0_0_30px_oklch(0.66_0.24_22/0.3)]",
+              )}
+            >
+              <PowerUpIcon power={p} size="lg" />
+              <div className="font-mono text-base font-black tracking-wider sm:text-lg">{p.name}</div>
+              <div className="text-xs leading-relaxed text-muted-foreground">{p.desc}</div>
+              <div className="mt-1 inline-flex items-center gap-1 font-mono text-[10px] font-bold tracking-wider text-foreground/70">
+                <ChevronRight className="size-3" />
+                LEVAR
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={onSkip}
+        className="mt-2 inline-flex items-center gap-2 rounded-md border border-border bg-card px-5 py-2.5 font-mono text-xs font-bold tracking-[0.2em] text-muted-foreground transition active:scale-95 hover:text-foreground"
+      >
+        <Heart className="size-4 text-primary" />
+        PULAR · +{SHOP_HEAL_SKIP + STAGE_HEAL_BONUS} HP
+      </button>
+    </section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Game over                                                            */
+/* ------------------------------------------------------------------ */
+
 function GameOverScreen({
   won,
   stats,
+  records,
   onRestart,
 }: {
   won: boolean
-  stats: { wins: number; losses: number; draws: number; bestStreak: number; round: number }
+  stats: {
+    wins: number
+    losses: number
+    draws: number
+    bestStreak: number
+    stageReached: number
+    damageDealt: number
+    powerUpsUsed: number
+  }
+  records: Records
   onRestart: () => void
 }) {
+  const isNewBest = stats.stageReached >= records.bestStage && stats.stageReached > 1
   return (
-    <section className="mt-6 flex flex-col items-center text-center sm:mt-10">
+    <section className="flex flex-1 flex-col items-center justify-center py-4 text-center sm:py-8">
       <div
         className={cn(
-          "slam-in mb-5 grid size-16 place-items-center rounded-full ring-4 sm:mb-6 sm:size-20",
+          "slam-in mb-4 grid size-16 place-items-center rounded-full ring-4 sm:mb-6 sm:size-20",
           won
             ? "bg-primary/15 text-primary ring-primary/40"
             : "bg-destructive/15 text-destructive ring-destructive/40",
@@ -1101,23 +1693,30 @@ function GameOverScreen({
       >
         {won ? "VITÓRIA" : "DERROTA"}
       </h2>
-      <p className="mt-3 max-w-md text-pretty text-sm text-muted-foreground sm:text-base">
-        {won
-          ? "Você dominou a arena. A CPU está em pedaços. Mais uma run?"
-          : "A CPU não perdoou. Respira, reorganiza a estratégia, volta."}
+      <p className="mt-2 max-w-md text-pretty text-sm text-muted-foreground sm:text-base">
+        Chegou ao <span className="font-bold text-foreground">Stage {stats.stageReached}</span>.{" "}
+        {isNewBest ? (
+          <span className="text-accent font-bold">NOVO RECORDE!</span>
+        ) : (
+          <span>Melhor stage: {records.bestStage}.</span>
+        )}
       </p>
 
-      <div className="mt-6 grid w-full max-w-2xl grid-cols-2 gap-2 sm:mt-8 sm:grid-cols-4 sm:gap-3">
+      <div className="mt-6 grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        <ResultStat label="STAGE" value={stats.stageReached} tone="primary" />
         <ResultStat label="VITÓRIAS" value={stats.wins} tone="primary" />
         <ResultStat label="DERROTAS" value={stats.losses} tone="destructive" />
+        <ResultStat label="MAX STREAK" value={stats.bestStreak} tone="accent" />
         <ResultStat label="EMPATES" value={stats.draws} tone="accent" />
-        <ResultStat label="MELHOR STREAK" value={stats.bestStreak} tone="accent" />
+        <ResultStat label="DANO TOTAL" value={stats.damageDealt} tone="destructive" />
+        <ResultStat label="POWER-UPS" value={stats.powerUpsUsed} tone="primary" />
+        <ResultStat label="RECORDE" value={records.bestStage} tone="accent" />
       </div>
 
       <button
         type="button"
         onClick={onRestart}
-        className="pulse-glow mt-8 inline-flex items-center gap-3 rounded-md bg-primary px-6 py-3.5 font-mono text-sm font-black tracking-[0.2em] text-primary-foreground transition hover:scale-[1.02] active:scale-95 sm:mt-10 sm:px-8 sm:py-4 sm:text-base"
+        className="pulse-glow mt-8 inline-flex items-center gap-3 rounded-md bg-primary px-7 py-3.5 font-mono text-base font-black tracking-[0.2em] text-primary-foreground transition active:scale-95 hover:scale-[1.02]"
       >
         <RotateCcw className="size-4" />
         REVANCHE
@@ -1135,19 +1734,32 @@ function ResultStat({
   value: number
   tone: "primary" | "destructive" | "accent"
 }) {
-  const cls =
-    tone === "primary"
-      ? "text-primary"
-      : tone === "destructive"
-        ? "text-destructive"
-        : "text-accent"
+  const cls = tone === "primary" ? "text-primary" : tone === "destructive" ? "text-destructive" : "text-accent"
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-3 backdrop-blur sm:p-4">
-      <div className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground sm:text-[10px]">
-        {label}
-      </div>
-      <div className={cn("mt-1 font-mono text-2xl font-black tabular-nums sm:text-3xl", cls)}>
-        {value}
+    <div className="rounded-lg border border-border bg-card/60 p-2.5 backdrop-blur sm:p-4">
+      <div className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground">{label}</div>
+      <div className={cn("mt-0.5 font-mono text-2xl font-black tabular-nums sm:text-3xl", cls)}>{value}</div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Banner overlay                                                       */
+/* ------------------------------------------------------------------ */
+
+function BannerOverlay({ banner }: { banner: Banner }) {
+  return (
+    <div className="pointer-events-none fixed inset-0 z-40 grid place-items-center px-4">
+      <div
+        className={cn(
+          "banner-sweep relative overflow-hidden rounded-md border px-6 py-3 font-mono text-center backdrop-blur sm:px-10 sm:py-4",
+          banner.tone === "primary" && "border-primary/60 bg-primary/15 text-primary",
+          banner.tone === "accent" && "border-accent/60 bg-accent/15 text-accent",
+          banner.tone === "destructive" && "border-destructive/60 bg-destructive/15 text-destructive",
+        )}
+      >
+        <div className="text-3xl font-black tracking-[0.25em] sm:text-5xl">{banner.title}</div>
+        <div className="mt-1 text-[10px] tracking-[0.3em] opacity-80 sm:text-xs">{banner.sub}</div>
       </div>
     </div>
   )

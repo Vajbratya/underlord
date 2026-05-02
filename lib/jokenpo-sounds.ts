@@ -46,7 +46,7 @@ function tone({ freq, duration, type = 'sine', volume = 0.18, sweepTo, delay = 0
   osc.stop(start + duration + 0.05)
 }
 
-function noise(duration: number, volume = 0.12, delay = 0) {
+function noise(duration: number, volume = 0.12, delay = 0, highpass = 800) {
   const c = getCtx()
   if (!c) return
   const bufferSize = Math.floor(c.sampleRate * duration)
@@ -61,7 +61,7 @@ function noise(duration: number, volume = 0.12, delay = 0) {
   gain.gain.value = volume
   const filter = c.createBiquadFilter()
   filter.type = 'highpass'
-  filter.frequency.value = 800
+  filter.frequency.value = highpass
   src.connect(filter)
   filter.connect(gain)
   gain.connect(c.destination)
@@ -75,6 +75,9 @@ export const sfx = {
   },
   click() {
     tone({ freq: 520, duration: 0.06, type: 'square', volume: 0.1 })
+  },
+  tap() {
+    tone({ freq: 720, duration: 0.04, type: 'square', volume: 0.08 })
   },
   shake() {
     tone({ freq: 220, duration: 0.08, type: 'square', volume: 0.08 })
@@ -127,5 +130,53 @@ export const sfx = {
     ;[392, 330, 277, 220].forEach((f, i) =>
       tone({ freq: f, duration: 0.22, type: 'sawtooth', volume: 0.18, delay: i * 0.16 }),
     )
+  },
+  combo(tier: number) {
+    // ascending arpeggio scaling with tier
+    const base = 600 + tier * 80
+    ;[0, 1, 2, 3].forEach((i) => {
+      tone({
+        freq: base + i * 120,
+        duration: 0.08,
+        type: 'square',
+        volume: 0.12,
+        delay: i * 0.05,
+      })
+    })
+  },
+  rageGain() {
+    tone({ freq: 160, duration: 0.12, type: 'sawtooth', volume: 0.1, sweepTo: 280 })
+  },
+  rageReady() {
+    // alarm-like
+    ;[440, 660, 440, 660].forEach((f, i) =>
+      tone({ freq: f, duration: 0.08, type: 'square', volume: 0.16, delay: i * 0.09 }),
+    )
+  },
+  ultimate() {
+    noise(0.5, 0.2, 0, 200)
+    tone({ freq: 90, duration: 0.5, type: 'sawtooth', volume: 0.22, sweepTo: 1200 })
+    tone({ freq: 220, duration: 0.5, type: 'square', volume: 0.18, delay: 0.05, sweepTo: 1800 })
+  },
+  stageClear() {
+    ;[523, 659, 784, 1047, 1319].forEach((f, i) =>
+      tone({ freq: f, duration: 0.14, type: 'square', volume: 0.16, delay: i * 0.08 }),
+    )
+  },
+  shopOpen() {
+    tone({ freq: 700, duration: 0.1, type: 'triangle', volume: 0.12 })
+    tone({ freq: 1100, duration: 0.14, type: 'triangle', volume: 0.12, delay: 0.08 })
+  },
+  shopBuy() {
+    tone({ freq: 880, duration: 0.08, type: 'square', volume: 0.14 })
+    tone({ freq: 1320, duration: 0.12, type: 'square', volume: 0.14, delay: 0.06 })
+  },
+  bossIntro() {
+    tone({ freq: 60, duration: 0.6, type: 'sawtooth', volume: 0.22 })
+    tone({ freq: 110, duration: 0.6, type: 'sawtooth', volume: 0.18, delay: 0.05 })
+    noise(0.6, 0.16, 0.1, 100)
+  },
+  tick() {
+    tone({ freq: 1200, duration: 0.03, type: 'square', volume: 0.06 })
   },
 }
