@@ -407,17 +407,17 @@ export function JokenpoGame() {
         />
       </div>
 
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 pt-6">
-        <div className="flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/30">
-            <Swords className="size-5" />
+      <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-4 sm:pt-6">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/30 sm:size-10">
+            <Swords className="size-4 sm:size-5" />
           </div>
-          <div>
-            <h1 className="font-mono text-lg font-bold tracking-[0.2em] text-primary">
+          <div className="min-w-0">
+            <h1 className="font-mono text-base font-bold tracking-[0.2em] text-primary sm:text-lg">
               JOKENPÔ
               <span className="ml-2 text-foreground/80">ARENA</span>
             </h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="hidden text-xs text-muted-foreground sm:block">
               Pedra · Papel · Tesoura — com power-ups
             </p>
           </div>
@@ -425,7 +425,7 @@ export function JokenpoGame() {
         <button
           type="button"
           onClick={() => setMuted((m) => !m)}
-          className="grid size-10 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:text-foreground"
+          className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-card text-muted-foreground transition hover:text-foreground sm:size-10"
           aria-label={muted ? "Ativar som" : "Desativar som"}
           aria-pressed={muted}
         >
@@ -433,7 +433,7 @@ export function JokenpoGame() {
         </button>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-20 pt-6">
+      <main className="mx-auto max-w-6xl px-3 pb-10 pt-4 sm:px-4 sm:pb-20 sm:pt-6">
         {phase === "menu" ? (
           <MenuScreen onStart={start} />
         ) : phase === "gameover" ? (
@@ -464,12 +464,12 @@ export function JokenpoGame() {
       </main>
 
       {/* Toasts */}
-      <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex flex-col items-center gap-2 px-4">
+      <div className="pointer-events-none fixed inset-x-0 top-16 z-40 flex flex-col items-center gap-2 px-3 sm:top-20 sm:px-4">
         {toasts.map((t) => (
           <div
             key={t.id}
             className={cn(
-              "pointer-events-none rounded-md border px-4 py-2 font-mono text-xs font-bold tracking-wider shadow-lg backdrop-blur",
+              "pointer-events-none max-w-[90vw] rounded-md border px-3 py-2 text-center font-mono text-[11px] font-bold tracking-wider shadow-lg backdrop-blur sm:px-4 sm:text-xs",
               "slam-in",
               t.tone === "good" && "border-primary/60 bg-primary/15 text-primary",
               t.tone === "bad" && "border-destructive/60 bg-destructive/15 text-destructive",
@@ -488,21 +488,21 @@ export function JokenpoGame() {
 
 function MenuScreen({ onStart }: { onStart: () => void }) {
   return (
-    <section className="mt-10 flex flex-col items-center text-center">
-      <div className="relative">
+    <section className="mt-6 flex flex-col items-center text-center sm:mt-10">
+      <div className="relative w-full">
         <div className="absolute inset-0 -z-10 blur-3xl">
-          <div className="mx-auto h-40 w-80 rounded-full bg-primary/30" />
+          <div className="mx-auto h-32 w-60 rounded-full bg-primary/30 sm:h-40 sm:w-80" />
         </div>
-        <h2 className="font-mono text-5xl font-black leading-none tracking-tighter text-balance sm:text-7xl">
-          <span className="text-primary">PEDRA</span>
-          <span className="text-foreground">.</span>
-          <span className="text-accent">PAPEL</span>
-          <span className="text-foreground">.</span>
-          <span className="text-destructive">TESOURA</span>
+        <h2 className="font-mono font-black leading-[0.95] tracking-tighter">
+          <span className="block text-5xl text-primary sm:inline sm:text-7xl">PEDRA</span>
+          <span className="hidden text-foreground sm:inline">.</span>
+          <span className="block text-5xl text-accent sm:inline sm:text-7xl">PAPEL</span>
+          <span className="hidden text-foreground sm:inline">.</span>
+          <span className="block text-5xl text-destructive sm:inline sm:text-7xl">TESOURA</span>
         </h2>
       </div>
 
-      <p className="mt-6 max-w-xl text-pretty text-base text-muted-foreground">
+      <p className="mt-5 max-w-xl text-pretty text-sm text-muted-foreground sm:mt-6 sm:text-base">
         Não é o jokenpô do recreio. Sistema de HP, sequências, escudos, críticos
         e bombas. Vença a CPU antes que ela vença você.
       </p>
@@ -510,13 +510,13 @@ function MenuScreen({ onStart }: { onStart: () => void }) {
       <button
         type="button"
         onClick={onStart}
-        className="pulse-glow group mt-10 inline-flex items-center gap-3 rounded-md bg-primary px-8 py-4 font-mono text-lg font-black tracking-[0.2em] text-primary-foreground shadow-[0_0_30px_oklch(0.78_0.17_205/0.4)] transition hover:scale-[1.02]"
+        className="pulse-glow group mt-7 inline-flex items-center gap-3 rounded-md bg-primary px-6 py-3.5 font-mono text-base font-black tracking-[0.2em] text-primary-foreground shadow-[0_0_30px_oklch(0.78_0.17_205/0.4)] transition hover:scale-[1.02] sm:mt-10 sm:px-8 sm:py-4 sm:text-lg"
       >
         <Swords className="size-5 transition group-hover:rotate-12" />
         COMEÇAR
       </button>
 
-      <div className="mt-14 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mt-10 grid w-full max-w-4xl grid-cols-1 gap-3 sm:mt-14 sm:grid-cols-3">
         <FeatureCard
           icon={Shield}
           title="HP & Streak"
@@ -561,11 +561,11 @@ function FeatureCard({
 
 function PowerUpLegend() {
   return (
-    <div className="mt-10 w-full max-w-4xl">
+    <div className="mt-8 w-full max-w-4xl sm:mt-10">
       <p className="mb-3 font-mono text-xs font-bold tracking-[0.3em] text-muted-foreground">
         ARSENAL
       </p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {POWER_UP_POOL.map((id) => {
           const p = POWER_UPS[id]
           return (
@@ -596,9 +596,9 @@ function PowerUpIcon({
   active?: boolean
 }) {
   const sizing =
-    size === "sm" ? "size-8" : size === "lg" ? "size-14" : "size-11"
+    size === "sm" ? "size-7 sm:size-8" : size === "lg" ? "size-14" : "size-9 sm:size-11"
   const iconSize =
-    size === "sm" ? "size-4" : size === "lg" ? "size-6" : "size-5"
+    size === "sm" ? "size-3.5 sm:size-4" : size === "lg" ? "size-6" : "size-4 sm:size-5"
   const colorClasses =
     power.color === "primary"
       ? "bg-primary/15 text-primary ring-primary/40"
@@ -656,9 +656,9 @@ function ArenaScreen({
   const canChoose = phase === "choosing"
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4 sm:space-y-6">
       {/* Status Bar */}
-      <div className="grid grid-cols-3 items-center gap-3">
+      <div className="grid grid-cols-3 items-center gap-2 sm:gap-3">
         <Stat label="ROUND" value={String(round).padStart(2, "0")} />
         <Stat label="STREAK" value={`x${streak}`} highlight={streak >= 2} />
         <Stat
@@ -677,7 +677,7 @@ function ArenaScreen({
       </div>
 
       {/* HP Bars */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-6">
+      <div className="grid grid-cols-2 gap-2 sm:gap-6">
         <HPBar
           name="VOCÊ"
           hp={playerHP}
@@ -690,7 +690,7 @@ function ArenaScreen({
       {/* Battle Stage */}
       <div
         className={cn(
-          "relative grid grid-cols-2 items-center gap-4 overflow-hidden rounded-xl border border-border bg-card/40 p-4 backdrop-blur sm:p-8",
+          "relative grid grid-cols-2 items-center gap-2 overflow-hidden rounded-xl border border-border bg-card/40 p-3 backdrop-blur sm:gap-4 sm:p-8",
           phase === "shaking" && "flash-damage",
         )}
       >
@@ -716,8 +716,8 @@ function ArenaScreen({
 
         {/* Spy peek hint */}
         {spyPeek && phase === "choosing" ? (
-          <div className="absolute inset-x-0 bottom-2 mx-auto w-fit rounded-md border border-accent/60 bg-accent/15 px-3 py-1 font-mono text-xs font-bold tracking-wider text-accent">
-            ESPIÃO: CPU vai jogar {MOVES[spyPeek].label}
+          <div className="absolute inset-x-0 bottom-2 mx-auto w-fit max-w-[95%] rounded-md border border-accent/60 bg-accent/15 px-2 py-1 text-center font-mono text-[10px] font-bold tracking-wider text-accent sm:px-3 sm:text-xs">
+            ESPIÃO: CPU joga {MOVES[spyPeek].label}
           </div>
         ) : null}
       </div>
@@ -731,7 +731,7 @@ function ArenaScreen({
       />
 
       {/* Choice Buttons */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {(["pedra", "papel", "tesoura"] as Move[]).map((m) => (
           <ChoiceButton
             key={m}
@@ -755,13 +755,13 @@ function Stat({
   highlight?: boolean
 }) {
   return (
-    <div className="rounded-md border border-border bg-card/60 px-3 py-2 text-center backdrop-blur">
-      <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">
+    <div className="min-w-0 rounded-md border border-border bg-card/60 px-2 py-1.5 text-center backdrop-blur sm:px-3 sm:py-2">
+      <div className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground sm:text-[10px]">
         {label}
       </div>
       <div
         className={cn(
-          "font-mono text-base font-bold tabular-nums",
+          "truncate font-mono text-sm font-bold tabular-nums sm:text-base",
           highlight ? "text-accent" : "text-foreground",
         )}
       >
@@ -794,27 +794,27 @@ function HPBar({
   return (
     <div
       className={cn(
-        "rounded-md border border-border bg-card/60 p-3 backdrop-blur",
+        "rounded-md border border-border bg-card/60 p-2.5 backdrop-blur sm:p-3",
         flash && "flash-damage",
       )}
     >
       <div
         className={cn(
-          "mb-2 flex items-baseline justify-between gap-2 font-mono",
+          "mb-1.5 flex items-baseline justify-between gap-2 font-mono sm:mb-2",
           align === "right" && "flex-row-reverse",
         )}
       >
-        <span className="text-xs font-bold tracking-[0.2em] text-muted-foreground">
+        <span className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground sm:text-xs">
           {name}
         </span>
-        <span className="text-sm font-bold tabular-nums">
+        <span className="text-xs font-bold tabular-nums sm:text-sm">
           {hp}
           <span className="text-muted-foreground">/{MAX_HP}</span>
         </span>
       </div>
       <div
         className={cn(
-          "h-3 overflow-hidden rounded-full bg-secondary",
+          "h-2.5 overflow-hidden rounded-full bg-secondary sm:h-3",
           align === "right" && "rotate-180",
         )}
       >
@@ -857,18 +857,18 @@ function BattleSide({
   return (
     <div
       className={cn(
-        "relative flex aspect-square min-h-[180px] flex-col items-center justify-center rounded-lg bg-background/60 ring-2 transition",
+        "relative flex aspect-square min-h-[140px] flex-col items-center justify-center rounded-lg bg-background/60 ring-2 transition sm:min-h-[180px]",
         ringTone,
       )}
     >
-      <div className="font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground">
+      <div className="font-mono text-[9px] font-bold tracking-[0.25em] text-muted-foreground sm:text-[10px] sm:tracking-[0.3em]">
         {side === "player" ? "VOCÊ" : "CPU"}
       </div>
 
-      <div className="relative mt-2 grid place-items-center">
+      <div className="relative mt-1 grid place-items-center sm:mt-2">
         <div
           className={cn(
-            "select-none text-7xl leading-none sm:text-8xl",
+            "select-none text-5xl leading-none sm:text-8xl",
             isShaking && "shake-hand",
             isReveal && "slam-in",
           )}
@@ -886,7 +886,7 @@ function BattleSide({
           <span
             key={f.id}
             className={cn(
-              "pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 font-mono text-2xl font-black tabular-nums",
+              "pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-lg font-black tabular-nums sm:text-2xl",
               "float-up",
               f.tone === "damage" && "text-destructive",
               f.tone === "heal" && "text-primary",
@@ -899,11 +899,11 @@ function BattleSide({
       </div>
 
       {choice && (isReveal || isShaking) ? (
-        <div className="mt-2 font-mono text-xs font-bold tracking-[0.2em] text-foreground/80">
+        <div className="mt-1 font-mono text-[10px] font-bold tracking-[0.2em] text-foreground/80 sm:mt-2 sm:text-xs">
           {isShaking ? "..." : MOVES[choice].label}
         </div>
       ) : (
-        <div className="mt-2 font-mono text-xs tracking-[0.2em] text-muted-foreground">
+        <div className="mt-1 font-mono text-[10px] tracking-[0.2em] text-muted-foreground sm:mt-2 sm:text-xs">
           {phase === "choosing" && side === "player" ? "ESCOLHA" : "AGUARDA"}
         </div>
       )}
@@ -914,14 +914,14 @@ function BattleSide({
 function ResultBadge({ phase, result }: { phase: Phase; result: Result | null }) {
   if (phase === "choosing") {
     return (
-      <div className="rounded-full border border-border bg-card/80 px-3 py-1 font-mono text-xs font-bold tracking-[0.2em] text-muted-foreground backdrop-blur">
+      <div className="rounded-full border border-border bg-card/80 px-2.5 py-1 font-mono text-[10px] font-bold tracking-[0.2em] text-muted-foreground backdrop-blur sm:px-3 sm:text-xs">
         VS
       </div>
     )
   }
   if (phase === "shaking") {
     return (
-      <div className="rounded-full border border-accent/60 bg-accent/15 px-3 py-1 font-mono text-xs font-bold tracking-[0.2em] text-accent backdrop-blur">
+      <div className="rounded-full border border-accent/60 bg-accent/15 px-2.5 py-1 font-mono text-[10px] font-bold tracking-[0.2em] text-accent backdrop-blur sm:px-3 sm:text-xs">
         JO · KEN · PÔ
       </div>
     )
@@ -935,7 +935,7 @@ function ResultBadge({ phase, result }: { phase: Phase; result: Result | null })
     return (
       <div
         className={cn(
-          "slam-in rounded-md border px-4 py-2 font-mono text-base font-black tracking-[0.3em] backdrop-blur",
+          "slam-in rounded-md border px-2.5 py-1.5 font-mono text-xs font-black tracking-[0.25em] backdrop-blur sm:px-4 sm:py-2 sm:text-base sm:tracking-[0.3em]",
           map.cls,
         )}
       >
@@ -961,18 +961,18 @@ function ChoiceButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "group relative overflow-hidden rounded-lg border-2 border-border bg-card p-4 transition",
+        "group relative overflow-hidden rounded-lg border-2 border-border bg-card p-3 transition sm:p-4",
         "hover:-translate-y-1 hover:border-primary hover:bg-card/80 hover:shadow-[0_0_30px_oklch(0.78_0.17_205/0.3)]",
-        "active:translate-y-0",
+        "active:translate-y-0 active:scale-95",
         "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-border disabled:hover:shadow-none",
       )}
       aria-label={`Jogar ${MOVES[move].label}`}
     >
-      <div className="flex flex-col items-center gap-2">
-        <div className="text-5xl leading-none transition group-hover:scale-110 sm:text-6xl" aria-hidden="true">
+      <div className="flex flex-col items-center gap-1.5 sm:gap-2">
+        <div className="text-4xl leading-none transition group-hover:scale-110 sm:text-6xl" aria-hidden="true">
           {MOVES[move].emoji}
         </div>
-        <div className="font-mono text-xs font-bold tracking-[0.3em] text-muted-foreground transition group-hover:text-primary">
+        <div className="font-mono text-[10px] font-bold tracking-[0.25em] text-muted-foreground transition group-hover:text-primary sm:text-xs sm:tracking-[0.3em]">
           {MOVES[move].label}
         </div>
       </div>
@@ -994,12 +994,12 @@ function Inventory({
   const slots: (PowerUpId | null)[] = Array.from({ length: INVENTORY_LIMIT }, (_, i) => inventory[i] ?? null)
 
   return (
-    <div className="rounded-lg border border-border bg-card/40 p-3 backdrop-blur">
+    <div className="rounded-lg border border-border bg-card/40 p-2.5 backdrop-blur sm:p-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground">
+        <span className="font-mono text-[9px] font-bold tracking-[0.25em] text-muted-foreground sm:text-[10px] sm:tracking-[0.3em]">
           INVENTÁRIO
         </span>
-        <span className="font-mono text-[10px] tracking-wider text-muted-foreground">
+        <span className="font-mono text-[9px] tracking-wider text-muted-foreground sm:text-[10px]">
           {inventory.length}/{INVENTORY_LIMIT}
         </span>
       </div>
@@ -1021,7 +1021,7 @@ function Inventory({
           ) : (
             <div
               key={i}
-              className="grid h-16 place-items-center rounded-md border border-dashed border-border/60 text-xs text-muted-foreground/60"
+              className="grid h-14 place-items-center rounded-md border border-dashed border-border/60 text-[10px] text-muted-foreground/60 sm:h-16 sm:text-xs"
             >
               vazio
             </div>
@@ -1050,8 +1050,8 @@ function PowerUpSlot({
       disabled={disabled}
       title={power.desc}
       className={cn(
-        "group flex h-16 items-center gap-2 rounded-md border bg-background/60 px-2 transition",
-        "hover:-translate-y-0.5 hover:border-foreground/40",
+        "group flex h-14 flex-col items-center justify-center gap-1 rounded-md border bg-background/60 px-1 transition sm:h-16 sm:flex-row sm:gap-2 sm:px-2",
+        "hover:-translate-y-0.5 hover:border-foreground/40 active:scale-95",
         "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0",
         power.color === "primary" && "border-primary/40",
         power.color === "accent" && "border-accent/40",
@@ -1059,12 +1059,12 @@ function PowerUpSlot({
       )}
       aria-label={`Usar ${power.name}`}
     >
-      <PowerUpIcon power={power} size="md" active={isActiveBuff} />
-      <div className="min-w-0 text-left">
-        <div className="truncate font-mono text-[11px] font-bold tracking-wider">
+      <PowerUpIcon power={power} size="sm" active={isActiveBuff} />
+      <div className="min-w-0 text-center sm:text-left">
+        <div className="truncate font-mono text-[9px] font-bold tracking-wider sm:text-[11px]">
           {power.name}
         </div>
-        <div className="truncate text-[10px] text-muted-foreground">
+        <div className="hidden truncate text-[10px] text-muted-foreground sm:block">
           {power.instant ? "instantâneo" : isActiveBuff ? "ativo" : "tocar p/ usar"}
         </div>
       </div>
@@ -1082,32 +1082,32 @@ function GameOverScreen({
   onRestart: () => void
 }) {
   return (
-    <section className="mt-10 flex flex-col items-center text-center">
+    <section className="mt-6 flex flex-col items-center text-center sm:mt-10">
       <div
         className={cn(
-          "slam-in mb-6 grid size-20 place-items-center rounded-full ring-4",
+          "slam-in mb-5 grid size-16 place-items-center rounded-full ring-4 sm:mb-6 sm:size-20",
           won
             ? "bg-primary/15 text-primary ring-primary/40"
             : "bg-destructive/15 text-destructive ring-destructive/40",
         )}
       >
-        {won ? <Trophy className="size-10" /> : <Skull className="size-10" />}
+        {won ? <Trophy className="size-8 sm:size-10" /> : <Skull className="size-8 sm:size-10" />}
       </div>
       <h2
         className={cn(
-          "font-mono text-5xl font-black tracking-tighter sm:text-6xl",
+          "font-mono text-4xl font-black tracking-tighter sm:text-6xl",
           won ? "text-primary" : "text-destructive",
         )}
       >
         {won ? "VITÓRIA" : "DERROTA"}
       </h2>
-      <p className="mt-3 max-w-md text-pretty text-muted-foreground">
+      <p className="mt-3 max-w-md text-pretty text-sm text-muted-foreground sm:text-base">
         {won
           ? "Você dominou a arena. A CPU está em pedaços. Mais uma run?"
           : "A CPU não perdoou. Respira, reorganiza a estratégia, volta."}
       </p>
 
-      <div className="mt-8 grid w-full max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-6 grid w-full max-w-2xl grid-cols-2 gap-2 sm:mt-8 sm:grid-cols-4 sm:gap-3">
         <ResultStat label="VITÓRIAS" value={stats.wins} tone="primary" />
         <ResultStat label="DERROTAS" value={stats.losses} tone="destructive" />
         <ResultStat label="EMPATES" value={stats.draws} tone="accent" />
@@ -1117,7 +1117,7 @@ function GameOverScreen({
       <button
         type="button"
         onClick={onRestart}
-        className="pulse-glow mt-10 inline-flex items-center gap-3 rounded-md bg-primary px-8 py-4 font-mono text-base font-black tracking-[0.2em] text-primary-foreground transition hover:scale-[1.02]"
+        className="pulse-glow mt-8 inline-flex items-center gap-3 rounded-md bg-primary px-6 py-3.5 font-mono text-sm font-black tracking-[0.2em] text-primary-foreground transition hover:scale-[1.02] active:scale-95 sm:mt-10 sm:px-8 sm:py-4 sm:text-base"
       >
         <RotateCcw className="size-4" />
         REVANCHE
@@ -1142,11 +1142,11 @@ function ResultStat({
         ? "text-destructive"
         : "text-accent"
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-4 backdrop-blur">
-      <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">
+    <div className="rounded-lg border border-border bg-card/60 p-3 backdrop-blur sm:p-4">
+      <div className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground sm:text-[10px]">
         {label}
       </div>
-      <div className={cn("mt-1 font-mono text-3xl font-black tabular-nums", cls)}>
+      <div className={cn("mt-1 font-mono text-2xl font-black tabular-nums sm:text-3xl", cls)}>
         {value}
       </div>
     </div>
