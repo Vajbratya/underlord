@@ -1,5 +1,5 @@
-import { JokenpoGame } from "@/components/jokenpo-game"
+import { ElementumGame } from "@/components/elementum-game"
 
 export default function Page() {
-  return <JokenpoGame />
+  return <ElementumGame />
 }

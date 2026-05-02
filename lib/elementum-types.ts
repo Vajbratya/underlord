@@ -1,7 +1,7 @@
 import { Bomb, Eye, Heart, Shield, Sparkles, Zap, Droplet, Flame } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-export type Move = 'pedra' | 'papel' | 'tesoura'
+export type Move = 'hydro' | 'terra' | 'pyro'
 export type Result = 'win' | 'lose' | 'draw'
 export type Phase = 'menu' | 'choosing' | 'shaking' | 'reveal' | 'shop' | 'gameover'
 
@@ -98,18 +98,18 @@ export const POWER_UP_POOL: PowerUpId[] = [
 ]
 
 /**
- * ELEMENTUM mapping (preserves the original counter triangle):
- * - HYDRO  (key: pedra)   beats PYRO,  loses to TERRA
- * - TERRA  (key: papel)   beats HYDRO, loses to PYRO
- * - PYRO   (key: tesoura) beats TERRA, loses to HYDRO
+ * ELEMENTUM counter triangle:
+ * - HYDRO beats PYRO,  loses to TERRA
+ * - TERRA beats HYDRO, loses to PYRO
+ * - PYRO  beats TERRA, loses to HYDRO
  */
 export const MOVES: Record<Move, { label: string; emoji: string; beats: Move; counter: Move }> = {
-  pedra: { label: 'HYDRO', emoji: '💧', beats: 'tesoura', counter: 'papel' },
-  papel: { label: 'TERRA', emoji: '🌿', beats: 'pedra', counter: 'tesoura' },
-  tesoura: { label: 'PYRO', emoji: '🔥', beats: 'papel', counter: 'pedra' },
+  hydro: { label: 'HYDRO', emoji: '💧', beats: 'pyro', counter: 'terra' },
+  terra: { label: 'TERRA', emoji: '🌿', beats: 'hydro', counter: 'pyro' },
+  pyro: { label: 'PYRO', emoji: '🔥', beats: 'terra', counter: 'hydro' },
 }
 
-export const MOVE_LIST: Move[] = ['pedra', 'papel', 'tesoura']
+export const MOVE_LIST: Move[] = ['hydro', 'terra', 'pyro']
 
 export const MAX_HP = 100
 export const BASE_DAMAGE = 20
@@ -136,22 +136,22 @@ export type ElementProfile = {
 }
 
 export const ELEMENT_PROFILE: Record<Move, ElementProfile> = {
-  // HYDRO (key: pedra) — lowest dmg, but fastest ult ramp on win
-  pedra: {
+  // HYDRO — lowest dmg, but fastest ult ramp on win
+  hydro: {
     baseDamage: 16,
     passiveLabel: 'FLUXO',
     passiveDesc: 'Vencer com HYDRO carrega +18 de FÚRIA.',
     onWinFlowRage: 18,
   },
-  // TERRA (key: papel) — medium dmg, defensive on draw
-  papel: {
+  // TERRA — medium dmg, defensive on draw
+  terra: {
     baseDamage: 22,
     passiveLabel: 'RAÍZ',
     passiveDesc: 'Empatar com TERRA gera +10 de ESCUDO absorvedor.',
     onDrawShield: 10,
   },
-  // PYRO (key: tesoura) — highest dmg, but punishes on loss
-  tesoura: {
+  // PYRO — highest dmg, but punishes on loss
+  pyro: {
     baseDamage: 28,
     passiveLabel: 'RECUO',
     passiveDesc: 'Falhar com PYRO causa 6 de dano de retorno em você.',

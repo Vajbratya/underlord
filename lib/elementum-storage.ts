@@ -1,6 +1,6 @@
-import type { PowerUpId } from './jokenpo-types'
+import type { PowerUpId } from './elementum-types'
 
-const KEY = 'jokenpo-arena-records-v1'
+const KEY = 'elementum-records-v1'
 
 export type CardLevels = Record<PowerUpId, number>
 export type CardShards = Record<PowerUpId, number>

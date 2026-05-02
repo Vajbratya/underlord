@@ -21,7 +21,7 @@ import {
   Lock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { sfx } from "@/lib/jokenpo-sounds"
+import { sfx } from "@/lib/elementum-sounds"
 import {
   POWER_UPS,
   POWER_UP_POOL,
@@ -54,8 +54,8 @@ import {
   type PowerUpId,
   type PowerUp,
   type Tier,
-} from "@/lib/jokenpo-types"
-import { cpuPick, cpuRollsCrit, getCPUStats, type CPUStats } from "@/lib/jokenpo-cpu"
+} from "@/lib/elementum-types"
+import { cpuPick, cpuRollsCrit, getCPUStats, type CPUStats } from "@/lib/elementum-cpu"
 import {
   loadRecords,
   saveRecords,
@@ -63,7 +63,7 @@ import {
   type Records,
   type CardLevels,
   type CardShards,
-} from "@/lib/jokenpo-storage"
+} from "@/lib/elementum-storage"
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                              */
@@ -192,7 +192,7 @@ function haptic(pattern: number | number[]) {
 /* Main component                                                       */
 /* ------------------------------------------------------------------ */
 
-export function JokenpoGame() {
+export function ElementumGame() {
   const [phase, setPhase] = useState<Phase>("menu")
 
   // Run stats
@@ -1496,7 +1496,7 @@ function LoadoutPickerSheet({
 }
 
 function ElementBriefing() {
-  const order: Move[] = ["tesoura", "papel", "pedra"] // PYRO, TERRA, HYDRO for visual punch
+  const order: Move[] = ["pyro", "terra", "hydro"] // PYRO, TERRA, HYDRO for visual punch
   return (
     <div className="mt-8 w-full max-w-3xl">
       <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground sm:text-xs">
@@ -1507,15 +1507,15 @@ function ElementBriefing() {
           const profile = ELEMENT_PROFILE[m]
           const move = MOVES[m]
           const tone =
-            m === "tesoura"
+            m === "pyro"
               ? "border-destructive/40 bg-destructive/5"
-              : m === "pedra"
+              : m === "hydro"
                 ? "border-primary/40 bg-primary/5"
                 : "border-accent/40 bg-accent/5"
           const accent =
-            m === "tesoura"
+            m === "pyro"
               ? "text-destructive"
-              : m === "pedra"
+              : m === "hydro"
                 ? "text-primary"
                 : "text-accent"
           return (
@@ -2095,13 +2095,13 @@ function ResultBadge({ phase, result }: { phase: Phase; result: Result | null })
 function ChoiceButton({ move, disabled, onClick }: { move: Move; disabled: boolean; onClick: () => void }) {
   const profile = ELEMENT_PROFILE[move]
   const accent =
-    move === "tesoura"
+    move === "pyro"
       ? "border-destructive/50 hover:border-destructive hover:shadow-[0_0_24px_oklch(0.66_0.24_22/0.35)] active:border-destructive active:bg-destructive/15"
-      : move === "pedra"
+      : move === "hydro"
         ? "border-primary/50 hover:border-primary hover:shadow-[0_0_24px_oklch(0.78_0.17_205/0.35)] active:border-primary active:bg-primary/15"
         : "border-accent/50 hover:border-accent hover:shadow-[0_0_24px_oklch(0.86_0.18_92/0.35)] active:border-accent active:bg-accent/15"
   const passiveColor =
-    move === "tesoura" ? "text-destructive" : move === "pedra" ? "text-primary" : "text-accent"
+    move === "pyro" ? "text-destructive" : move === "hydro" ? "text-primary" : "text-accent"
   return (
     <button
       type="button"

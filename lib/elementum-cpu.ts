@@ -1,4 +1,4 @@
-import { MOVES, MOVE_LIST, type Move } from './jokenpo-types'
+import { MOVES, MOVE_LIST, type Move } from './elementum-types'
 
 export type CPULevel = 'novice' | 'smart' | 'predictive' | 'boss'
 
@@ -45,9 +45,9 @@ function randomMove(): Move {
 
 function mostFrequent(history: Move[]): Move | null {
   if (history.length === 0) return null
-  const counts: Record<Move, number> = { pedra: 0, papel: 0, tesoura: 0 }
+  const counts: Record<Move, number> = { hydro: 0, terra: 0, pyro: 0 }
   for (const h of history) counts[h]++
-  let best: Move = 'pedra'
+  let best: Move = 'hydro'
   let bestC = -1
   for (const m of MOVE_LIST) {
     if (counts[m] > bestC) {
