@@ -197,10 +197,14 @@ export function JokenpoGame() {
   /* ---------------- helpers tied to component ----------------------- */
 
   const play = useCallback(
-    (sound: keyof typeof sfx) => {
+    (sound: keyof typeof sfx, ...args: unknown[]) => {
       if (muted) return
-      // @ts-expect-error - dynamic key dispatch
-      sfx[sound]?.()
+      const fn = sfx[sound] as ((...a: unknown[]) => void) | undefined
+      try {
+        fn?.(...args)
+      } catch {
+        // never let audio crash gameplay
+      }
     },
     [muted],
   )
@@ -580,7 +584,7 @@ export function JokenpoGame() {
               const tierNext = getCombo(next)
               const tierOld = getCombo(s)
               if (tierNext.level > tierOld.level) {
-                play("combo")
+                play("combo", tierNext.level)
                 haptic([20, 30, 60])
                 pushToast(tierNext.word ? `${tierNext.word}!  ${tierNext.label}` : tierNext.label, "epic")
               }
@@ -1452,7 +1456,7 @@ function ResultBadge({ phase, result }: { phase: Phase; result: Result | null })
   if (phase === "shaking") {
     return (
       <div className="rounded-full border border-accent/60 bg-accent/15 px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.2em] text-accent backdrop-blur sm:px-3 sm:py-1 sm:text-xs">
-        JO · KEN · PÔ
+        JO �� KEN · PÔ
       </div>
     )
   }
