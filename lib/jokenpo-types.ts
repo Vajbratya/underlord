@@ -187,3 +187,88 @@ export function getCombo(streak: number): ComboTier {
   }
   return pick
 }
+
+/* ----------------------------------------------------------------------- */
+/* Clash-style metaprogression                                              */
+/* ----------------------------------------------------------------------- */
+
+export type Tier = {
+  name: string
+  min: number
+  /** Tailwind text color class for tier accent */
+  text: string
+  /** Tailwind border + bg classes */
+  ring: string
+}
+
+export const TIERS: Tier[] = [
+  { name: 'BRONZE', min: 0, text: 'text-amber-600', ring: 'border-amber-600/50 bg-amber-600/10' },
+  { name: 'PRATA', min: 200, text: 'text-zinc-300', ring: 'border-zinc-300/50 bg-zinc-300/10' },
+  { name: 'OURO', min: 500, text: 'text-accent', ring: 'border-accent/60 bg-accent/15' },
+  { name: 'DIAMANTE', min: 1000, text: 'text-primary', ring: 'border-primary/60 bg-primary/15' },
+  { name: 'CAMPEÃO', min: 2000, text: 'text-destructive', ring: 'border-destructive/60 bg-destructive/15' },
+]
+
+export function getTier(trophies: number): Tier {
+  let pick = TIERS[0]
+  for (const t of TIERS) {
+    if (trophies >= t.min) pick = t
+  }
+  return pick
+}
+
+export function getNextTier(trophies: number): Tier | null {
+  for (const t of TIERS) {
+    if (trophies < t.min) return t
+  }
+  return null
+}
+
+/** Trophies awarded for clearing a stage (with combo bonus). */
+export function trophiesForStage(stage: number, comboLevel: number): number {
+  return 25 + Math.min(comboLevel, 5) * 5 + Math.min(stage - 1, 8)
+}
+
+/** Trophies deducted on game over (floored, never goes below current trophies). */
+export function trophiesLossOnDefeat(stage: number): number {
+  return 18 + Math.max(0, stage - 1) * 2
+}
+
+/* Card progression -------------------------------------------------------- */
+
+export const MAX_CARD_LEVEL = 5
+
+/** Shards required to advance from level N to N+1 (index = current level - 1). */
+export const SHARDS_TO_NEXT: number[] = [3, 6, 10, 15]
+
+/** Returns shards needed to upgrade from current level (or null if maxed). */
+export function shardsToNext(level: number): number | null {
+  if (level >= MAX_CARD_LEVEL) return null
+  return SHARDS_TO_NEXT[level - 1]
+}
+
+/**
+ * Effect values per card level. Index = level - 1 (so [0] is level 1).
+ * For non-numeric power-ups the array is flat — level still progresses
+ * but the effect doesn't change (kept for future tuning).
+ */
+export const POWERUP_LEVEL_VALUES: Record<PowerUpId, number[]> = {
+  bomb: [25, 30, 36, 42, 50],
+  heal: [30, 36, 42, 48, 60],
+  rage: [50, 60, 70, 80, 100],
+  siphon: [50, 55, 60, 70, 80], // percent of dmg dealt
+  crit: [2.0, 2.2, 2.4, 2.6, 3.0], // damage multiplier
+  shield: [1, 1, 1, 1, 1],
+  spy: [1, 1, 1, 1, 1],
+  lucky: [1, 1, 1, 1, 1],
+}
+
+/** Get the effect value for a power-up at a given level (clamped). */
+export function powerValue(id: PowerUpId, level: number): number {
+  const arr = POWERUP_LEVEL_VALUES[id]
+  const lvl = Math.max(1, Math.min(MAX_CARD_LEVEL, level))
+  return arr[lvl - 1]
+}
+
+/** Loadout deck size — power-ups carried into the run as starting items. */
+export const LOADOUT_SIZE = 3

@@ -41,15 +41,31 @@ import {
   STAGE_HEAL_BONUS,
   ELEMENT_PROFILE,
   SHIELD_CAP,
+  LOADOUT_SIZE,
+  MAX_CARD_LEVEL,
   getCombo,
+  getTier,
+  getNextTier,
+  trophiesForStage,
+  trophiesLossOnDefeat,
+  shardsToNext,
+  powerValue,
   type Move,
   type Result,
   type Phase,
   type PowerUpId,
   type PowerUp,
+  type Tier,
 } from "@/lib/jokenpo-types"
 import { cpuPick, cpuRollsCrit, getCPUStats, type CPUStats } from "@/lib/jokenpo-cpu"
-import { loadRecords, saveRecords, mergeRunIntoRecords, type Records } from "@/lib/jokenpo-storage"
+import {
+  loadRecords,
+  saveRecords,
+  mergeRunIntoRecords,
+  type Records,
+  type CardLevels,
+  type CardShards,
+} from "@/lib/jokenpo-storage"
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                              */
@@ -122,6 +138,44 @@ function rollShopOffer(): PowerUpId[] {
   return out
 }
 
+/** Roll 2-4 random shards. Each entry: which power-up gets +1 shard. */
+function rollChestShards(stage: number): PowerUpId[] {
+  const count = 2 + Math.min(2, Math.floor((stage - 1) / 3)) // 2 base, +1 every 3 stages, cap +2
+  const out: PowerUpId[] = []
+  for (let i = 0; i < count; i++) {
+    out.push(POWER_UP_POOL[Math.floor(Math.random() * POWER_UP_POOL.length)])
+  }
+  return out
+}
+
+/**
+ * Apply a list of shard drops to existing levels/shards.
+ * Returns updated maps + which power-ups leveled up.
+ */
+function applyChestShards(
+  shards: PowerUpId[],
+  levels: CardLevels,
+  shardCounts: CardShards,
+): { levels: CardLevels; shards: CardShards; leveledUp: PowerUpId[]; gained: Record<PowerUpId, number> } {
+  const newLevels: CardLevels = { ...levels }
+  const newShards: CardShards = { ...shardCounts }
+  const leveledUp: PowerUpId[] = []
+  const gained = {} as Record<PowerUpId, number>
+
+  for (const id of shards) {
+    if (newLevels[id] >= MAX_CARD_LEVEL) continue // skip maxed
+    newShards[id] = (newShards[id] ?? 0) + 1
+    gained[id] = (gained[id] ?? 0) + 1
+    const need = shardsToNext(newLevels[id])
+    if (need !== null && newShards[id] >= need) {
+      newLevels[id] = newLevels[id] + 1
+      newShards[id] = 0
+      if (!leveledUp.includes(id)) leveledUp.push(id)
+    }
+  }
+  return { levels: newLevels, shards: newShards, leveledUp, gained }
+}
+
 function decide(player: Move, cpu: Move): Result {
   if (player === cpu) return "draw"
   return MOVES[player].beats === cpu ? "win" : "lose"
@@ -180,14 +234,15 @@ export function JokenpoGame() {
   const [hpFlash, setHpFlash] = useState<"player" | "cpu" | null>(null)
   const [screenShake, setScreenShake] = useState(false)
   const [muted, setMuted] = useState(false)
-  const [records, setRecords] = useState<Records>({
-    bestStage: 0,
-    bestStreak: 0,
-    totalWins: 0,
-    totalRuns: 0,
-    totalDamage: 0,
-    totalPowerUps: 0,
-  })
+  const [records, setRecords] = useState<Records>(() => loadRecords())
+
+  // Per-stage chest reward summary (shown on shop screen)
+  const [stageReward, setStageReward] = useState<{
+    trophiesGained: number
+    shards: PowerUpId[]
+    leveledUp: PowerUpId[]
+    gained: Partial<Record<PowerUpId, number>>
+  } | null>(null)
 
   const idRef = useRef(0)
   const ultimateInProgress = useRef(false)
@@ -332,33 +387,47 @@ export function JokenpoGame() {
     setDraws(0)
     setDamageDealt(0)
     setPowerUpsUsed(0)
-    setInventory([])
+    // Inventory is seeded from the loadout deck (Clash-style starting hand)
+    const startingHand = (records.loadout ?? []).slice(0, INVENTORY_LIMIT)
+    setInventory(startingHand)
     setRage(0)
     rageWasFull.current = false
     setPlayerHP(MAX_HP)
     setPlayerShield(0)
     setCpuHistory([])
+    setStageReward(null)
     play("click")
     startStage(1)
-  }, [play, startStage])
+  }, [play, startStage, records.loadout])
 
   const finishGame = useCallback(
     (won: boolean) => {
       ultimateInProgress.current = false
       setPhase("gameover")
       const stageReached = won ? stage + 1 : stage
-      const updated = mergeRunIntoRecords(records, {
+      const merged = mergeRunIntoRecords(records, {
         stageReached,
         bestStreak,
         wins,
         damageDealt,
         powerUpsUsed,
       })
+      // Trophy adjustment: defeat = loss, victory (last stage) handled when player clears next
+      const trophyDelta = won ? 0 : -trophiesLossOnDefeat(stage)
+      const newTrophies = Math.max(0, records.trophies + trophyDelta)
+      const updated: Records = {
+        ...merged,
+        trophies: newTrophies,
+        bestTrophies: Math.max(records.bestTrophies, newTrophies),
+      }
       setRecords(updated)
       saveRecords(updated)
+      if (!won && trophyDelta < 0) {
+        pushToast(`${trophyDelta} TROFÉUS`, "bad")
+      }
       setTimeout(() => (won ? play("victory") : play("defeat")), 200)
     },
-    [bestStreak, damageDealt, play, powerUpsUsed, records, stage, wins],
+    [bestStreak, damageDealt, play, powerUpsUsed, records, stage, wins, pushToast],
   )
 
   // Detect HP-zero -> stage clear or game over
@@ -368,16 +437,46 @@ export function JokenpoGame() {
       // game over
       setTimeout(() => finishGame(false), 600)
     } else if (cpuHP <= 0) {
-      // stage cleared, open shop
+      // stage cleared, open shop with chest reward
       setTimeout(() => {
         play("stageClear")
         haptic([30, 60, 30, 80])
-        showBanner("STAGE LIMPO", `Vai pra loja, escolhe sua arma.`, "accent")
+
+        // Compute chest reward + trophies
+        const trophiesGained = trophiesForStage(stage, getCombo(streak).level)
+        const droppedShards = rollChestShards(stage)
+        const { levels, shards: shardCounts, leveledUp, gained } = applyChestShards(
+          droppedShards,
+          records.cardLevels,
+          records.cardShards,
+        )
+
+        const newTrophies = records.trophies + trophiesGained
+        const updated: Records = {
+          ...records,
+          trophies: newTrophies,
+          bestTrophies: Math.max(records.bestTrophies, newTrophies),
+          cardLevels: levels,
+          cardShards: shardCounts,
+        }
+        setRecords(updated)
+        saveRecords(updated)
+        setStageReward({ trophiesGained, shards: droppedShards, leveledUp, gained })
+
+        // Tier promotion celebration
+        const oldTier = getTier(records.trophies)
+        const nextTier = getTier(newTrophies)
+        if (nextTier.min > oldTier.min) {
+          showBanner(`PROMOVIDO: ${nextTier.name}`, "Nova hierarquia desbloqueada.", "accent")
+        } else {
+          showBanner("STAGE LIMPO", `+${trophiesGained} troféus`, "accent")
+        }
+
         setShopOffers(rollShopOffer())
         setPhase("shop")
       }, 600)
     }
-  }, [playerHP, cpuHP, phase, finishGame, play, showBanner])
+  }, [playerHP, cpuHP, phase, finishGame, play, showBanner, stage, streak, records])
 
   /* ---------------- power-up usage ---------------------------------- */
 
@@ -401,9 +500,9 @@ export function JokenpoGame() {
       const id = inventory[idx]
       if (!id) return
 
-      // Instant
+      // Instant — values scale with card level
       if (id === "bomb") {
-        const dmg = 25
+        const dmg = powerValue("bomb", records.cardLevels.bomb)
         setCpuHP((hp) => Math.max(0, hp - dmg))
         setDamageDealt((d) => d + dmg)
         pushFloat(`-${dmg}`, "cpu", "damage")
@@ -412,30 +511,32 @@ export function JokenpoGame() {
         burstParticles("cpu", "destructive", 10)
         play("bomb")
         haptic([20, 30, 60])
-        pushToast("BOMBA detonada!", "good")
+        pushToast(`METEORO -${dmg}!`, "good")
         setInventory((inv) => inv.filter((_, i) => i !== idx))
         setPowerUpsUsed((n) => n + 1)
         return
       }
       if (id === "heal") {
+        const amount = powerValue("heal", records.cardLevels.heal)
         const before = playerHP
-        const next = Math.min(MAX_HP, playerHP + 30)
+        const next = Math.min(MAX_HP, playerHP + amount)
         setPlayerHP(next)
         pushFloat(`+${next - before}`, "player", "heal")
         burstParticles("player", "primary", 8)
         play("heal")
         haptic(20)
-        pushToast("CURA aplicada!", "good")
+        pushToast(`ELIXIR +${next - before}`, "good")
         setInventory((inv) => inv.filter((_, i) => i !== idx))
         setPowerUpsUsed((n) => n + 1)
         return
       }
       if (id === "rage") {
-        addRage(50)
-          pushFloat("+50 FÚRIA", "player", "ultimate")
+        const amount = powerValue("rage", records.cardLevels.rage)
+        addRage(amount)
+        pushFloat(`+${amount} FÚRIA`, "player", "ultimate")
         play("rageGain")
         haptic([10, 20, 10, 20])
-        pushToast("FÚRIA acumulada.", "good")
+        pushToast(`CÓLERA +${amount}`, "good")
         setInventory((inv) => inv.filter((_, i) => i !== idx))
         setPowerUpsUsed((n) => n + 1)
         return
@@ -502,6 +603,7 @@ export function JokenpoGame() {
       playerHP,
       cpuStats,
       history,
+      records.cardLevels,
       addRage,
       burstParticles,
       flashHP,
@@ -558,7 +660,7 @@ export function JokenpoGame() {
         window.setTimeout(() => {
           if (outcome === "win") {
             const newCombo = getCombo(streak + 1)
-            const critMult = buffs.crit ? 2 : 1
+            const critMult = buffs.crit ? powerValue("crit", records.cardLevels.crit) : 1
             const elementBase = opts?.ultimate ? ULTIMATE_DAMAGE : profile.baseDamage
             const dmg = opts?.ultimate
               ? ULTIMATE_DAMAGE
@@ -587,15 +689,16 @@ export function JokenpoGame() {
               play("rageGain")
             }
 
-            // Siphon: heal player for 50% of damage dealt
+            // Siphon: heal player for a % of damage dealt (scales with card level)
             if (buffs.siphon) {
-              const heal = Math.round(dmg * 0.5)
+              const pct = powerValue("siphon", records.cardLevels.siphon) / 100
+              const heal = Math.round(dmg * pct)
               setPlayerHP((hp) => Math.min(MAX_HP, hp + heal))
               pushFloat(`+${heal}`, "player", "heal")
               burstParticles("player", "primary", 6)
               play("heal")
               setBuffs((b) => ({ ...b, siphon: false }))
-              pushToast("DRENO sugou vida do oponente!", "good")
+              pushToast(`DRENO +${heal}`, "good")
             }
 
             setWins((w) => w + 1)
@@ -720,6 +823,7 @@ export function JokenpoGame() {
       play,
       pushFloat,
       pushToast,
+      records.cardLevels,
       streak,
       triggerScreenShake,
     ],
@@ -787,6 +891,20 @@ export function JokenpoGame() {
     setTimeout(() => startStage(nextStage, { keepHP: true }), 250)
   }, [play, pushToast, stage, startStage])
 
+  /* ---------------- meta progression mutations ---------------------- */
+
+  const setLoadout = useCallback(
+    (loadout: PowerUpId[]) => {
+      const cleaned = loadout.filter((id) => POWER_UP_POOL.includes(id)).slice(0, LOADOUT_SIZE)
+      if (cleaned.length === 0) return
+      const updated: Records = { ...records, loadout: cleaned }
+      setRecords(updated)
+      saveRecords(updated)
+      play("click")
+    },
+    [records, play],
+  )
+
   /* ---------------- derived ----------------------------------------- */
 
   const playerWonGame = phase === "gameover" && playerHP > 0
@@ -810,7 +928,7 @@ export function JokenpoGame() {
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
       >
         {phase === "menu" ? (
-          <MenuScreen onStart={newRun} records={records} />
+          <MenuScreen onStart={newRun} records={records} onSetLoadout={setLoadout} />
         ) : phase === "shop" ? (
           <ShopScreen
             offers={shopOffers}
@@ -819,6 +937,8 @@ export function JokenpoGame() {
             inventory={inventory}
             onBuy={buyShop}
             onSkip={skipShop}
+            reward={stageReward}
+            trophies={records.trophies}
           />
         ) : phase === "gameover" ? (
           <GameOverScreen
@@ -952,14 +1072,27 @@ function Header({
 /* Menu                                                                 */
 /* ------------------------------------------------------------------ */
 
-function MenuScreen({ onStart, records }: { onStart: () => void; records: Records }) {
+function MenuScreen({
+  onStart,
+  records,
+  onSetLoadout,
+}: {
+  onStart: () => void
+  records: Records
+  onSetLoadout: (loadout: PowerUpId[]) => void
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const tier = getTier(records.trophies)
+  const nextTier = getNextTier(records.trophies)
+
   return (
-    <section className="flex flex-1 flex-col items-center pt-4 text-center sm:pt-8">
+    <section className="flex flex-1 flex-col items-center pt-3 sm:pt-5">
+      {/* Hero */}
       <div className="relative">
         <div className="absolute inset-0 -z-10 blur-3xl">
-          <div className="mx-auto h-32 w-72 rounded-full bg-primary/30 sm:h-40 sm:w-80" />
+          <div className="mx-auto h-28 w-72 rounded-full bg-primary/25 sm:h-36 sm:w-80" />
         </div>
-        <h2 className="font-mono text-4xl font-black leading-none tracking-tighter text-balance sm:text-7xl">
+        <h2 className="text-center font-mono text-3xl font-black leading-none tracking-tighter text-balance sm:text-6xl">
           <span className="text-destructive">PYRO</span>
           <span className="text-foreground">.</span>
           <span className="text-primary">HYDRO</span>
@@ -968,18 +1101,29 @@ function MenuScreen({ onStart, records }: { onStart: () => void; records: Record
         </h2>
       </div>
 
-      <p className="mt-4 max-w-md text-pretty text-sm text-muted-foreground sm:mt-6 sm:text-base">
-        Lance feitiços e suba pela torre arcana. Combo multiplicador, fúria, ultimate e grimório de
-        power-ups. Quanto mais alto, mais sádico o oponente.
-      </p>
+      {/* Trophy + Tier badge */}
+      <TrophyTierBadge
+        trophies={records.trophies}
+        bestTrophies={records.bestTrophies}
+        tier={tier}
+        nextTier={nextTier}
+      />
 
+      {/* Loadout */}
+      <LoadoutStrip
+        loadout={records.loadout}
+        levels={records.cardLevels}
+        onEdit={() => setPickerOpen(true)}
+      />
+
+      {/* Start */}
       <button
         type="button"
         onClick={onStart}
-        className="pulse-glow group mt-8 inline-flex items-center gap-3 rounded-md bg-primary px-8 py-4 font-mono text-lg font-black tracking-[0.2em] text-primary-foreground shadow-[0_0_30px_oklch(0.78_0.17_205/0.4)] transition active:scale-95 hover:scale-[1.02]"
+        className="pulse-glow group mt-6 inline-flex items-center gap-3 rounded-md bg-primary px-10 py-4 font-mono text-base font-black tracking-[0.22em] text-primary-foreground shadow-[0_0_30px_oklch(0.78_0.17_205/0.4)] transition active:scale-95 hover:scale-[1.02] sm:text-lg"
       >
         <Swords className="size-5 transition group-hover:rotate-12" />
-        COMEÇAR
+        ENTRAR NA TORRE
       </button>
 
       {records.totalRuns > 0 ? (
@@ -990,27 +1134,366 @@ function MenuScreen({ onStart, records }: { onStart: () => void; records: Record
         </div>
       ) : null}
 
-      <div className="mt-8 grid w-full max-w-3xl grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
-        <FeatureCard
-          icon={Flame}
-          title="Combo Multiplicador"
-          desc="Vitórias seguidas multiplicam o dano até x3. Erra uma, perde tudo."
+      <ElementBriefing />
+
+      {/* Card collection — shows level + shard progress for all 8 power-ups */}
+      <CardCollection levels={records.cardLevels} shards={records.cardShards} />
+
+      {pickerOpen ? (
+        <LoadoutPickerSheet
+          current={records.loadout}
+          levels={records.cardLevels}
+          shards={records.cardShards}
+          onClose={() => setPickerOpen(false)}
+          onSave={(next) => {
+            onSetLoadout(next)
+            setPickerOpen(false)
+          }}
         />
-        <FeatureCard
-          icon={Zap}
-          title="Rage & Ultimate"
-          desc="Tomar dano enche a Fúria. Cheia, libera ULTIMATE: vitória garantida + 60 dmg."
-        />
-        <FeatureCard
-          icon={ShoppingBag}
-          title="Loja entre Stages"
-          desc="Cada vitória de stage te deixa escolher 1 de 3 power-ups. Skip cura HP."
+      ) : null}
+    </section>
+  )
+}
+
+function TrophyTierBadge({
+  trophies,
+  bestTrophies,
+  tier,
+  nextTier,
+}: {
+  trophies: number
+  bestTrophies: number
+  tier: Tier
+  nextTier: Tier | null
+}) {
+  const span = nextTier ? nextTier.min - tier.min : 1
+  const progressed = nextTier ? trophies - tier.min : span
+  const pct = nextTier ? Math.max(0, Math.min(100, (progressed / span) * 100)) : 100
+  return (
+    <div className={cn("mt-5 w-full max-w-md rounded-lg border-2 px-4 py-3 backdrop-blur sm:px-5 sm:py-4", tier.ring)}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <Trophy className={cn("size-5 sm:size-6", tier.text)} />
+          <div className="flex flex-col">
+            <span className={cn("font-mono text-sm font-black tracking-[0.2em] sm:text-base", tier.text)}>
+              {tier.name}
+            </span>
+            {bestTrophies > trophies ? (
+              <span className="font-mono text-[9px] tracking-wider text-muted-foreground sm:text-[10px]">
+                RECORDE {bestTrophies}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="font-mono text-2xl font-black tabular-nums text-foreground sm:text-3xl">
+            {trophies}
+          </div>
+          {nextTier ? (
+            <div className="font-mono text-[9px] tracking-wider text-muted-foreground sm:text-[10px]">
+              {nextTier.min - trophies} → {nextTier.name}
+            </div>
+          ) : (
+            <div className="font-mono text-[9px] tracking-wider text-destructive sm:text-[10px]">
+              MAX TIER
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+        <div
+          className={cn(
+            "h-full transition-[width] duration-500 ease-out",
+            tier.name === "BRONZE"
+              ? "bg-amber-600"
+              : tier.name === "PRATA"
+                ? "bg-zinc-300"
+                : tier.name === "OURO"
+                  ? "bg-accent"
+                  : tier.name === "DIAMANTE"
+                    ? "bg-primary"
+                    : "bg-destructive",
+          )}
+          style={{ width: `${pct}%` }}
         />
       </div>
+    </div>
+  )
+}
 
-      <ElementBriefing />
-      <PowerUpLegend />
-    </section>
+function LoadoutStrip({
+  loadout,
+  levels,
+  onEdit,
+}: {
+  loadout: PowerUpId[]
+  levels: CardLevels
+  onEdit: () => void
+}) {
+  const slots: (PowerUpId | null)[] = Array.from(
+    { length: LOADOUT_SIZE },
+    (_, i) => loadout[i] ?? null,
+  )
+  return (
+    <div className="mt-4 w-full max-w-md">
+      <div className="mb-1.5 flex items-center justify-between">
+        <p className="font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground sm:text-xs">
+          DECK
+        </p>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="inline-flex items-center gap-1 rounded-sm border border-border bg-card px-2 py-0.5 font-mono text-[9px] font-bold tracking-wider text-muted-foreground transition hover:border-primary hover:text-primary active:scale-95 sm:text-[10px]"
+        >
+          EDITAR
+          <ChevronRight className="size-2.5" />
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="grid w-full grid-cols-3 gap-2 rounded-md border border-border bg-card/60 p-2 backdrop-blur transition hover:border-primary/50 active:scale-[0.99]"
+        aria-label="Editar deck de feitiços"
+      >
+        {slots.map((id, i) =>
+          id ? (
+            <LoadoutCard key={i} id={id} level={levels[id] ?? 1} />
+          ) : (
+            <div
+              key={i}
+              className="flex aspect-[3/4] items-center justify-center rounded-sm border border-dashed border-border/60 bg-secondary/40 text-muted-foreground"
+            >
+              <Lock className="size-4 opacity-50" />
+            </div>
+          ),
+        )}
+      </button>
+    </div>
+  )
+}
+
+function LoadoutCard({ id, level }: { id: PowerUpId; level: number }) {
+  const p = POWER_UPS[id]
+  const Icon = p.Icon
+  const tone =
+    p.color === "primary"
+      ? "border-primary/40 bg-primary/10 text-primary"
+      : p.color === "accent"
+        ? "border-accent/40 bg-accent/10 text-accent"
+        : "border-destructive/40 bg-destructive/10 text-destructive"
+  return (
+    <div
+      className={cn(
+        "relative flex aspect-[3/4] flex-col items-center justify-center gap-1 overflow-hidden rounded-sm border-2",
+        tone,
+      )}
+    >
+      <Icon className="size-5 sm:size-6" />
+      <span className="font-mono text-[9px] font-black tracking-wider sm:text-[10px]">{p.name}</span>
+      <span className="absolute right-1 top-1 rounded-sm border border-current bg-background/80 px-1 font-mono text-[8px] font-black leading-none tabular-nums sm:text-[9px]">
+        L{level}
+      </span>
+    </div>
+  )
+}
+
+function CardCollection({ levels, shards }: { levels: CardLevels; shards: CardShards }) {
+  return (
+    <div className="mt-8 w-full max-w-3xl">
+      <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground sm:text-xs">
+        COLEÇÃO DE FEITIÇOS
+      </p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5">
+        {POWER_UP_POOL.map((id) => (
+          <CollectionCard
+            key={id}
+            id={id}
+            level={levels[id] ?? 1}
+            shards={shards[id] ?? 0}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CollectionCard({ id, level, shards }: { id: PowerUpId; level: number; shards: number }) {
+  const p = POWER_UPS[id]
+  const Icon = p.Icon
+  const need = shardsToNext(level)
+  const pct = need ? Math.min(100, (shards / need) * 100) : 100
+  const maxed = need === null
+  const tone =
+    p.color === "primary"
+      ? "text-primary border-primary/40 bg-primary/5"
+      : p.color === "accent"
+        ? "text-accent border-accent/40 bg-accent/5"
+        : "text-destructive border-destructive/40 bg-destructive/5"
+  const fillTone =
+    p.color === "primary" ? "bg-primary" : p.color === "accent" ? "bg-accent" : "bg-destructive"
+  return (
+    <div className={cn("flex flex-col gap-2 rounded-md border p-2.5 backdrop-blur sm:p-3", tone)}>
+      <div className="flex items-start justify-between gap-2">
+        <Icon className="size-5 shrink-0 sm:size-6" />
+        <span className="rounded-sm border border-current bg-background/60 px-1.5 py-0.5 font-mono text-[9px] font-black leading-none tabular-nums sm:text-[10px]">
+          L{level}
+        </span>
+      </div>
+      <div>
+        <div className="font-mono text-[10px] font-black tracking-wider text-foreground sm:text-xs">
+          {p.name}
+        </div>
+        <div className="mt-0.5 line-clamp-2 text-[9px] leading-snug text-muted-foreground sm:text-[10px]">
+          {p.desc}
+        </div>
+      </div>
+      <div className="mt-auto">
+        {maxed ? (
+          <div className="rounded-sm border border-current px-1.5 py-0.5 text-center font-mono text-[8px] font-black tracking-[0.2em] sm:text-[9px]">
+            MAX
+          </div>
+        ) : (
+          <>
+            <div className="mb-0.5 flex justify-between font-mono text-[8px] tabular-nums text-muted-foreground sm:text-[9px]">
+              <span>FRAGMENTOS</span>
+              <span>
+                {shards}/{need}
+              </span>
+            </div>
+            <div className="h-1 overflow-hidden rounded-full bg-secondary">
+              <div className={cn("h-full transition-[width]", fillTone)} style={{ width: `${pct}%` }} />
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function LoadoutPickerSheet({
+  current,
+  levels,
+  shards,
+  onClose,
+  onSave,
+}: {
+  current: PowerUpId[]
+  levels: CardLevels
+  shards: CardShards
+  onClose: () => void
+  onSave: (next: PowerUpId[]) => void
+}) {
+  const [draft, setDraft] = useState<PowerUpId[]>(() => [...current])
+  const toggle = (id: PowerUpId) => {
+    setDraft((d) => {
+      if (d.includes(id)) return d.filter((x) => x !== id)
+      if (d.length >= LOADOUT_SIZE) return d
+      return [...d, id]
+    })
+  }
+  const valid = draft.length === LOADOUT_SIZE
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Editar deck"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-background/80 backdrop-blur-sm sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        className="slam-in flex max-h-[92dvh] w-full max-w-xl flex-col gap-3 rounded-t-xl border-2 border-border bg-card p-4 shadow-2xl sm:rounded-xl"
+        style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-mono text-sm font-black tracking-[0.2em] text-primary sm:text-base">
+              MONTAR DECK
+            </h3>
+            <p className="font-mono text-[10px] tracking-wider text-muted-foreground">
+              Escolha {LOADOUT_SIZE} feitiços iniciais — {draft.length}/{LOADOUT_SIZE}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-sm border border-border bg-secondary px-2 py-1 font-mono text-[10px] font-bold tracking-wider text-muted-foreground transition hover:text-foreground active:scale-95"
+            aria-label="Fechar"
+          >
+            FECHAR
+          </button>
+        </div>
+
+        <div className="grid flex-1 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-4">
+          {POWER_UP_POOL.map((id) => {
+            const p = POWER_UPS[id]
+            const Icon = p.Icon
+            const selected = draft.includes(id)
+            const slotIndex = draft.indexOf(id)
+            const tone =
+              p.color === "primary"
+                ? "text-primary"
+                : p.color === "accent"
+                  ? "text-accent"
+                  : "text-destructive"
+            const need = shardsToNext(levels[id] ?? 1)
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => toggle(id)}
+                className={cn(
+                  "relative flex flex-col items-center gap-1 rounded-md border-2 bg-card p-2 text-center transition active:scale-95 sm:p-2.5",
+                  selected
+                    ? "border-primary shadow-[0_0_18px_oklch(0.78_0.17_205/0.45)]"
+                    : "border-border hover:border-primary/40",
+                )}
+                aria-pressed={selected}
+              >
+                {selected ? (
+                  <span className="absolute -top-1.5 -left-1.5 grid size-5 place-items-center rounded-full bg-primary font-mono text-[10px] font-black text-primary-foreground sm:size-6 sm:text-[11px]">
+                    {slotIndex + 1}
+                  </span>
+                ) : null}
+                <span className="absolute right-1 top-1 rounded-sm border border-border bg-background/70 px-1 font-mono text-[8px] font-black leading-none tabular-nums sm:text-[9px]">
+                  L{levels[id] ?? 1}
+                </span>
+                <Icon className={cn("size-6 sm:size-7", tone)} />
+                <span className="font-mono text-[9px] font-black tracking-wider sm:text-[10px]">
+                  {p.name}
+                </span>
+                <span className="line-clamp-2 text-[9px] leading-snug text-muted-foreground sm:text-[10px]">
+                  {p.desc}
+                </span>
+                {need !== null ? (
+                  <span className="font-mono text-[8px] tabular-nums text-muted-foreground sm:text-[9px]">
+                    {shards[id] ?? 0}/{need}
+                  </span>
+                ) : (
+                  <span className="font-mono text-[8px] font-black tabular-nums text-destructive sm:text-[9px]">
+                    MAX
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onSave(draft)}
+          disabled={!valid}
+          className={cn(
+            "rounded-md py-3 font-mono text-sm font-black tracking-[0.2em] transition active:scale-95",
+            valid
+              ? "bg-primary text-primary-foreground shadow-[0_0_24px_oklch(0.78_0.17_205/0.4)] hover:scale-[1.01]"
+              : "cursor-not-allowed bg-secondary text-muted-foreground",
+          )}
+        >
+          CONFIRMAR DECK
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -1080,50 +1563,6 @@ function RecordChip({ label, value, accent }: { label: string; value: number; ac
       <div className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground">{label}</div>
       <div className={cn("font-mono text-lg font-black tabular-nums", accent ? "text-accent" : "text-primary")}>
         {value}
-      </div>
-    </div>
-  )
-}
-
-function FeatureCard({
-  icon: Icon,
-  title,
-  desc,
-}: {
-  icon: typeof Shield
-  title: string
-  desc: string
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card/60 p-3.5 text-left backdrop-blur sm:p-5">
-      <div className="mb-2 grid size-9 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/30 sm:mb-3">
-        <Icon className="size-4" />
-      </div>
-      <h3 className="font-mono text-sm font-bold tracking-wider">{title}</h3>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">{desc}</p>
-    </div>
-  )
-}
-
-function PowerUpLegend() {
-  return (
-    <div className="mt-8 w-full max-w-3xl">
-      <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground sm:text-xs">
-        GRIMÓRIO
-      </p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {POWER_UP_POOL.map((id) => {
-          const p = POWER_UPS[id]
-          return (
-            <div key={id} className="flex items-start gap-2 rounded-md border border-border bg-card/40 p-2.5 text-left">
-              <PowerUpIcon power={p} size="sm" />
-              <div className="min-w-0">
-                <div className="font-mono text-[10px] font-bold tracking-wider sm:text-xs">{p.name}</div>
-                <div className="text-[10px] leading-snug text-muted-foreground sm:text-xs">{p.desc}</div>
-              </div>
-            </div>
-          )
-        })}
       </div>
     </div>
   )
@@ -1803,6 +2242,8 @@ function ShopScreen({
   inventory,
   onBuy,
   onSkip,
+  reward,
+  trophies,
 }: {
   offers: PowerUpId[]
   stage: number
@@ -1810,6 +2251,13 @@ function ShopScreen({
   inventory: PowerUpId[]
   onBuy: (id: PowerUpId) => void
   onSkip: () => void
+  reward: {
+    trophiesGained: number
+    shards: PowerUpId[]
+    leveledUp: PowerUpId[]
+    gained: Partial<Record<PowerUpId, number>>
+  } | null
+  trophies: number
 }) {
   const inventoryFull = inventory.length >= INVENTORY_LIMIT
   return (
@@ -1818,6 +2266,9 @@ function ShopScreen({
         <Star className="size-3.5" />
         STAGE {stage} CONCLUÍDO
       </div>
+
+      {/* Chest reward summary */}
+      {reward ? <ChestRewardCard reward={reward} trophies={trophies} /> : null}
 
       <div>
         <h2 className="font-mono text-2xl font-black tracking-tighter text-balance sm:text-4xl">ESCOLHA UMA RECOMPENSA</h2>
@@ -1921,6 +2372,20 @@ function GameOverScreen({
         )}
       </p>
 
+      {/* Trophy total — shows where you stand after the run */}
+      <div
+        className={cn(
+          "mt-4 inline-flex items-center gap-2 rounded-md border-2 px-3 py-1.5 font-mono backdrop-blur sm:px-4 sm:py-2",
+          getTier(records.trophies).ring,
+        )}
+      >
+        <Trophy className={cn("size-4 sm:size-5", getTier(records.trophies).text)} />
+        <span className="font-black tabular-nums">{records.trophies}</span>
+        <span className={cn("text-[10px] font-bold tracking-[0.2em] sm:text-xs", getTier(records.trophies).text)}>
+          {getTier(records.trophies).name}
+        </span>
+      </div>
+
       <div className="mt-6 grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         <ResultStat label="STAGE" value={stats.stageReached} tone="primary" />
         <ResultStat label="VITÓRIAS" value={stats.wins} tone="primary" />
@@ -1965,6 +2430,87 @@ function ResultStat({
 /* ------------------------------------------------------------------ */
 /* Banner overlay                                                       */
 /* ------------------------------------------------------------------ */
+
+function ChestRewardCard({
+  reward,
+  trophies,
+}: {
+  reward: {
+    trophiesGained: number
+    shards: PowerUpId[]
+    leveledUp: PowerUpId[]
+    gained: Partial<Record<PowerUpId, number>>
+  }
+  trophies: number
+}) {
+  // Aggregate per-power-up shard counts for tidy display
+  const entries = Object.entries(reward.gained) as [PowerUpId, number][]
+  return (
+    <div className="slam-in flex w-full max-w-md flex-col gap-3 rounded-lg border-2 border-accent/60 bg-accent/10 p-3 backdrop-blur sm:p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Trophy className="size-5 text-accent" />
+          <span className="font-mono text-xs font-black tracking-[0.2em] text-accent sm:text-sm">
+            +{reward.trophiesGained} TROFÉUS
+          </span>
+        </div>
+        <span className="font-mono text-xs font-bold tabular-nums text-foreground/70 sm:text-sm">
+          TOTAL {trophies}
+        </span>
+      </div>
+
+      {entries.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {entries.map(([id, count]) => {
+            const p = POWER_UPS[id]
+            const Icon = p.Icon
+            const tone =
+              p.color === "primary"
+                ? "text-primary border-primary/40 bg-primary/10"
+                : p.color === "accent"
+                  ? "text-accent border-accent/40 bg-accent/10"
+                  : "text-destructive border-destructive/40 bg-destructive/10"
+            return (
+              <div
+                key={id}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 font-mono text-[10px] font-black tabular-nums sm:text-[11px]",
+                  tone,
+                )}
+              >
+                <Icon className="size-3" />
+                <span>+{count}</span>
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
+
+      {reward.leveledUp.length > 0 ? (
+        <div className="flex flex-col gap-1 rounded-md border border-primary/50 bg-primary/15 px-2.5 py-2">
+          <span className="font-mono text-[10px] font-black tracking-[0.2em] text-primary">
+            CARTA EVOLUIU
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {reward.leveledUp.map((id) => {
+              const p = POWER_UPS[id]
+              const Icon = p.Icon
+              return (
+                <div
+                  key={id}
+                  className="pop-in inline-flex items-center gap-1 rounded-sm border border-primary bg-primary/20 px-1.5 py-0.5 font-mono text-[10px] font-black tracking-wider text-primary sm:text-[11px]"
+                >
+                  <Icon className="size-3" />
+                  {p.name}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 function BannerOverlay({ banner }: { banner: Banner }) {
   return (
