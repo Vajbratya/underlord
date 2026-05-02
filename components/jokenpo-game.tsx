@@ -39,6 +39,8 @@ import {
   ULTIMATE_DAMAGE,
   SHOP_HEAL_SKIP,
   STAGE_HEAL_BONUS,
+  ELEMENT_PROFILE,
+  SHIELD_CAP,
   getCombo,
   type Move,
   type Result,
@@ -154,12 +156,14 @@ export function JokenpoGame() {
 
   // Battle state
   const [playerHP, setPlayerHP] = useState(MAX_HP)
+  const [playerShield, setPlayerShield] = useState(0)
   const [cpuStats, setCpuStats] = useState<CPUStats>(() => getCPUStats(1))
   const [cpuHP, setCpuHP] = useState<number>(() => getCPUStats(1).hp)
   const [playerChoice, setPlayerChoice] = useState<Move | null>(null)
   const [cpuChoice, setCpuChoice] = useState<Move | null>(null)
   const [result, setResult] = useState<Result | null>(null)
   const [history, setHistory] = useState<Move[]>([])
+  const [cpuHistory, setCpuHistory] = useState<Move[]>([])
 
   // Power systems
   const [inventory, setInventory] = useState<PowerUpId[]>([])
@@ -296,10 +300,12 @@ export function JokenpoGame() {
       setCpuChoice(null)
       setResult(null)
       setHistory([])
+      setCpuHistory([])
       setBuffs(EMPTY_BUFFS)
       setSpyPeek(null)
       if (!options?.keepHP) {
         setPlayerHP(MAX_HP)
+        setPlayerShield(0)
       }
       setPhase("choosing")
       const tone: Banner["tone"] =
@@ -330,6 +336,8 @@ export function JokenpoGame() {
     setRage(0)
     rageWasFull.current = false
     setPlayerHP(MAX_HP)
+    setPlayerShield(0)
+    setCpuHistory([])
     play("click")
     startStage(1)
   }, [play, startStage])
@@ -536,18 +544,25 @@ export function JokenpoGame() {
         setResult(outcome)
         setPhase("reveal")
 
-        // Track player's move history for CPU AI (don't push the auto-counter on ultimate)
+        // Track move history (don't push the auto-counter on ultimate)
         if (!opts?.ultimate) {
           setHistory((h) => [...h, move].slice(-12))
+          setCpuHistory((h) => [...h, cpuMove].slice(-12))
+        } else {
+          // Ultimate still reveals the cpu pick — useful intel
+          setCpuHistory((h) => [...h, cpuMove].slice(-12))
         }
+
+        const profile = ELEMENT_PROFILE[move]
 
         window.setTimeout(() => {
           if (outcome === "win") {
             const newCombo = getCombo(streak + 1)
             const critMult = buffs.crit ? 2 : 1
+            const elementBase = opts?.ultimate ? ULTIMATE_DAMAGE : profile.baseDamage
             const dmg = opts?.ultimate
               ? ULTIMATE_DAMAGE
-              : Math.round(BASE_DAMAGE * newCombo.mult * critMult)
+              : Math.round(elementBase * newCombo.mult * critMult)
 
             setCpuHP((hp) => Math.max(0, hp - dmg))
             setDamageDealt((d) => d + dmg)
@@ -565,6 +580,13 @@ export function JokenpoGame() {
             play(opts?.ultimate ? "ultimate" : "win")
             haptic(opts?.ultimate ? [60, 80, 60, 80, 200] : 25)
 
+            // FLUXO: Hydro grants bonus rage on win
+            if (!opts?.ultimate && profile.onWinFlowRage) {
+              addRage(profile.onWinFlowRage)
+              pushFloat(`${profile.passiveLabel} +${profile.onWinFlowRage} FÚRIA`, "player", "info")
+              play("rageGain")
+            }
+
             // Siphon: heal player for 50% of damage dealt
             if (buffs.siphon) {
               const heal = Math.round(dmg * 0.5)
@@ -573,7 +595,7 @@ export function JokenpoGame() {
               burstParticles("player", "primary", 6)
               play("heal")
               setBuffs((b) => ({ ...b, siphon: false }))
-              pushToast("SIFÃO drenou HP da CPU!", "good")
+              pushToast("DRENO sugou vida do oponente!", "good")
             }
 
             setWins((w) => w + 1)
@@ -601,21 +623,50 @@ export function JokenpoGame() {
             const baseDmg = isCpuCrit ? BASE_DAMAGE * 2 : BASE_DAMAGE
 
             if (buffs.shield) {
+              // BARREIRA: full block, ignores numeric shield entirely
               setBuffs((b) => ({ ...b, shield: false }))
-              pushFloat("BLOCK", "player", "info")
+              pushFloat("BARREIRA", "player", "info")
               burstParticles("player", "accent", 8)
               play("powerup")
               haptic([15, 25, 15])
-              pushToast("Escudo absorveu o dano!", "good")
+              pushToast("BARREIRA absorveu o feitiço!", "good")
             } else {
-              setPlayerHP((hp) => Math.max(0, hp - baseDmg))
-              pushFloat(`-${baseDmg}${isCpuCrit ? " CRIT!" : ""}`, "player", isCpuCrit ? "crit" : "damage")
-              flashHP("player")
-              if (isCpuCrit) triggerScreenShake()
-              play("damage")
-              haptic(isCpuCrit ? [40, 60, 80] : 30)
-              addRage(RAGE_GAIN_DAMAGE + (isCpuCrit ? 12 : 0))
-              if (isCpuCrit) pushToast("FEITIÇO CRÍTICO!", "bad")
+              // Numeric shield (from RAÍZ procs) absorbs first
+              let incoming = baseDmg
+              setPlayerShield((s) => {
+                if (s <= 0) return s
+                const absorbed = Math.min(s, incoming)
+                incoming -= absorbed
+                if (absorbed > 0) {
+                  pushFloat(`ESCUDO -${absorbed}`, "player", "info")
+                }
+                return s - absorbed
+              })
+              if (incoming > 0) {
+                setPlayerHP((hp) => Math.max(0, hp - incoming))
+                pushFloat(`-${incoming}${isCpuCrit ? " CRIT!" : ""}`, "player", isCpuCrit ? "crit" : "damage")
+                flashHP("player")
+                if (isCpuCrit) triggerScreenShake()
+                play("damage")
+                haptic(isCpuCrit ? [40, 60, 80] : 30)
+                addRage(RAGE_GAIN_DAMAGE + (isCpuCrit ? 12 : 0))
+                if (isCpuCrit) pushToast("FEITIÇO CRÍTICO!", "bad")
+              } else {
+                play("powerup")
+                haptic([10, 20])
+              }
+
+              // RECUO: Pyro recoil after full damage application — bypasses shield entirely
+              if (!opts?.ultimate && profile.onLoseRecoil) {
+                const recoil = profile.onLoseRecoil
+                setPlayerHP((hp) => Math.max(0, hp - recoil))
+                pushFloat(`${profile.passiveLabel} -${recoil}`, "player", "damage")
+                flashHP("player")
+                play("damage")
+                haptic([20, 40])
+                pushToast(`${profile.passiveLabel}: PYRO consumiu você.`, "bad")
+                addRage(RAGE_GAIN_DRAW)
+              }
             }
             setLosses((l) => l + 1)
             setStreak(0)
@@ -625,6 +676,16 @@ export function JokenpoGame() {
             haptic(12)
             setDraws((d) => d + 1)
             addRage(RAGE_GAIN_DRAW)
+
+            // RAÍZ: Terra grants shield on draw
+            if (!opts?.ultimate && profile.onDrawShield) {
+              const gain = profile.onDrawShield
+              setPlayerShield((s) => Math.min(SHIELD_CAP, s + gain))
+              pushFloat(`${profile.passiveLabel} +${gain} ESCUDO`, "player", "info")
+              burstParticles("player", "accent", 6)
+              play("powerup")
+              haptic([12, 18])
+            }
           }
 
           if (luckyConsumed) {
@@ -775,12 +836,14 @@ export function JokenpoGame() {
             onRestart={newRun}
           />
         ) : (
-          <ArenaScreen
-            phase={phase}
-            playerHP={playerHP}
-            cpuHP={cpuHP}
-            cpuStats={cpuStats}
-            playerChoice={playerChoice}
+        <ArenaScreen
+          phase={phase}
+          playerHP={playerHP}
+          playerShield={playerShield}
+          cpuHP={cpuHP}
+          cpuStats={cpuStats}
+          cpuHistory={cpuHistory}
+          playerChoice={playerChoice}
             cpuChoice={cpuChoice}
             result={result}
             round={round}
@@ -945,8 +1008,69 @@ function MenuScreen({ onStart, records }: { onStart: () => void; records: Record
         />
       </div>
 
+      <ElementBriefing />
       <PowerUpLegend />
     </section>
+  )
+}
+
+function ElementBriefing() {
+  const order: Move[] = ["tesoura", "papel", "pedra"] // PYRO, TERRA, HYDRO for visual punch
+  return (
+    <div className="mt-8 w-full max-w-3xl">
+      <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground sm:text-xs">
+        ELEMENTOS — assimétricos
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+        {order.map((m) => {
+          const profile = ELEMENT_PROFILE[m]
+          const move = MOVES[m]
+          const tone =
+            m === "tesoura"
+              ? "border-destructive/40 bg-destructive/5"
+              : m === "pedra"
+                ? "border-primary/40 bg-primary/5"
+                : "border-accent/40 bg-accent/5"
+          const accent =
+            m === "tesoura"
+              ? "text-destructive"
+              : m === "pedra"
+                ? "text-primary"
+                : "text-accent"
+          return (
+            <div
+              key={m}
+              className={cn(
+                "flex items-start gap-3 rounded-md border p-3 text-left backdrop-blur",
+                tone,
+              )}
+            >
+              <div className="text-3xl leading-none sm:text-4xl" aria-hidden="true">
+                {move.emoji}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className={cn("font-mono text-sm font-black tracking-wider", accent)}>
+                    {move.label}
+                  </span>
+                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                    {profile.baseDamage} dmg
+                  </span>
+                </div>
+                <div className="mt-0.5">
+                  <span className={cn("font-mono text-[10px] font-bold tracking-wider sm:text-[11px]", accent)}>
+                    {profile.passiveLabel}
+                  </span>
+                  <span className="ml-1.5 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
+                    {profile.passiveDesc}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -1043,8 +1167,10 @@ type ComboTierLite = ReturnType<typeof getCombo>
 function ArenaScreen({
   phase,
   playerHP,
+  playerShield,
   cpuHP,
   cpuStats,
+  cpuHistory,
   playerChoice,
   cpuChoice,
   result,
@@ -1065,8 +1191,10 @@ function ArenaScreen({
 }: {
   phase: Phase
   playerHP: number
+  playerShield: number
   cpuHP: number
   cpuStats: CPUStats
+  cpuHistory: Move[]
   playerChoice: Move | null
   cpuChoice: Move | null
   result: Result | null
@@ -1091,7 +1219,14 @@ function ArenaScreen({
     <section className="flex flex-1 flex-col gap-1.5 sm:gap-3">
       {/* HP strip mirror */}
       <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
-        <HPBar name="VOCÊ" hp={playerHP} max={MAX_HP} align="left" flash={hpFlash === "player"} />
+        <HPBar
+          name="VOCÊ"
+          hp={playerHP}
+          max={MAX_HP}
+          align="left"
+          flash={hpFlash === "player"}
+          shield={playerShield}
+        />
         <HPBar
           name={cpuStats.name}
           hp={cpuHP}
@@ -1099,6 +1234,7 @@ function ArenaScreen({
           align="right"
           flash={hpFlash === "cpu"}
           isBoss={cpuStats.level === "boss"}
+          history={cpuHistory}
         />
       </div>
 
@@ -1183,6 +1319,8 @@ function HPBar({
   align,
   flash,
   isBoss,
+  shield,
+  history,
 }: {
   name: string
   hp: number
@@ -1190,12 +1328,15 @@ function HPBar({
   align: "left" | "right"
   flash: boolean
   isBoss?: boolean
+  shield?: number
+  history?: Move[]
 }) {
   const pct = Math.max(0, Math.min(100, (hp / max) * 100))
   const tone = pct > 60 ? "primary" : pct > 30 ? "accent" : "destructive"
   const toneClass =
     tone === "primary" ? "bg-primary" : tone === "accent" ? "bg-accent" : "bg-destructive"
   const low = pct <= 30
+  const hasFooter = (shield ?? 0) > 0 || (history && history.length > 0)
   return (
     <div
       className={cn(
@@ -1217,6 +1358,41 @@ function HPBar({
       <div className={cn("h-2 overflow-hidden rounded-full bg-secondary sm:h-2.5", align === "right" && "rotate-180")}>
         <div className={cn("h-full transition-[width] duration-500 ease-out", toneClass)} style={{ width: `${pct}%` }} />
       </div>
+      {hasFooter ? (
+        <div
+          className={cn(
+            "mt-1 flex items-center gap-1 font-mono text-[9px] sm:mt-1.5 sm:text-[10px]",
+            align === "right" && "flex-row-reverse",
+          )}
+        >
+          {(shield ?? 0) > 0 ? (
+            <span className="drop-in inline-flex items-center gap-0.5 rounded-sm border border-accent/50 bg-accent/15 px-1 py-px font-bold tracking-wider text-accent">
+              <Shield className="size-2.5 sm:size-3" />
+              {shield}
+            </span>
+          ) : null}
+          {history && history.length > 0 ? (
+            <div
+              className={cn(
+                "flex min-w-0 items-center gap-0.5 truncate text-[10px] leading-none sm:text-xs",
+                align === "right" && "flex-row-reverse",
+              )}
+              aria-label="Últimos lances do oponente"
+            >
+              {history.slice(-6).map((m, i, arr) => (
+                <span
+                  key={i}
+                  aria-hidden="true"
+                  className="leading-none"
+                  style={{ opacity: 0.4 + (0.6 * (i + 1)) / arr.length }}
+                >
+                  {MOVES[m].emoji}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1480,24 +1656,44 @@ function ResultBadge({ phase, result }: { phase: Phase; result: Result | null })
 /* ------------------------------------------------------------------ */
 
 function ChoiceButton({ move, disabled, onClick }: { move: Move; disabled: boolean; onClick: () => void }) {
+  const profile = ELEMENT_PROFILE[move]
+  const accent =
+    move === "tesoura"
+      ? "border-destructive/50 hover:border-destructive hover:shadow-[0_0_24px_oklch(0.66_0.24_22/0.35)] active:border-destructive active:bg-destructive/15"
+      : move === "pedra"
+        ? "border-primary/50 hover:border-primary hover:shadow-[0_0_24px_oklch(0.78_0.17_205/0.35)] active:border-primary active:bg-primary/15"
+        : "border-accent/50 hover:border-accent hover:shadow-[0_0_24px_oklch(0.86_0.18_92/0.35)] active:border-accent active:bg-accent/15"
+  const passiveColor =
+    move === "tesoura" ? "text-destructive" : move === "pedra" ? "text-primary" : "text-accent"
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "group relative flex min-h-[76px] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl border-2 border-border bg-card py-2 transition sm:min-h-[110px] sm:gap-2 sm:py-4",
-        "hover:border-primary hover:bg-card/80 hover:shadow-[0_0_24px_oklch(0.78_0.17_205/0.3)]",
-        "active:scale-[0.95] active:border-primary active:bg-primary/15",
+        "group relative flex min-h-[88px] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl border-2 bg-card py-2 transition sm:min-h-[120px] sm:gap-1 sm:py-3",
+        accent,
+        "active:scale-[0.95]",
         "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:shadow-none disabled:active:scale-100",
       )}
-      aria-label={`Jogar ${MOVES[move].label}`}
+      aria-label={`Lançar ${MOVES[move].label}, dano base ${profile.baseDamage}, passiva ${profile.passiveLabel}`}
     >
-      <div className="text-[2.5rem] leading-none transition group-hover:scale-110 sm:text-6xl" aria-hidden="true">
+      <div
+        className="text-[2.25rem] leading-none transition group-hover:scale-110 sm:text-5xl"
+        aria-hidden="true"
+      >
         {MOVES[move].emoji}
       </div>
-      <div className="font-mono text-[9px] font-bold tracking-[0.22em] text-muted-foreground transition group-hover:text-primary sm:text-xs sm:tracking-[0.3em]">
+      <div className="font-mono text-[9px] font-black tracking-[0.22em] text-foreground sm:text-xs sm:tracking-[0.28em]">
         {MOVES[move].label}
+      </div>
+      <div className="flex items-center gap-1 font-mono text-[9px] tabular-nums text-muted-foreground sm:text-[10px]">
+        <Swords className="size-2.5 sm:size-3" />
+        <span className="font-bold text-foreground">{profile.baseDamage}</span>
+        <span aria-hidden="true">·</span>
+        <span className={cn("font-black tracking-wider", passiveColor)}>
+          {profile.passiveLabel}
+        </span>
       </div>
     </button>
   )

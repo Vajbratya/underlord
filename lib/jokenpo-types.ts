@@ -122,6 +122,46 @@ export const ULTIMATE_DAMAGE = 60
 export const SHOP_HEAL_SKIP = 25
 export const STAGE_HEAL_BONUS = 20
 
+/** Per-element asymmetric stats. Same triangle as MOVES, but each move carries a unique trade-off. */
+export type ElementProfile = {
+  baseDamage: number
+  passiveLabel: string
+  passiveDesc: string
+  /** Triggers on WIN with this move. */
+  onWinFlowRage?: number
+  /** Triggers on LOSE with this move (recoil dmg, ignores shield). */
+  onLoseRecoil?: number
+  /** Triggers on DRAW with this move (shield points gained). */
+  onDrawShield?: number
+}
+
+export const ELEMENT_PROFILE: Record<Move, ElementProfile> = {
+  // HYDRO (key: pedra) — lowest dmg, but fastest ult ramp on win
+  pedra: {
+    baseDamage: 16,
+    passiveLabel: 'FLUXO',
+    passiveDesc: 'Vencer com HYDRO carrega +18 de FÚRIA.',
+    onWinFlowRage: 18,
+  },
+  // TERRA (key: papel) — medium dmg, defensive on draw
+  papel: {
+    baseDamage: 22,
+    passiveLabel: 'RAÍZ',
+    passiveDesc: 'Empatar com TERRA gera +10 de ESCUDO absorvedor.',
+    onDrawShield: 10,
+  },
+  // PYRO (key: tesoura) — highest dmg, but punishes on loss
+  tesoura: {
+    baseDamage: 28,
+    passiveLabel: 'RECUO',
+    passiveDesc: 'Falhar com PYRO causa 6 de dano de retorno em você.',
+    onLoseRecoil: 6,
+  },
+}
+
+/** Hard cap on stacked numeric shield from RAÍZ procs. */
+export const SHIELD_CAP = 30
+
 /** Combo tier for streak-based damage multiplier. */
 export type ComboTier = {
   min: number
