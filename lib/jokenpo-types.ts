@@ -27,43 +27,43 @@ export type PowerUp = {
 export const POWER_UPS: Record<PowerUpId, PowerUp> = {
   shield: {
     id: 'shield',
-    name: 'ESCUDO',
-    desc: 'Bloqueia o próximo dano recebido.',
+    name: 'BARREIRA',
+    desc: 'Repele o próximo dano arcano recebido.',
     Icon: Shield,
     color: 'primary',
   },
   crit: {
     id: 'crit',
-    name: 'CRÍTICO',
+    name: 'SURTO',
     desc: 'Próxima vitória causa dano DOBRADO.',
     Icon: Zap,
     color: 'accent',
   },
   spy: {
     id: 'spy',
-    name: 'ESPIÃO',
-    desc: 'Revela a jogada da CPU antes de você escolher.',
+    name: 'VIDÊNCIA',
+    desc: 'Revela o feitiço do oponente antes de você lançar.',
     Icon: Eye,
     color: 'primary',
   },
   bomb: {
     id: 'bomb',
-    name: 'BOMBA',
-    desc: 'Causa 25 de dano instantâneo na CPU.',
+    name: 'METEORO',
+    desc: 'Invoca um meteoro: 25 de dano instantâneo.',
     Icon: Bomb,
     color: 'destructive',
     instant: true,
   },
   lucky: {
     id: 'lucky',
-    name: 'SORTE',
+    name: 'BÊNÇÃO',
     desc: 'Próximo empate vira vitória.',
     Icon: Sparkles,
     color: 'accent',
   },
   heal: {
     id: 'heal',
-    name: 'CURA',
+    name: 'ELIXIR',
     desc: 'Recupera 30 de HP imediatamente.',
     Icon: Heart,
     color: 'primary',
@@ -71,15 +71,15 @@ export const POWER_UPS: Record<PowerUpId, PowerUp> = {
   },
   siphon: {
     id: 'siphon',
-    name: 'SIFÃO',
+    name: 'DRENO',
     desc: 'Próxima vitória te cura 50% do dano causado.',
     Icon: Droplet,
     color: 'primary',
   },
   rage: {
     id: 'rage',
-    name: 'FÚRIA',
-    desc: '+50 de RAGE imediatamente.',
+    name: 'CÓLERA',
+    desc: '+50 de FÚRIA imediatamente.',
     Icon: Flame,
     color: 'destructive',
     instant: true,
@@ -97,10 +97,16 @@ export const POWER_UP_POOL: PowerUpId[] = [
   'rage',
 ]
 
+/**
+ * ELEMENTUM mapping (preserves the original counter triangle):
+ * - HYDRO  (key: pedra)   beats PYRO,  loses to TERRA
+ * - TERRA  (key: papel)   beats HYDRO, loses to PYRO
+ * - PYRO   (key: tesoura) beats TERRA, loses to HYDRO
+ */
 export const MOVES: Record<Move, { label: string; emoji: string; beats: Move; counter: Move }> = {
-  pedra: { label: 'PEDRA', emoji: '✊', beats: 'tesoura', counter: 'papel' },
-  papel: { label: 'PAPEL', emoji: '✋', beats: 'pedra', counter: 'tesoura' },
-  tesoura: { label: 'TESOURA', emoji: '✌️', beats: 'papel', counter: 'pedra' },
+  pedra: { label: 'HYDRO', emoji: '💧', beats: 'tesoura', counter: 'papel' },
+  papel: { label: 'TERRA', emoji: '🌿', beats: 'pedra', counter: 'tesoura' },
+  tesoura: { label: 'PYRO', emoji: '🔥', beats: 'papel', counter: 'pedra' },
 }
 
 export const MOVE_LIST: Move[] = ['pedra', 'papel', 'tesoura']

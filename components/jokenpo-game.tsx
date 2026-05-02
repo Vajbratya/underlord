@@ -424,7 +424,7 @@ export function JokenpoGame() {
       }
       if (id === "rage") {
         addRage(50)
-        pushFloat("+50 RAGE", "player", "ultimate")
+          pushFloat("+50 FÚRIA", "player", "ultimate")
         play("rageGain")
         haptic([10, 20, 10, 20])
         pushToast("FÚRIA acumulada.", "good")
@@ -461,7 +461,7 @@ export function JokenpoGame() {
         setBuffs((b) => ({ ...b, spy: true }))
         play("powerup")
         haptic(15)
-        pushToast(`ESPIÃO: CPU vai jogar ${MOVES[peek].label}`, "good")
+        pushToast(`VIDÊNCIA: oponente lançará ${MOVES[peek].label}`, "good")
       } else if (id === "shield") {
         setBuffs((b) => ({ ...b, shield: true }))
         play("powerup")
@@ -615,7 +615,7 @@ export function JokenpoGame() {
               play("damage")
               haptic(isCpuCrit ? [40, 60, 80] : 30)
               addRage(RAGE_GAIN_DAMAGE + (isCpuCrit ? 12 : 0))
-              if (isCpuCrit) pushToast("CPU CRÍTICO!", "bad")
+              if (isCpuCrit) pushToast("FEITIÇO CRÍTICO!", "bad")
             }
             setLosses((l) => l + 1)
             setStreak(0)
@@ -858,7 +858,7 @@ function Header({
         </div>
         <div className="flex min-w-0 items-baseline gap-2 leading-tight">
           <h1 className="truncate font-mono text-sm font-bold tracking-[0.18em] text-primary sm:text-base">
-            JOKENPÔ
+            ELEMENTUM
           </h1>
           {inMatch ? (
             <span className="rounded-sm border border-border bg-card/80 px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider text-foreground/80 sm:text-[10px]">
@@ -897,17 +897,17 @@ function MenuScreen({ onStart, records }: { onStart: () => void; records: Record
           <div className="mx-auto h-32 w-72 rounded-full bg-primary/30 sm:h-40 sm:w-80" />
         </div>
         <h2 className="font-mono text-4xl font-black leading-none tracking-tighter text-balance sm:text-7xl">
-          <span className="text-primary">PEDRA</span>
+          <span className="text-destructive">PYRO</span>
           <span className="text-foreground">.</span>
-          <span className="text-accent">PAPEL</span>
+          <span className="text-primary">HYDRO</span>
           <span className="text-foreground">.</span>
-          <span className="text-destructive">TESOURA</span>
+          <span className="text-accent">TERRA</span>
         </h2>
       </div>
 
       <p className="mt-4 max-w-md text-pretty text-sm text-muted-foreground sm:mt-6 sm:text-base">
-        Sobreviva a stages infinitos. Combo multiplicador, rage meter, ultimate, loja entre stages.
-        Quanto mais longe, mais brutal a CPU.
+        Lance feitiços e suba pela torre arcana. Combo multiplicador, fúria, ultimate e grimório de
+        power-ups. Quanto mais alto, mais sádico o oponente.
       </p>
 
       <button
@@ -985,7 +985,7 @@ function PowerUpLegend() {
   return (
     <div className="mt-8 w-full max-w-3xl">
       <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground sm:text-xs">
-        ARSENAL
+        GRIMÓRIO
       </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {POWER_UP_POOL.map((id) => {
@@ -1151,7 +1151,7 @@ function ArenaScreen({
         {/* Spy peek hint */}
         {spyPeek && phase === "choosing" ? (
           <div className="absolute inset-x-0 bottom-1.5 mx-auto w-fit max-w-[90%] rounded-md border border-accent/60 bg-accent/20 px-2 py-0.5 text-center font-mono text-[10px] font-bold tracking-wider text-accent sm:bottom-2 sm:px-2.5 sm:py-1">
-            ESPIÃO: CPU joga {MOVES[spyPeek].label}
+            VIDÊNCIA: lançará {MOVES[spyPeek].label}
           </div>
         ) : null}
 
@@ -1279,7 +1279,7 @@ function RageMeter({ rage, ready, onUltimate }: { rage: number; ready: boolean; 
       <div className="min-w-0 flex-1 leading-tight">
         <div className="flex items-center justify-between gap-1">
           <span className="font-mono text-[8px] tracking-[0.25em] text-muted-foreground sm:text-[9px]">
-            {ready ? <span className="text-destructive font-black">ULTIMATE</span> : "RAGE"}
+            {ready ? <span className="text-destructive font-black">ULTIMATE</span> : "FÚRIA"}
           </span>
           <span className={cn("font-mono text-[9px] font-bold tabular-nums sm:text-[10px]", ready ? "text-destructive" : "text-muted-foreground")}>
             {rage}/{RAGE_MAX}

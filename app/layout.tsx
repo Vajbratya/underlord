@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'JOKENPÔ ARENA — Pedra, Papel, Tesoura com Power-Ups',
+  title: 'ELEMENTUM — Duelo Arcano com Power-Ups',
   description:
-    'Jokenpô brutal com sistema de HP, streak e power-ups. Derrote a CPU usando estratégia, escudos, críticos e bombas. Joga já.',
+    'Lance Pyro, Hydro e Terra para destruir a torre arcana. Sistema de HP, combo, ultimate e grimório de feitiços. Suba pela hierarquia e enfrente o ARCANUM.',
   generator: 'v0.app',
 }
 

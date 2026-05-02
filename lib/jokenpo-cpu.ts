@@ -16,24 +16,24 @@ export function getCPUStats(stage: number): CPUStats {
   const critChance = Math.min(0.25, (stage - 1) * 0.022)
 
   let level: CPULevel = 'novice'
-  let name = 'BOT-01'
-  let intro = 'Apenas mais um bot.'
+  let name = 'APRENDIZ-01'
+  let intro = 'Aprendiz. Lança feitiços ao acaso.'
   if (stage <= 2) {
     level = 'novice'
-    name = 'BOT-' + String(stage).padStart(2, '0')
-    intro = 'Iniciante. Joga aleatório.'
+    name = 'APRENDIZ-' + String(stage).padStart(2, '0')
+    intro = 'Aprendiz. Lança feitiços ao acaso.'
   } else if (stage <= 5) {
     level = 'smart'
-    name = 'ALGO-V' + (stage - 2)
-    intro = 'Estuda seus padrões.'
+    name = 'ADEPTO-V' + (stage - 2)
+    intro = 'Estuda seus padrões mágicos.'
   } else if (stage <= 9) {
     level = 'predictive'
-    name = 'NEURAL-X' + (stage - 5)
-    intro = 'Lê suas intenções.'
+    name = 'FEITICEIRO-X' + (stage - 5)
+    intro = 'Lê suas intenções arcanas.'
   } else {
     level = 'boss'
-    name = 'OVERLORD-' + (stage - 9).toString().padStart(2, '0')
-    intro = 'Calcula. Pune. Domina.'
+    name = 'ARCANUM-' + (stage - 9).toString().padStart(2, '0')
+    intro = 'Calcula. Pune. Aniquila.'
   }
 
   return { stage, hp, critChance, level, name, intro }
