@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  Bomb,
   Eye,
   Heart,
   Shield,
@@ -16,7 +15,6 @@ import {
   RotateCcw,
   Flame,
   Droplet,
-  ShoppingBag,
   ChevronRight,
   Cpu,
   Star,
