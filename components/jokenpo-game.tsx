@@ -740,7 +740,10 @@ export function JokenpoGame() {
       {/* Top bar */}
       <Header muted={muted} onToggleMute={() => setMuted((m) => !m)} stage={stage} bestStage={records.bestStage} phase={phase} />
 
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-3 pb-2 pt-2 sm:px-4 sm:pt-4">
+      <main
+        className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-3 pt-2 sm:px-4 sm:pt-4"
+        style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+      >
         {phase === "menu" ? (
           <MenuScreen onStart={newRun} records={records} />
         ) : phase === "shop" ? (
@@ -798,12 +801,15 @@ export function JokenpoGame() {
       {banner ? <BannerOverlay banner={banner} key={banner.id} /> : null}
 
       {/* Toasts */}
-      <div className="pointer-events-none fixed inset-x-0 top-16 z-40 flex flex-col items-center gap-2 px-4 sm:top-20">
+      <div
+        className="pointer-events-none fixed inset-x-0 z-40 flex flex-col items-center gap-1.5 px-4 sm:top-20"
+        style={{ top: "calc(max(0.5rem, env(safe-area-inset-top)) + 3rem)" }}
+      >
         {toasts.map((t) => (
           <div
             key={t.id}
             className={cn(
-              "pointer-events-none rounded-md border px-3 py-1.5 font-mono text-[11px] font-bold tracking-wider shadow-lg backdrop-blur sm:text-xs",
+              "pointer-events-none max-w-[92vw] rounded-md border px-2.5 py-1 text-center font-mono text-[10px] font-bold tracking-wider shadow-lg backdrop-blur sm:px-3 sm:py-1.5 sm:text-xs",
               "slam-in",
               t.tone === "good" && "border-primary/60 bg-primary/15 text-primary",
               t.tone === "bad" && "border-destructive/60 bg-destructive/15 text-destructive",
@@ -838,26 +844,34 @@ function Header({
 }) {
   const inMatch = phase !== "menu" && phase !== "gameover"
   return (
-    <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-2 px-3 pt-2 sm:px-4 sm:pt-4">
-      <div className="flex items-center gap-2 sm:gap-3">
-        <div className="grid size-9 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/30 sm:size-10">
-          <Swords className="size-4 sm:size-5" />
+    <header
+      className="mx-auto flex w-full max-w-3xl items-center justify-between gap-2 px-3 pt-2 sm:px-4 sm:pt-3"
+      style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/30 sm:size-9">
+          <Swords className="size-4" />
         </div>
-        <div className="leading-tight">
-          <h1 className="font-mono text-sm font-bold tracking-[0.2em] text-primary sm:text-base">
+        <div className="flex min-w-0 items-baseline gap-2 leading-tight">
+          <h1 className="truncate font-mono text-sm font-bold tracking-[0.18em] text-primary sm:text-base">
             JOKENPÔ
-            <span className="ml-1.5 text-foreground/80">ARENA</span>
           </h1>
-          <p className="text-[10px] text-muted-foreground sm:text-[11px]">
-            {inMatch ? `STAGE ${stage}` : "Pedra · Papel · Tesoura"}
-            {bestStage > 0 ? <span className="ml-1.5 text-accent">· Best {bestStage}</span> : null}
-          </p>
+          {inMatch ? (
+            <span className="rounded-sm border border-border bg-card/80 px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider text-foreground/80 sm:text-[10px]">
+              STAGE {stage}
+            </span>
+          ) : null}
+          {bestStage > 0 ? (
+            <span className="hidden font-mono text-[10px] tracking-wider text-accent sm:inline">
+              Best {bestStage}
+            </span>
+          ) : null}
         </div>
       </div>
       <button
         type="button"
         onClick={onToggleMute}
-        className="grid size-10 shrink-0 place-items-center rounded-md border border-border bg-card text-muted-foreground transition active:scale-95 hover:text-foreground"
+        className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-card text-muted-foreground transition active:scale-95 hover:text-foreground sm:size-10"
         aria-label={muted ? "Ativar som" : "Desativar som"}
         aria-pressed={muted}
       >
@@ -1070,9 +1084,9 @@ function ArenaScreen({
   const canChoose = phase === "choosing"
 
   return (
-    <section className="flex flex-1 flex-col gap-2 sm:gap-3">
-      {/* HP Bars */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+    <section className="flex flex-1 flex-col gap-1.5 sm:gap-3">
+      {/* HP strip mirror */}
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
         <HPBar name="VOCÊ" hp={playerHP} max={MAX_HP} align="left" flash={hpFlash === "player"} />
         <HPBar
           name={cpuStats.name}
@@ -1085,7 +1099,7 @@ function ArenaScreen({
       </div>
 
       {/* Meters row */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
         <ComboMeter combo={combo} streak={streak} />
         <RageMeter rage={rage} ready={ultimateReady} onUltimate={onUltimate} />
       </div>
@@ -1093,7 +1107,7 @@ function ArenaScreen({
       {/* Battle stage */}
       <div
         className={cn(
-          "relative grid flex-1 grid-cols-2 items-center gap-2 overflow-hidden rounded-xl border border-border bg-card/40 p-2 backdrop-blur sm:gap-4 sm:p-6",
+          "relative grid min-h-[180px] flex-1 grid-cols-2 items-center gap-2 overflow-hidden rounded-xl border border-border bg-card/40 p-2 backdrop-blur sm:gap-4 sm:p-6",
           phase === "shaking" && "flash-damage",
         )}
       >
@@ -1120,32 +1134,32 @@ function ArenaScreen({
         </div>
 
         {/* Round counter pill */}
-        <div className="absolute left-2 top-2 rounded-md border border-border bg-background/80 px-2 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground backdrop-blur">
+        <div className="absolute left-1.5 top-1.5 rounded-md border border-border bg-background/80 px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-muted-foreground backdrop-blur sm:left-2 sm:top-2 sm:px-2 sm:text-[10px]">
           R{String(round).padStart(2, "0")}
         </div>
 
         {/* CPU level chip */}
-        <div className="absolute right-2 top-2 flex items-center gap-1 rounded-md border border-border bg-background/80 px-2 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground backdrop-blur">
+        <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md border border-border bg-background/80 px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-muted-foreground backdrop-blur sm:right-2 sm:top-2 sm:px-2 sm:text-[10px]">
           <Cpu className="size-3" />
           {cpuStats.level.toUpperCase()}
         </div>
 
         {/* Spy peek hint */}
         {spyPeek && phase === "choosing" ? (
-          <div className="absolute inset-x-0 bottom-2 mx-auto w-fit rounded-md border border-accent/60 bg-accent/15 px-2.5 py-1 font-mono text-[10px] font-bold tracking-wider text-accent">
-            ESPIÃO: CPU vai jogar {MOVES[spyPeek].label}
+          <div className="absolute inset-x-0 bottom-1.5 mx-auto w-fit max-w-[90%] rounded-md border border-accent/60 bg-accent/20 px-2 py-0.5 text-center font-mono text-[10px] font-bold tracking-wider text-accent sm:bottom-2 sm:px-2.5 sm:py-1">
+            ESPIÃO: CPU joga {MOVES[spyPeek].label}
           </div>
         ) : null}
+
+        {/* Active buffs floating */}
+        <ActiveBuffsFloat buffs={buffs} />
       </div>
 
-      {/* Active buffs strip */}
-      <ActiveBuffsBar buffs={buffs} />
-
-      {/* Inventory */}
+      {/* Inventory chip strip */}
       <Inventory inventory={inventory} buffs={buffs} disabled={!canChoose} onUse={onUsePowerUp} />
 
       {/* Choice buttons */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
         {MOVE_LIST.map((m) => (
           <ChoiceButton key={m} move={m} disabled={!canChoose} onClick={() => onChoose(m)} />
         ))}
@@ -1177,19 +1191,26 @@ function HPBar({
   const tone = pct > 60 ? "primary" : pct > 30 ? "accent" : "destructive"
   const toneClass =
     tone === "primary" ? "bg-primary" : tone === "accent" ? "bg-accent" : "bg-destructive"
+  const low = pct <= 30
   return (
-    <div className={cn("rounded-md border border-border bg-card/60 p-2 backdrop-blur sm:p-3", flash && "flash-damage")}>
-      <div className={cn("mb-1.5 flex items-baseline justify-between gap-2 font-mono", align === "right" && "flex-row-reverse")}>
-        <span className="truncate text-[10px] font-bold tracking-[0.18em] text-muted-foreground sm:text-xs sm:tracking-[0.2em]">
+    <div
+      className={cn(
+        "rounded-md border bg-card/60 px-2 py-1.5 backdrop-blur sm:px-3 sm:py-2",
+        low ? "border-destructive/40" : "border-border",
+        flash && "flash-damage",
+      )}
+    >
+      <div className={cn("mb-1 flex items-baseline justify-between gap-2 font-mono", align === "right" && "flex-row-reverse")}>
+        <span className="min-w-0 truncate text-[9px] font-bold tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-[0.2em]">
           {isBoss ? <span className="text-destructive">[BOSS] </span> : null}
           {name}
         </span>
-        <span className="text-xs font-bold tabular-nums sm:text-sm">
+        <span className={cn("shrink-0 text-[11px] font-bold tabular-nums sm:text-sm", low && "text-destructive")}>
           {hp}
           <span className="text-muted-foreground">/{max}</span>
         </span>
       </div>
-      <div className={cn("h-2.5 overflow-hidden rounded-full bg-secondary sm:h-3", align === "right" && "rotate-180")}>
+      <div className={cn("h-2 overflow-hidden rounded-full bg-secondary sm:h-2.5", align === "right" && "rotate-180")}>
         <div className={cn("h-full transition-[width] duration-500 ease-out", toneClass)} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -1205,24 +1226,24 @@ function ComboMeter({ combo, streak }: { combo: ComboTierLite; streak: number })
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-md border bg-card/60 px-2.5 py-1.5 backdrop-blur sm:px-3 sm:py-2",
+        "flex items-center gap-1.5 rounded-md border bg-card/60 px-2 py-1 backdrop-blur sm:gap-2 sm:px-3 sm:py-2",
         active ? "border-accent/60" : "border-border",
         active && "combo-pulse",
       )}
     >
       <div
         className={cn(
-          "grid size-8 place-items-center rounded-md ring-1 sm:size-9",
+          "grid size-7 shrink-0 place-items-center rounded-md ring-1 sm:size-9",
           active ? "bg-accent/15 text-accent ring-accent/40" : "bg-muted/50 text-muted-foreground ring-border",
         )}
       >
-        <Flame className="size-4" />
+        <Flame className="size-3.5 sm:size-4" />
       </div>
       <div className="min-w-0 leading-tight">
-        <div className="font-mono text-[9px] tracking-[0.25em] text-muted-foreground">COMBO</div>
-        <div className={cn("font-mono text-sm font-black tabular-nums sm:text-base", active ? "text-accent" : "text-muted-foreground")}>
+        <div className="font-mono text-[8px] tracking-[0.25em] text-muted-foreground sm:text-[9px]">COMBO</div>
+        <div className={cn("truncate font-mono text-xs font-black tabular-nums sm:text-base", active ? "text-accent" : "text-muted-foreground")}>
           {combo.label}
-          <span className="ml-1.5 text-[10px] text-muted-foreground">({streak})</span>
+          <span className="ml-1 text-[9px] text-muted-foreground sm:text-[10px]">({streak})</span>
         </div>
       </div>
     </div>
@@ -1237,7 +1258,7 @@ function RageMeter({ rage, ready, onUltimate }: { rage: number; ready: boolean; 
       disabled={!ready}
       onClick={onUltimate}
       className={cn(
-        "group relative flex items-center gap-2 overflow-hidden rounded-md border bg-card/60 px-2.5 py-1.5 text-left backdrop-blur transition sm:px-3 sm:py-2",
+        "group relative flex items-center gap-1.5 overflow-hidden rounded-md border bg-card/60 px-2 py-1 text-left backdrop-blur transition sm:gap-2 sm:px-3 sm:py-2",
         ready ? "border-destructive/70 ultimate-charge active:scale-95" : "border-border",
         !ready && "cursor-default",
       )}
@@ -1245,16 +1266,18 @@ function RageMeter({ rage, ready, onUltimate }: { rage: number; ready: boolean; 
     >
       <div
         className={cn(
-          "grid size-8 place-items-center rounded-md ring-1 sm:size-9",
+          "grid size-7 shrink-0 place-items-center rounded-md ring-1 sm:size-9",
           ready ? "bg-destructive/20 text-destructive ring-destructive/50" : "bg-muted/50 text-muted-foreground ring-border",
         )}
       >
-        <Zap className="size-4" />
+        <Zap className="size-3.5 sm:size-4" />
       </div>
       <div className="min-w-0 flex-1 leading-tight">
-        <div className="flex items-center justify-between">
-          <span className="font-mono text-[9px] tracking-[0.25em] text-muted-foreground">RAGE</span>
-          <span className={cn("font-mono text-[10px] font-bold tabular-nums", ready ? "text-destructive" : "text-muted-foreground")}>
+        <div className="flex items-center justify-between gap-1">
+          <span className="font-mono text-[8px] tracking-[0.25em] text-muted-foreground sm:text-[9px]">
+            {ready ? <span className="text-destructive font-black">ULTIMATE</span> : "RAGE"}
+          </span>
+          <span className={cn("font-mono text-[9px] font-bold tabular-nums sm:text-[10px]", ready ? "text-destructive" : "text-muted-foreground")}>
             {rage}/{RAGE_MAX}
           </span>
         </div>
@@ -1264,9 +1287,6 @@ function RageMeter({ rage, ready, onUltimate }: { rage: number; ready: boolean; 
             style={{ width: `${pct}%` }}
           />
         </div>
-        {ready ? (
-          <div className="mt-0.5 font-mono text-[10px] font-black tracking-wider text-destructive">TOQUE PARA ULTIMATE</div>
-        ) : null}
       </div>
     </button>
   )
@@ -1276,37 +1296,37 @@ function RageMeter({ rage, ready, onUltimate }: { rage: number; ready: boolean; 
 /* Active buffs                                                         */
 /* ------------------------------------------------------------------ */
 
-function ActiveBuffsBar({ buffs }: { buffs: Buffs }) {
+function ActiveBuffsFloat({ buffs }: { buffs: Buffs }) {
   const items = [
-    buffs.shield && { id: "shield", icon: Shield, label: "ESCUDO", color: "primary" as const },
-    buffs.crit && { id: "crit", icon: Zap, label: "CRIT", color: "accent" as const },
-    buffs.spy && { id: "spy", icon: Eye, label: "ESPIÃO", color: "primary" as const },
-    buffs.lucky && { id: "lucky", icon: Sparkles, label: "SORTE", color: "accent" as const },
-    buffs.siphon && { id: "siphon", icon: Droplet, label: "SIFÃO", color: "primary" as const },
+    buffs.shield && { id: "shield", icon: Shield, color: "primary" as const, title: "Escudo" },
+    buffs.crit && { id: "crit", icon: Zap, color: "accent" as const, title: "Crítico" },
+    buffs.spy && { id: "spy", icon: Eye, color: "primary" as const, title: "Espião" },
+    buffs.lucky && { id: "lucky", icon: Sparkles, color: "accent" as const, title: "Sorte" },
+    buffs.siphon && { id: "siphon", icon: Droplet, color: "primary" as const, title: "Sifão" },
   ].filter(Boolean) as Array<{
     id: string
     icon: typeof Shield
-    label: string
     color: "primary" | "accent" | "destructive"
+    title: string
   }>
 
   if (items.length === 0) return null
 
   return (
-    <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto rounded-md border border-border bg-card/40 px-2 py-1.5 backdrop-blur">
-      <span className="shrink-0 font-mono text-[9px] tracking-[0.25em] text-muted-foreground">ATIVOS</span>
+    <div className="pointer-events-none absolute bottom-1.5 right-1.5 flex items-center gap-1 sm:bottom-2 sm:right-2">
       {items.map((it) => (
         <span
           key={it.id}
+          title={it.title}
+          aria-label={it.title}
           className={cn(
-            "drop-in inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider",
-            it.color === "primary" && "border-primary/50 bg-primary/15 text-primary",
-            it.color === "accent" && "border-accent/60 bg-accent/15 text-accent",
-            it.color === "destructive" && "border-destructive/50 bg-destructive/15 text-destructive",
+            "drop-in grid size-6 place-items-center rounded-md border backdrop-blur sm:size-7",
+            it.color === "primary" && "border-primary/60 bg-primary/20 text-primary",
+            it.color === "accent" && "border-accent/60 bg-accent/20 text-accent",
+            it.color === "destructive" && "border-destructive/60 bg-destructive/20 text-destructive",
           )}
         >
-          <it.icon className="size-3" />
-          {it.label}
+          <it.icon className="size-3 sm:size-3.5" />
         </span>
       ))}
     </div>
@@ -1349,18 +1369,19 @@ function BattleSide({
   return (
     <div
       className={cn(
-        "relative flex aspect-square min-h-[140px] flex-col items-center justify-center rounded-lg bg-background/60 ring-2 transition sm:min-h-[200px]",
+        "relative flex h-full min-h-[160px] flex-col items-center justify-center rounded-lg bg-background/60 px-1 py-2 ring-2 transition sm:min-h-[220px] sm:py-4",
         ringTone,
       )}
     >
-      <div className="font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground sm:text-[10px]">
+      <div className="font-mono text-[9px] font-bold tracking-[0.25em] text-muted-foreground sm:text-[10px] sm:tracking-[0.3em]">
         {side === "player" ? "VOCÊ" : "CPU"}
       </div>
 
-      <div className="relative mt-1 grid place-items-center sm:mt-2">
+      <div className="relative mt-1 flex flex-1 items-center justify-center sm:mt-2">
         <div
           className={cn(
-            "select-none text-6xl leading-none sm:text-8xl",
+            "select-none leading-none",
+            "text-[clamp(3.5rem,18vw,7rem)] sm:text-8xl",
             isShaking && "shake-hand",
             isReveal && "slam-in",
           )}
@@ -1374,7 +1395,7 @@ function BattleSide({
           <span
             key={f.id}
             className={cn(
-              "pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 font-mono text-xl font-black tabular-nums sm:text-2xl",
+              "pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-lg font-black tabular-nums sm:text-2xl",
               "float-up",
               f.tone === "damage" && "text-destructive",
               f.tone === "heal" && "text-primary",
@@ -1392,7 +1413,7 @@ function BattleSide({
           <span
             key={p.id}
             className={cn(
-              "pointer-events-none absolute top-1/2 size-2 rounded-full",
+              "pointer-events-none absolute top-1/2 size-1.5 rounded-full sm:size-2",
               "confetti",
               p.color === "primary" && "bg-primary",
               p.color === "accent" && "bg-accent",
@@ -1408,11 +1429,11 @@ function BattleSide({
       </div>
 
       {choice && (isReveal || isShaking) ? (
-        <div className="mt-1 font-mono text-[10px] font-bold tracking-[0.2em] text-foreground/80 sm:mt-2 sm:text-xs">
+        <div className="mt-1 font-mono text-[10px] font-bold tracking-[0.18em] text-foreground/80 sm:mt-2 sm:text-xs sm:tracking-[0.2em]">
           {isShaking ? "..." : MOVES[choice].label}
         </div>
       ) : (
-        <div className="mt-1 font-mono text-[10px] tracking-[0.2em] text-muted-foreground sm:mt-2 sm:text-xs">
+        <div className="mt-1 font-mono text-[9px] tracking-[0.18em] text-muted-foreground sm:mt-2 sm:text-xs sm:tracking-[0.2em]">
           {phase === "choosing" && side === "player" ? "ESCOLHA" : "AGUARDA"}
         </div>
       )}
@@ -1442,7 +1463,7 @@ function ResultBadge({ phase, result }: { phase: Phase; result: Result | null })
       draw: { text: "EMPATE", cls: "border-accent/60 bg-accent/20 text-accent" },
     }[result]
     return (
-      <div className={cn("slam-in rounded-md border px-3 py-1.5 font-mono text-sm font-black tracking-[0.3em] backdrop-blur sm:text-base", map.cls)}>
+      <div className={cn("slam-in rounded-md border px-2.5 py-1 font-mono text-xs font-black tracking-[0.25em] backdrop-blur sm:px-3 sm:py-1.5 sm:text-base sm:tracking-[0.3em]", map.cls)}>
         {map.text}
       </div>
     )
@@ -1461,20 +1482,18 @@ function ChoiceButton({ move, disabled, onClick }: { move: Move; disabled: boole
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "group relative overflow-hidden rounded-lg border-2 border-border bg-card p-2.5 transition sm:p-4",
+        "group relative flex min-h-[76px] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl border-2 border-border bg-card py-2 transition sm:min-h-[110px] sm:gap-2 sm:py-4",
         "hover:border-primary hover:bg-card/80 hover:shadow-[0_0_24px_oklch(0.78_0.17_205/0.3)]",
-        "active:scale-[0.97] active:bg-primary/10",
+        "active:scale-[0.95] active:border-primary active:bg-primary/15",
         "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:shadow-none disabled:active:scale-100",
       )}
       aria-label={`Jogar ${MOVES[move].label}`}
     >
-      <div className="flex flex-col items-center gap-1 sm:gap-2">
-        <div className="text-4xl leading-none transition group-hover:scale-110 sm:text-6xl" aria-hidden="true">
-          {MOVES[move].emoji}
-        </div>
-        <div className="font-mono text-[10px] font-bold tracking-[0.25em] text-muted-foreground transition group-hover:text-primary sm:text-xs sm:tracking-[0.3em]">
-          {MOVES[move].label}
-        </div>
+      <div className="text-[2.5rem] leading-none transition group-hover:scale-110 sm:text-6xl" aria-hidden="true">
+        {MOVES[move].emoji}
+      </div>
+      <div className="font-mono text-[9px] font-bold tracking-[0.22em] text-muted-foreground transition group-hover:text-primary sm:text-xs sm:tracking-[0.3em]">
+        {MOVES[move].label}
       </div>
     </button>
   )
@@ -1496,41 +1515,38 @@ function Inventory({
   onUse: (i: number) => void
 }) {
   const slots: (PowerUpId | null)[] = Array.from({ length: INVENTORY_LIMIT }, (_, i) => inventory[i] ?? null)
+  const empty = inventory.length === 0
 
   return (
-    <div className="rounded-md border border-border bg-card/40 p-1.5 backdrop-blur sm:p-2">
-      <div className="mb-1 flex items-center justify-between px-1">
-        <span className="font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground">INVENTÁRIO</span>
-        <span className="font-mono text-[9px] tracking-wider text-muted-foreground">
-          {inventory.length}/{INVENTORY_LIMIT}
-        </span>
-      </div>
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-        {slots.map((id, i) =>
-          id ? (
-            <PowerUpSlot
-              key={i}
-              power={POWER_UPS[id]}
-              disabled={disabled}
-              onUse={() => onUse(i)}
-              isActiveBuff={
-                (id === "shield" && buffs.shield) ||
-                (id === "crit" && buffs.crit) ||
-                (id === "spy" && buffs.spy) ||
-                (id === "lucky" && buffs.lucky) ||
-                (id === "siphon" && buffs.siphon)
-              }
-            />
-          ) : (
-            <div
-              key={i}
-              className="grid h-12 place-items-center rounded-md border border-dashed border-border/60 text-[10px] text-muted-foreground/60 sm:h-14"
-            >
+    <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+      {slots.map((id, i) =>
+        id ? (
+          <PowerUpSlot
+            key={i}
+            power={POWER_UPS[id]}
+            disabled={disabled}
+            onUse={() => onUse(i)}
+            isActiveBuff={
+              (id === "shield" && buffs.shield) ||
+              (id === "crit" && buffs.crit) ||
+              (id === "spy" && buffs.spy) ||
+              (id === "lucky" && buffs.lucky) ||
+              (id === "siphon" && buffs.siphon)
+            }
+          />
+        ) : (
+          <div
+            key={i}
+            className="grid h-11 place-items-center rounded-md border border-dashed border-border/60 bg-card/30 text-muted-foreground/40 sm:h-14"
+          >
+            {empty && i === 0 ? (
+              <span className="font-mono text-[8px] tracking-[0.2em] sm:text-[9px]">SEM ITEMS</span>
+            ) : (
               <Lock className="size-3" />
-            </div>
-          ),
-        )}
-      </div>
+            )}
+          </div>
+        ),
+      )}
     </div>
   )
 }
@@ -1546,29 +1562,32 @@ function PowerUpSlot({
   onUse: () => void
   isActiveBuff: boolean
 }) {
+  const colorRing =
+    power.color === "primary"
+      ? "border-primary/50 bg-primary/10 text-primary"
+      : power.color === "accent"
+        ? "border-accent/60 bg-accent/10 text-accent"
+        : "border-destructive/50 bg-destructive/10 text-destructive"
+  const Icon = power.Icon
   return (
     <button
       type="button"
       onClick={onUse}
       disabled={disabled}
-      title={power.desc}
-      className={cn(
-        "group flex h-12 items-center gap-1.5 rounded-md border bg-background/60 px-1.5 transition sm:h-14 sm:px-2",
-        "active:scale-[0.96] hover:border-foreground/40",
-        "disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100",
-        power.color === "primary" && "border-primary/40",
-        power.color === "accent" && "border-accent/40",
-        power.color === "destructive" && "border-destructive/40",
-      )}
+      title={`${power.name} — ${power.desc}`}
       aria-label={`Usar ${power.name}`}
+      className={cn(
+        "group relative grid h-11 place-items-center rounded-md border transition sm:h-14",
+        "active:scale-[0.94]",
+        "disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100",
+        colorRing,
+        isActiveBuff && "pulse-glow",
+      )}
     >
-      <PowerUpIcon power={power} size="sm" active={isActiveBuff} />
-      <div className="min-w-0 text-left">
-        <div className="truncate font-mono text-[10px] font-bold tracking-wider sm:text-[11px]">{power.name}</div>
-        <div className="truncate text-[9px] text-muted-foreground sm:text-[10px]">
-          {power.instant ? "instant" : isActiveBuff ? "ativo" : "tocar"}
-        </div>
-      </div>
+      <Icon className="size-5 sm:size-6" />
+      <span className="absolute -bottom-1 left-1/2 hidden -translate-x-1/2 rounded-sm bg-background/90 px-1 font-mono text-[8px] font-bold tracking-wider sm:block">
+        {power.name}
+      </span>
     </button>
   )
 }
@@ -1752,14 +1771,18 @@ function BannerOverlay({ banner }: { banner: Banner }) {
     <div className="pointer-events-none fixed inset-0 z-40 grid place-items-center px-4">
       <div
         className={cn(
-          "banner-sweep relative overflow-hidden rounded-md border px-6 py-3 font-mono text-center backdrop-blur sm:px-10 sm:py-4",
+          "banner-sweep relative max-w-[92vw] overflow-hidden rounded-md border px-4 py-2.5 font-mono text-center backdrop-blur sm:px-10 sm:py-4",
           banner.tone === "primary" && "border-primary/60 bg-primary/15 text-primary",
           banner.tone === "accent" && "border-accent/60 bg-accent/15 text-accent",
           banner.tone === "destructive" && "border-destructive/60 bg-destructive/15 text-destructive",
         )}
       >
-        <div className="text-3xl font-black tracking-[0.25em] sm:text-5xl">{banner.title}</div>
-        <div className="mt-1 text-[10px] tracking-[0.3em] opacity-80 sm:text-xs">{banner.sub}</div>
+        <div className="text-2xl font-black tracking-[0.18em] text-balance sm:text-5xl sm:tracking-[0.25em]">
+          {banner.title}
+        </div>
+        <div className="mt-0.5 text-[10px] tracking-[0.2em] opacity-80 sm:mt-1 sm:text-xs sm:tracking-[0.3em]">
+          {banner.sub}
+        </div>
       </div>
     </div>
   )
