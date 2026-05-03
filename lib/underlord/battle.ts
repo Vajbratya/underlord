@@ -111,11 +111,13 @@ export type AttackOutcome = {
 const CRIT_CHANCE = 0.18
 const CRIT_MULT = 1.7
 
-/** Attack target if in range. Marks attacker as acted. */
+/** Attack target if in range. Marks attacker as acted. Optional flat damage
+ * multiplier (e.g. combo bonus) stacks with the internal crit roll. */
 export function attackUnit(
   s: BattleState,
   attackerId: string,
   targetId: string,
+  bonusMult: number = 1,
 ): AttackOutcome {
   const att = s.units.find((u) => u.id === attackerId)
   const tgt = s.units.find((u) => u.id === targetId)
@@ -145,7 +147,7 @@ export function attackUnit(
   // Damage roll: atk ±20% with chance of critical (variable-ratio reward)
   const crit = Math.random() < CRIT_CHANCE
   const variance = 1 + (Math.random() - 0.5) * 0.4
-  const baseDmg = att.atk * variance * (crit ? CRIT_MULT : 1)
+  const baseDmg = att.atk * variance * (crit ? CRIT_MULT : 1) * bonusMult
   const dmg = Math.max(1, Math.round(baseDmg))
   const newHp = Math.max(0, tgt.hp - dmg)
   const killed = newHp === 0

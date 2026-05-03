@@ -2,13 +2,14 @@
 
 import Image from "next/image"
 import { useMemo, useState } from "react"
-import { Coins, Crown, Map, Skull, Swords, Users, X } from "lucide-react"
+import { Coins, Crown, Flame, Map, Skull, Swords, Users, X, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Region, SaveState } from "@/lib/underlord/types"
 import { REGIONS } from "@/lib/underlord/regions"
 import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { getHero } from "@/lib/elementum-flavor"
 import { haptic } from "@/lib/underlord/haptics"
+import { xpProgress } from "@/lib/underlord/meta"
 
 const TONE_TO_VAR: Record<string, string> = {
   primary: "var(--primary)",
@@ -30,11 +31,14 @@ export function WarRoom({
   save,
   onPickRegion,
   onOpenSquad,
+  streakBonus,
 }: {
   save: SaveState
   onPickRegion: (regionId: string) => void
   onOpenSquad: () => void
+  streakBonus?: number | null
 }) {
+  const xp = xpProgress(save.xp)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = REGIONS.find((r) => r.id === selectedId) ?? null
 
@@ -51,21 +55,55 @@ export function WarRoom({
 
   return (
     <div className="flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe">
-      {/* Header */}
-      <header className="border-b border-border bg-card/40 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-3 py-2.5 sm:px-6 sm:py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <Map className="size-4 shrink-0 text-accent" />
-            <h1 className="truncate font-display text-sm font-black uppercase tracking-[0.18em] text-foreground sm:text-lg">
-              Sala de Guerra
-            </h1>
+      {/* Header — meta progression */}
+      <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur">
+        <div className="mx-auto w-full max-w-5xl px-3 py-2 sm:px-6 sm:py-2.5">
+          {/* Top row: title + chips */}
+          <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Map className="size-4 shrink-0 text-accent" />
+              <h1 className="truncate font-display text-sm font-black uppercase tracking-[0.18em] text-foreground sm:text-base">
+                Sala de Guerra
+              </h1>
+            </div>
+            <div className="ml-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {save.dailyStreak > 0 ? (
+                <span className="flex shrink-0 items-center gap-1 rounded border border-gold/50 bg-gold/10 px-1.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-gold">
+                  <Flame className="size-3" />
+                  {save.dailyStreak}D
+                </span>
+              ) : null}
+              <Stat icon={<Coins className="size-3.5" />} label="OURO" value={save.gold} />
+              <Stat icon={<Skull className="size-3.5" />} label="HERÓIS" value={`${save.heroesKilled.length}/14`} />
+              <Stat icon={<Crown className="size-3.5" />} label="REG." value={`${cleared}/${total}`} />
+            </div>
           </div>
-          <div className="ml-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar sm:gap-3">
-            <Stat icon={<Coins className="size-3.5" />} label="OURO" value={save.gold} />
-            <Stat icon={<Skull className="size-3.5" />} label="HERÓIS" value={save.heroesKilled.length} />
-            <Stat icon={<Crown className="size-3.5" />} label="REG." value={`${cleared}/${total}`} />
+          {/* XP bar + level */}
+          <div className="mt-2 flex items-center gap-2">
+            <span className="flex shrink-0 items-center gap-1 rounded border border-accent/60 bg-accent/15 px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-wider text-accent">
+              <Zap className="size-3" />
+              LV {xp.level}
+            </span>
+            <div className="relative flex-1 overflow-hidden rounded-full border border-border bg-secondary/40">
+              <div
+                className="h-2 bg-gradient-to-r from-primary to-accent transition-[width] duration-700"
+                style={{ width: `${xp.pct * 100}%` }}
+              />
+            </div>
+            <span className="shrink-0 font-mono text-[9px] tabular-nums text-muted-foreground">
+              {xp.intoLevel}/{xp.needed}
+            </span>
           </div>
         </div>
+        {/* Streak bonus banner */}
+        {streakBonus && streakBonus > 0 ? (
+          <div className="slam-in border-t border-gold/40 bg-gold/15 px-3 py-1.5 sm:px-6">
+            <p className="text-center font-mono text-[10px] uppercase tracking-[0.22em] text-gold">
+              <Flame className="mr-1 inline size-3" />
+              Streak {save.dailyStreak} dia{save.dailyStreak > 1 ? "s" : ""} · +{streakBonus} ouro
+            </p>
+          </div>
+        ) : null}
       </header>
 
       {/* Map — bigger nodes, portrait-friendly viewBox */}

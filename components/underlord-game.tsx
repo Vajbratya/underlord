@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useReducer, useState } from "react"
+import { useEffect, useReducer, useRef, useState } from "react"
 import { TitleScreen } from "@/components/underlord/title"
 import { IntroSequence } from "@/components/underlord/intro"
 import { WarRoom } from "@/components/underlord/war-room"
@@ -8,6 +8,10 @@ import { Briefing } from "@/components/underlord/briefing"
 import { BattleScreen } from "@/components/underlord/battle"
 import { LootScreen } from "@/components/underlord/loot-screen"
 import { SquadPicker } from "@/components/underlord/squad-picker"
+import {
+  AchievementToaster,
+  fireAchievement,
+} from "@/components/underlord/achievement-toast"
 import {
   freshGame,
   loadGame,
@@ -18,31 +22,60 @@ import {
 } from "@/lib/underlord/state"
 import { rollLoot } from "@/lib/underlord/loot"
 import { REGIONS } from "@/lib/underlord/regions"
+import { tickStreak, todayKey, shouldForceRare } from "@/lib/underlord/meta"
 import type { Unit } from "@/lib/underlord/types"
 
-// Module-level cache: names of fallen minions captured at battle end (before
-// the reducer removes them from roster). Read once on the loot screen.
 let fallenNameCache: string[] = []
 
 export function UnderlordGame() {
-  const [state, dispatch] = useReducer(reduce, undefined as unknown as GameState, () => freshGame())
+  const [state, dispatch] = useReducer(reduce, undefined as unknown as GameState, () =>
+    freshGame(),
+  )
   const [hydrated, setHydrated] = useState(false)
   const [hasSave, setHasSave] = useState(false)
   const [showSquadPicker, setShowSquadPicker] = useState(false)
+  const [streakBonusToShow, setStreakBonusToShow] = useState<number | null>(null)
+  const dailyCheckedToday = useRef<string>("")
 
-  /* Hydrate from localStorage on mount */
   useEffect(() => {
     const saved = loadGame()
     setHasSave(saved !== null)
     setHydrated(true)
   }, [])
 
-  /* Persist on save change */
   useEffect(() => {
     if (!hydrated) return
     if (state.phase === "title") return
     persistGame(state)
   }, [state, hydrated])
+
+  /* Daily check-in: fires once per day on entering warroom. */
+  useEffect(() => {
+    if (!hydrated) return
+    if (state.phase !== "warroom") return
+    const today = todayKey()
+    if (state.save.lastPlayedDay === today) return
+    if (dailyCheckedToday.current === today) return
+    dailyCheckedToday.current = today
+    const tick = tickStreak(state.save)
+    dispatch({
+      type: "daily-checkin",
+      bonus: tick.bonus,
+      streak: tick.streak,
+      today: tick.lastDay,
+    })
+    if (tick.bonus > 0) setStreakBonusToShow(tick.bonus)
+    // Achievement: streak unlocks
+    if (tick.streak >= 7) fireAchievement("streak_7")
+    else if (tick.streak >= 3) fireAchievement("streak_3")
+  }, [hydrated, state.phase, state.save])
+
+  /* Auto-dismiss streak banner. */
+  useEffect(() => {
+    if (streakBonusToShow == null) return
+    const t = window.setTimeout(() => setStreakBonusToShow(null), 3500)
+    return () => window.clearTimeout(t)
+  }, [streakBonusToShow])
 
   if (!hydrated) {
     return (
@@ -54,49 +87,46 @@ export function UnderlordGame() {
     )
   }
 
-  /* ---------- Phase routing ---------- */
-
   if (state.phase === "title") {
     return (
-      <TitleScreen
-        hasSave={hasSave}
-        onStart={() => {
-          // Fresh run
-          const fresh = freshGame()
-          dispatch({ type: "phase", phase: "intro" })
-          // Replace state with fresh save by setting name (and resetting via reset action)
-          dispatch({ type: "reset" })
-          dispatch({ type: "phase", phase: "intro" })
-          setHasSave(false)
-        }}
-        onContinue={() => {
-          const saved = loadGame()
-          if (saved) {
-            // Apply saved state
-            dispatch({ type: "phase", phase: "warroom" })
-            // Force-load via custom path: dispatch a reset then mutate via set-name & equip is too hacky;
-            // simpler: use window reload after writing via existing save (we already loaded above)
-            // We'll handle by reloading state through a small trick — fire phase change + manual sync.
-            // The cleaner pattern: use external loader on mount. We'll set save via repeated dispatches.
-            // Since reducer doesn't expose set-save, we just reload:
-            window.location.reload()
-          } else {
+      <>
+        <TitleScreen
+          hasSave={hasSave}
+          onStart={() => {
             dispatch({ type: "phase", phase: "intro" })
-          }
-        }}
-        onWipe={() => {
-          if (confirm("Apagar save permanentemente? Os 14 séculos voltam.")) {
-            wipeSave()
-            setHasSave(false)
             dispatch({ type: "reset" })
-          }
-        }}
-      />
+            dispatch({ type: "phase", phase: "intro" })
+            setHasSave(false)
+          }}
+          onContinue={() => {
+            const saved = loadGame()
+            if (saved) {
+              dispatch({ type: "phase", phase: "warroom" })
+              window.location.reload()
+            } else {
+              dispatch({ type: "phase", phase: "intro" })
+            }
+          }}
+          onWipe={() => {
+            if (confirm("Apagar save permanentemente? Os 14 séculos voltam.")) {
+              wipeSave()
+              setHasSave(false)
+              dispatch({ type: "reset" })
+            }
+          }}
+        />
+        <AchievementToaster />
+      </>
     )
   }
 
   if (state.phase === "intro") {
-    return <IntroSequence onDone={() => dispatch({ type: "phase", phase: "warroom" })} />
+    return (
+      <>
+        <IntroSequence onDone={() => dispatch({ type: "phase", phase: "warroom" })} />
+        <AchievementToaster />
+      </>
+    )
   }
 
   if (state.phase === "warroom") {
@@ -106,6 +136,7 @@ export function UnderlordGame() {
           save={state.save}
           onPickRegion={(rid) => dispatch({ type: "select-region", regionId: rid })}
           onOpenSquad={() => setShowSquadPicker(true)}
+          streakBonus={streakBonusToShow}
         />
         {showSquadPicker ? (
           <SquadPicker
@@ -114,6 +145,7 @@ export function UnderlordGame() {
             onClose={() => setShowSquadPicker(false)}
           />
         ) : null}
+        <AchievementToaster />
       </>
     )
   }
@@ -125,12 +157,15 @@ export function UnderlordGame() {
       return null
     }
     return (
-      <Briefing
-        region={region}
-        save={state.save}
-        onBack={() => dispatch({ type: "phase", phase: "warroom" })}
-        onCommit={() => dispatch({ type: "phase", phase: "battle" })}
-      />
+      <>
+        <Briefing
+          region={region}
+          save={state.save}
+          onBack={() => dispatch({ type: "phase", phase: "warroom" })}
+          onCommit={() => dispatch({ type: "phase", phase: "battle" })}
+        />
+        <AchievementToaster />
+      </>
     )
   }
 
@@ -144,51 +179,70 @@ export function UnderlordGame() {
       .map((id) => state.save.roster.find((u) => u.id === id))
       .filter((u): u is NonNullable<typeof u> => Boolean(u))
     return (
-      <BattleScreen
-        squad={squad}
-        region={region}
-        onComplete={(result) => {
-          const goldEarned = result.victory ? region.goldReward : 0
-          const loot = result.victory ? rollLoot(region.stage, 2) : []
-          const fallenIds = result.fallenIds
-          // Capture names BEFORE reducer prunes roster
-          fallenNameCache = fallenIds
-            .map((id) => state.save.roster.find((u) => u.id === id)?.name)
-            .filter((n): n is string => Boolean(n))
-          // Apply
-          dispatch({
-            type: "apply-result",
-            result: {
-              victory: result.victory,
-              goldEarned,
+      <>
+        <BattleScreen
+          squad={squad}
+          region={region}
+          onComplete={(result) => {
+            const goldEarned = result.victory ? region.goldReward : 0
+            const forceRare = shouldForceRare(state.save) && result.victory
+            const loot = result.victory ? rollLoot(region.stage, 2, forceRare) : []
+            const fallenIds = result.fallenIds
+            fallenNameCache = fallenIds
+              .map((id) => state.save.roster.find((u) => u.id === id)?.name)
+              .filter((n): n is string => Boolean(n))
+            dispatch({
+              type: "apply-result",
+              result: {
+                victory: result.victory,
+                fallenIds,
+                killedHeroIds: result.killedHeroIds,
+                comboHigh: result.comboHigh,
+                flawless: result.flawless,
+                critsLanded: result.critsLanded,
+                firstBlood: result.firstBlood,
+              },
+              region,
               loot,
-              fallenIds,
-              killedHeroIds: result.killedHeroIds,
-              regionId: region.id,
-            },
-            region,
-          })
-          dispatch({ type: "phase", phase: "loot" })
-        }}
-      />
+              goldEarned,
+            })
+            dispatch({ type: "phase", phase: "loot" })
+          }}
+        />
+        <AchievementToaster />
+      </>
     )
   }
 
   if (state.phase === "loot" && state.lastResult) {
     const fallenNames = fallenNameCache
+    const result = state.lastResult
     return (
-      <LootScreen
-        victory={state.lastResult.victory}
-        goldEarned={state.lastResult.goldEarned}
-        loot={state.lastResult.loot}
-        fallenNames={fallenNames}
-        killedHeroIds={state.lastResult.killedHeroIds}
-        onContinue={() => dispatch({ type: "phase", phase: "warroom" })}
-      />
+      <>
+        <LootScreen
+          victory={result.victory}
+          goldEarned={result.goldEarned}
+          xpEarned={result.xpEarned}
+          levelsGained={result.levelsGained}
+          comboHigh={result.comboHigh}
+          flawless={result.flawless}
+          loot={result.loot}
+          fallenNames={fallenNames}
+          killedHeroIds={result.killedHeroIds}
+          totalXP={state.save.xp}
+          onContinue={() => {
+            // Fire achievement toasts on the way back to warroom
+            for (const id of result.unlockedAchievements) {
+              fireAchievement(id)
+            }
+            dispatch({ type: "phase", phase: "warroom" })
+          }}
+        />
+        <AchievementToaster />
+      </>
     )
   }
 
-  // Fallback
   return (
     <div className="grid min-h-dvh place-items-center bg-background">
       <button

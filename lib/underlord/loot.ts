@@ -129,8 +129,14 @@ export const LOOT_POOL: LootItem[] = [
   },
 ]
 
-/** Pick `count` items biased by region tier. Higher tier = better drops. */
-export function rollLoot(stage: number, count: number): LootItem[] {
+/** Pick `count` items biased by region tier. Higher tier = better drops.
+ * If `forceRare` is true, the first item is guaranteed cursed-or-better
+ * (pity timer to prevent dry streaks). */
+export function rollLoot(
+  stage: number,
+  count: number,
+  forceRare: boolean = false,
+): LootItem[] {
   const pool = LOOT_POOL.slice()
   const tier =
     stage >= 12
@@ -142,7 +148,12 @@ export function rollLoot(stage: number, count: number): LootItem[] {
           : ['common', 'common', 'uncommon']
   const out: LootItem[] = []
   for (let i = 0; i < count; i++) {
-    const want = tier[Math.floor(Math.random() * tier.length)] as LootRarity
+    let want: LootRarity
+    if (forceRare && i === 0) {
+      want = stage >= 8 ? 'relic' : 'cursed'
+    } else {
+      want = tier[Math.floor(Math.random() * tier.length)] as LootRarity
+    }
     const candidates = pool.filter((p) => p.rarity === want)
     const pick = candidates[Math.floor(Math.random() * candidates.length)]
     if (pick) out.push(pick)

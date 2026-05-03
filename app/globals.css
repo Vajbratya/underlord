@@ -273,3 +273,58 @@
 
 .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 0.75rem); }
 .pt-safe { padding-top: max(env(safe-area-inset-top), 0.5rem); }
+
+/* ========== Tiered shakes (battle hit feedback) ========== */
+@keyframes shake-1 {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-2px, 1px); }
+  75% { transform: translate(2px, -1px); }
+}
+@keyframes shake-2 {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-5px, 2px); }
+  40% { transform: translate(4px, -2px); }
+  60% { transform: translate(-3px, 1px); }
+  80% { transform: translate(3px, -1px); }
+}
+@keyframes shake-3 {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-9px, 4px) rotate(-0.5deg); }
+  25% { transform: translate(8px, -5px) rotate(0.4deg); }
+  40% { transform: translate(-6px, 3px) rotate(-0.3deg); }
+  60% { transform: translate(7px, -2px) rotate(0.2deg); }
+  80% { transform: translate(-4px, 2px); }
+}
+.shake-1 { animation: shake-1 0.18s ease-in-out; }
+.shake-2 { animation: shake-2 0.32s cubic-bezier(.36,.07,.19,.97); }
+.shake-3 { animation: shake-3 0.42s cubic-bezier(.36,.07,.19,.97); }
+
+/* Active unit rotating ring */
+@keyframes active-ring-spin {
+  from { transform: rotate(0); }
+  to { transform: rotate(360deg); }
+}
+.active-ring { animation: active-ring-spin 6s linear infinite; }
+
+/* Achievement toast pop */
+@keyframes achievement-pop {
+  0% { transform: translate(0, -120%) scale(0.7); opacity: 0; }
+  60% { transform: translate(0, 8px) scale(1.05); opacity: 1; }
+  100% { transform: translate(0, 0) scale(1); opacity: 1; }
+}
+.achievement-pop { animation: achievement-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+/* XP bar glow when filling */
+@keyframes xp-fill-glow {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.72 0.17 60 / 0); }
+  50% { box-shadow: 0 0 16px 2px oklch(0.72 0.17 60 / 0.6); }
+}
+.xp-fill-glow { animation: xp-fill-glow 1.4s ease-in-out infinite; }
+
+/* Counter ticker pulse */
+@keyframes counter-tick {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.counter-tick { animation: counter-tick 0.18s ease-out; }
