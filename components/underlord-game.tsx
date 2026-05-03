@@ -224,12 +224,11 @@ export function UnderlordGame() {
           goldEarned={result.goldEarned}
           xpEarned={result.xpEarned}
           levelsGained={result.levelsGained}
-          comboHigh={result.comboHigh}
+          comboMax={result.comboHigh}
           flawless={result.flawless}
           loot={result.loot}
           fallenNames={fallenNames}
           killedHeroIds={result.killedHeroIds}
-          totalXP={state.save.xp}
           onContinue={() => {
             // Fire achievement toasts on the way back to warroom
             for (const id of result.unlockedAchievements) {

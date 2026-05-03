@@ -1,12 +1,12 @@
 "use client"
 
 import Image from "next/image"
-import { ChevronRight, Coins, Skull, Trophy } from "lucide-react"
+import { ChevronRight, Coins, Flame, Skull, Sparkles, Trophy, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RARITY_LABEL, RARITY_TONE } from "@/lib/underlord/loot"
 import type { LootItem } from "@/lib/underlord/types"
 import { rand, UNDERLORD_LINES, getHeroById } from "@/lib/elementum-flavor"
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 export function LootScreen({
   victory,
@@ -14,6 +14,10 @@ export function LootScreen({
   loot,
   fallenNames,
   killedHeroIds,
+  xpEarned = 0,
+  levelsGained = 0,
+  comboMax = 0,
+  flawless = false,
   onContinue,
 }: {
   victory: boolean
@@ -21,8 +25,31 @@ export function LootScreen({
   loot: LootItem[]
   fallenNames: string[]
   killedHeroIds: string[]
+  xpEarned?: number
+  levelsGained?: number
+  comboMax?: number
+  flawless?: boolean
   onContinue: () => void
 }) {
+  // Gold ticker animates count-up for satisfying victory pop
+  const [goldShown, setGoldShown] = useState(0)
+  useEffect(() => {
+    if (!victory || goldEarned === 0) {
+      setGoldShown(goldEarned)
+      return
+    }
+    let frame = 0
+    const total = 28
+    const id = window.setInterval(() => {
+      frame++
+      setGoldShown(Math.round((frame / total) * goldEarned))
+      if (frame >= total) {
+        setGoldShown(goldEarned)
+        window.clearInterval(id)
+      }
+    }, 28)
+    return () => window.clearInterval(id)
+  }, [victory, goldEarned])
   const headline = useMemo(
     () => (victory ? rand(UNDERLORD_LINES.roundWin) : rand(UNDERLORD_LINES.defeat)),
     [victory],
@@ -120,15 +147,49 @@ export function LootScreen({
           {/* Gold + Loot */}
           {victory ? (
             <>
-              <div className="mt-3 flex items-center justify-between rounded-lg border border-gold/40 bg-card/60 px-3 py-2.5 sm:mt-4 sm:px-4 sm:py-3">
-                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-                  Ouro Saqueado
-                </span>
-                <span className="flex items-center gap-2 font-display text-lg font-black text-gold sm:text-xl">
-                  <Coins className="size-5" />
-                  {goldEarned}
-                </span>
+              {/* Reward chips: XP, level, combo, flawless */}
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5">
+                <RewardChip
+                  icon={<Zap className="size-3.5" />}
+                  label="XP"
+                  value={`+${xpEarned}`}
+                  tone="accent"
+                />
+                <RewardChip
+                  icon={<Coins className="size-3.5" />}
+                  label="Ouro"
+                  value={`+${goldShown}`}
+                  tone="gold"
+                  ticking={goldShown < goldEarned}
+                />
+                {comboMax >= 2 ? (
+                  <RewardChip
+                    icon={<Flame className="size-3.5" />}
+                    label="Combo Máx"
+                    value={`x${comboMax}`}
+                    tone="primary"
+                  />
+                ) : null}
+                {flawless ? (
+                  <RewardChip
+                    icon={<Sparkles className="size-3.5" />}
+                    label="Impecável"
+                    value="zero perdas"
+                    tone="gold"
+                  />
+                ) : null}
               </div>
+
+              {levelsGained > 0 ? (
+                <div className="slam-in mt-3 rounded-lg border-2 border-accent bg-accent/15 px-3 py-2.5 text-center sm:px-4 sm:py-3">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">
+                    SUBIU DE NÍVEL
+                  </p>
+                  <p className="mt-0.5 font-display text-lg font-black uppercase tracking-tight text-foreground sm:text-xl">
+                    +{levelsGained} {levelsGained > 1 ? "níveis" : "nível"}
+                  </p>
+                </div>
+              ) : null}
 
               {loot.length ? (
                 <div className="mt-3 sm:mt-4">
@@ -192,6 +253,51 @@ export function LootScreen({
           DE VOLTA À SALA DE GUERRA
           <ChevronRight className="size-5" />
         </button>
+      </div>
+    </div>
+  )
+}
+
+function RewardChip({
+  icon,
+  label,
+  value,
+  tone,
+  ticking,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  tone: "accent" | "primary" | "gold" | "destructive"
+  ticking?: boolean
+}) {
+  const toneMap: Record<typeof tone, { bg: string; border: string; text: string }> = {
+    accent: { bg: "bg-accent/10", border: "border-accent/50", text: "text-accent" },
+    primary: { bg: "bg-primary/10", border: "border-primary/50", text: "text-primary" },
+    gold: { bg: "bg-gold/10", border: "border-gold/50", text: "text-gold" },
+    destructive: {
+      bg: "bg-destructive/10",
+      border: "border-destructive/50",
+      text: "text-destructive",
+    },
+  }
+  const t = toneMap[tone]
+  return (
+    <div className={cn("flex items-center gap-2 rounded-lg border-2 px-2.5 py-2", t.border, t.bg)}>
+      <span className={cn("shrink-0", t.text)}>{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="font-mono text-[8px] uppercase tracking-[0.22em] text-muted-foreground">
+          {label}
+        </p>
+        <p
+          className={cn(
+            "truncate font-display text-sm font-black uppercase tabular-nums leading-none",
+            t.text,
+            ticking && "counter-tick",
+          )}
+        >
+          {value}
+        </p>
       </div>
     </div>
   )
