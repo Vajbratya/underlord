@@ -1,4 +1,5 @@
 import { CHAIN_LENGTH, MOVES, MOVE_LIST, type Move } from './elementum-types'
+import { getHero } from './elementum-flavor'
 
 export type CPULevel = 'novice' | 'smart' | 'predictive' | 'boss'
 
@@ -9,6 +10,9 @@ export type CPUStats = {
   level: CPULevel
   name: string
   intro: string
+  /** Hero id from flavor lib — used to pull taunts/gloats/bio in UI. */
+  heroId: string
+  title: string
 }
 
 export function getCPUStats(stage: number): CPUStats {
@@ -16,27 +20,22 @@ export function getCPUStats(stage: number): CPUStats {
   const critChance = Math.min(0.25, (stage - 1) * 0.022)
 
   let level: CPULevel = 'novice'
-  let name = 'APRENDIZ-01'
-  let intro = 'Aprendiz. Lança feitiços ao acaso.'
-  if (stage <= 2) {
-    level = 'novice'
-    name = 'APRENDIZ-' + String(stage).padStart(2, '0')
-    intro = 'Aprendiz. Lança feitiços ao acaso.'
-  } else if (stage <= 5) {
-    level = 'smart'
-    name = 'ADEPTO-V' + (stage - 2)
-    intro = 'Estuda seus padrões mágicos.'
-  } else if (stage <= 9) {
-    level = 'predictive'
-    name = 'FEITICEIRO-X' + (stage - 5)
-    intro = 'Lê suas intenções arcanas.'
-  } else {
-    level = 'boss'
-    name = 'ARCANUM-' + (stage - 9).toString().padStart(2, '0')
-    intro = 'Calcula. Pune. Aniquila.'
-  }
+  if (stage <= 2) level = 'novice'
+  else if (stage <= 5) level = 'smart'
+  else if (stage <= 9) level = 'predictive'
+  else level = 'boss'
 
-  return { stage, hp, critChance, level, name, intro }
+  const hero = getHero(stage)
+  return {
+    stage,
+    hp,
+    critChance,
+    level,
+    name: hero.name,
+    intro: hero.bio,
+    heroId: hero.id,
+    title: hero.title,
+  }
 }
 
 function randomMove(): Move {

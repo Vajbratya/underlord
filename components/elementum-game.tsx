@@ -62,6 +62,7 @@ import {
   type Tier,
 } from "@/lib/elementum-types"
 import { cpuPickChain, cpuRollsCrit, getCPUStats, type CPUStats } from "@/lib/elementum-cpu"
+import { getHero, rand, UNDERLORD_LINES, type Hero } from "@/lib/elementum-flavor"
 import {
   loadRecords,
   saveRecords,
@@ -238,6 +239,7 @@ export function ElementumGame() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [particles, setParticles] = useState<Particle[]>([])
   const [banner, setBanner] = useState<Banner | null>(null)
+  const [heroIntro, setHeroIntro] = useState<{ stage: number; hero: Hero } | null>(null)
   const [hpFlash, setHpFlash] = useState<"player" | "cpu" | null>(null)
   const [screenShake, setScreenShake] = useState(false)
   const [muted, setMuted] = useState(false)
@@ -372,9 +374,10 @@ export function ElementumGame() {
         setPlayerShield(0)
       }
       setPhase("choosing")
-      const tone: Banner["tone"] =
-        stats.level === "boss" ? "destructive" : stats.level === "predictive" ? "accent" : "primary"
-      showBanner(`STAGE ${stageNumber}`, `${stats.name} · ${stats.intro}`, tone)
+      const hero = getHero(stageNumber)
+      setHeroIntro({ stage: stageNumber, hero })
+      // Auto-dismiss the cinematic intro after a beat
+      window.setTimeout(() => setHeroIntro(null), stats.level === "boss" ? 3200 : 2400)
       if (stats.level === "boss") {
         play("bossIntro")
         haptic([30, 30, 30, 30, 80])
@@ -382,7 +385,7 @@ export function ElementumGame() {
         play("drop")
       }
     },
-    [play, showBanner],
+    [play],
   )
 
   const newRun = useCallback(() => {
@@ -1118,6 +1121,7 @@ export function ElementumGame() {
               powerUpsUsed,
             }}
             records={records}
+            killerHero={cpuStats.heroId}
             onRestart={newRun}
           />
         ) : (
@@ -1154,6 +1158,17 @@ export function ElementumGame() {
 
       {/* Banner overlay */}
       {banner ? <BannerOverlay banner={banner} key={banner.id} /> : null}
+
+      {/* Hero intro overlay — cinematic name drop for each stage */}
+      {heroIntro ? (
+        <HeroIntroOverlay
+          stage={heroIntro.stage}
+          hero={heroIntro.hero}
+          isBoss={cpuStats.level === "boss"}
+          onDismiss={() => setHeroIntro(null)}
+          key={`hero-${heroIntro.stage}`}
+        />
+      ) : null}
 
       {/* Toasts */}
       <div
@@ -2616,6 +2631,7 @@ function GameOverScreen({
   won,
   stats,
   records,
+  killerHero,
   onRestart,
 }: {
   won: boolean
@@ -2629,9 +2645,16 @@ function GameOverScreen({
     powerUpsUsed: number
   }
   records: Records
+  killerHero: string
   onRestart: () => void
 }) {
   const isNewBest = stats.stageReached >= records.bestStage && stats.stageReached > 1
+  // Pull the cinematic line — hero gloats if they killed you, Underlord scoffs if you survived
+  const killer = useMemo(() => getHero(stats.stageReached), [stats.stageReached])
+  const headline = won ? rand(UNDERLORD_LINES.victory) : killer.gloat
+  const speaker = won ? "UNDERLORD" : killer.name
+  const speakerSub = won ? "(você, finalmente em paz)" : killer.title
+
   return (
     <section className="flex flex-1 flex-col items-center justify-center py-4 text-center sm:py-8">
       <div
@@ -2650,10 +2673,39 @@ function GameOverScreen({
           won ? "text-primary" : "text-destructive",
         )}
       >
-        {won ? "VITÓRIA" : "DERROTA"}
+        {won ? "TORRE LIMPA" : "MORTO POR UM CUZÃO"}
       </h2>
-      <p className="mt-2 max-w-md text-pretty text-sm text-muted-foreground sm:text-base">
-        Chegou ao <span className="font-bold text-foreground">Stage {stats.stageReached}</span>.{" "}
+
+      {/* Speech bubble from the killer / underlord */}
+      <div
+        className={cn(
+          "slam-in mt-5 w-full max-w-md rounded-lg border-2 px-4 py-3 text-left font-mono backdrop-blur sm:px-5 sm:py-4",
+          won
+            ? "border-primary/50 bg-primary/10"
+            : "border-destructive/50 bg-destructive/10",
+        )}
+      >
+        <p className="text-[9px] font-bold tracking-[0.3em] text-muted-foreground sm:text-[10px]">
+          {speaker}
+        </p>
+        <p className="text-[9px] tracking-[0.18em] text-muted-foreground/70 sm:text-[10px]">
+          {speakerSub}
+        </p>
+        <p
+          className={cn(
+            "mt-2 text-balance text-base font-black leading-snug sm:text-xl",
+            won ? "text-primary" : "text-destructive",
+          )}
+        >
+          <span className="opacity-60">&ldquo;</span>
+          {headline}
+          <span className="opacity-60">&rdquo;</span>
+        </p>
+      </div>
+
+      <p className="mt-4 max-w-md text-pretty text-sm text-muted-foreground sm:text-base">
+        Chegou até o <span className="font-bold text-foreground">Stage {stats.stageReached}</span>{" "}
+        antes de {won ? "fazer o reino calar a boca" : "ser derrotado por essa criatura insuportável"}.{" "}
         {isNewBest ? (
           <span className="text-accent font-bold">NOVO RECORDE!</span>
         ) : (
@@ -2820,5 +2872,86 @@ function BannerOverlay({ banner }: { banner: Banner }) {
         </div>
       </div>
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Hero intro — cinematic asshole-hero card                             */
+/* ------------------------------------------------------------------ */
+
+function HeroIntroOverlay({
+  stage,
+  hero,
+  isBoss,
+  onDismiss,
+}: {
+  stage: number
+  hero: Hero
+  isBoss: boolean
+  onDismiss: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onDismiss}
+      aria-label="Pular apresentação"
+      className="fixed inset-0 z-50 grid place-items-center bg-background/80 px-4 backdrop-blur-sm"
+    >
+      <div
+        className={cn(
+          "slam-in relative w-full max-w-md rounded-lg border-2 bg-card/95 p-5 text-left font-mono shadow-2xl sm:p-7",
+          isBoss
+            ? "border-destructive/70 shadow-[0_0_60px_oklch(0.66_0.24_22/0.35)]"
+            : "border-accent/60 shadow-[0_0_40px_oklch(0.86_0.18_92/0.25)]",
+        )}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className="rounded-sm border border-border bg-background/80 px-1.5 py-0.5 text-[9px] tracking-[0.3em] text-muted-foreground sm:text-[10px]">
+            STAGE {String(stage).padStart(2, "0")}
+          </span>
+          <span
+            className={cn(
+              "rounded-sm border px-1.5 py-0.5 text-[9px] font-bold tracking-[0.25em] sm:text-[10px]",
+              isBoss
+                ? "border-destructive/60 bg-destructive/15 text-destructive"
+                : "border-accent/60 bg-accent/15 text-accent",
+            )}
+          >
+            {isBoss ? "BOSS" : "INTRUSO"}
+          </span>
+        </div>
+
+        <h2
+          className={cn(
+            "mt-4 text-balance text-2xl font-black leading-tight tracking-tight sm:text-4xl",
+            isBoss ? "text-destructive" : "text-foreground",
+          )}
+        >
+          {hero.name}
+        </h2>
+        <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground sm:text-xs">
+          {hero.title}
+        </p>
+
+        <div className="mt-4 rounded-md border border-border/60 bg-background/40 p-3 text-[12px] leading-relaxed text-foreground/90 sm:text-sm">
+          <span className="mr-1 font-black text-accent">&ldquo;</span>
+          {hero.entry}
+          <span className="ml-0.5 font-black text-accent">&rdquo;</span>
+        </div>
+
+        <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground sm:text-[12px]">
+          {hero.bio}
+        </p>
+
+        <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/50 pt-3">
+          <span className="text-[9px] tracking-[0.25em] text-muted-foreground sm:text-[10px]">
+            UNDERLORD: já cansei.
+          </span>
+          <span className="text-[9px] tracking-[0.25em] text-muted-foreground sm:text-[10px]">
+            tap para continuar
+          </span>
+        </div>
+      </div>
+    </button>
   )
 }

@@ -1,31 +1,36 @@
-import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
-import './globals.css'
+import type { Metadata, Viewport } from "next"
+import { Cinzel, JetBrains_Mono, Inter } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
+import "./globals.css"
 
-const geist = Geist({
-  subsets: ['latin'],
-  variable: '--font-geist',
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
 })
-const geistMono = Geist_Mono({
-  subsets: ['latin'],
-  variable: '--font-geist-mono',
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  weight: ["500", "700", "900"],
+  variable: "--font-display",
+})
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
 })
 
 export const metadata: Metadata = {
-  title: 'ELEMENTUM — Duelo Arcano com Power-Ups',
+  title: "UNDERLORD — Ashes of the Sunken Crown",
   description:
-    'Lance Pyro, Hydro e Terra para destruir a torre arcana. Sistema de HP, combo, ultimate e grimório de feitiços. Suba pela hierarquia e enfrente o ARCANUM.',
-  generator: 'v0.app',
+    "Turn-based dark-fantasy tactics. Command minion broods, raid the overworld, and reclaim the Sunken Crown as the resurrected Underlord.",
+  generator: "v0.app",
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0a0e1f',
+  themeColor: "#1a0f0a",
   userScalable: false,
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  viewportFit: 'cover',
+  viewportFit: "cover",
 }
 
 export default function RootLayout({
@@ -34,10 +39,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="pt-BR" className={`${geist.variable} ${geistMono.variable} bg-background`}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${cinzel.variable} ${jetbrains.variable} bg-background`}
+    >
       <body className="font-sans antialiased min-h-dvh">
         {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
   )
