@@ -7,6 +7,7 @@ import { RARITY_LABEL, RARITY_TONE } from "@/lib/underlord/loot"
 import type { LootItem } from "@/lib/underlord/types"
 import { rand, UNDERLORD_LINES, getHeroById } from "@/lib/elementum-flavor"
 import { useEffect, useMemo, useState } from "react"
+import { Atmosphere } from "./atmosphere"
 
 export function LootScreen({
   victory,
@@ -56,9 +57,14 @@ export function LootScreen({
   )
 
   return (
-    <div className="flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe">
-      <main className="flex flex-1 flex-col items-center justify-start px-3 py-5 sm:justify-center sm:px-4 sm:py-6">
-        <div className="grain w-full max-w-md">
+    <div className="relative flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe">
+      <Atmosphere
+        src={victory ? "/images/bg/victory.jpg" : "/images/bg/defeat.jpg"}
+        intensity="heavy"
+        embers={victory ? 22 : 8}
+      />
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-start px-3 py-5 sm:justify-center sm:px-4 sm:py-6">
+        <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center">
             <span
@@ -244,7 +250,7 @@ export function LootScreen({
         </div>
       </main>
 
-      <div className="border-t border-border bg-card/60 p-3 backdrop-blur sm:p-4">
+      <div className="relative z-10 border-t border-border/60 bg-background/90 p-3 backdrop-blur sm:p-4">
         <button
           type="button"
           onClick={onContinue}

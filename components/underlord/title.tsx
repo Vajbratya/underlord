@@ -1,9 +1,9 @@
 "use client"
 
-import Image from "next/image"
 import { Crown, Skull, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { haptic } from "@/lib/underlord/haptics"
+import { Atmosphere } from "./atmosphere"
 
 export function TitleScreen({
   hasSave,
@@ -25,65 +25,59 @@ export function TitleScreen({
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe">
-      {/* Cover art */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <Image
-          src="/images/cover.jpg"
-          alt=""
-          aria-hidden="true"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover opacity-55"
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 25%, transparent 0%, oklch(0.10 0.012 22 / 0.5) 55%, oklch(0.10 0.012 22 / 0.97) 92%)",
-          }}
-        />
-        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-background via-background/90 to-transparent" />
-        {Array.from({ length: 14 }).map((_, i) => (
-          <span
-            key={i}
-            className="ember-rise absolute size-1 rounded-full bg-accent"
-            style={{
-              left: `${(i * 7.3) % 100}%`,
-              animationDelay: `${(i * 0.5) % 9}s`,
-              ["--drift" as string]: `${(i % 2 === 0 ? -1 : 1) * (10 + (i % 5) * 8)}px`,
-              opacity: 0.7,
-            }}
-          />
-        ))}
-      </div>
+      <Atmosphere src="/images/bg/title.jpg" intensity="default" embers={22} />
 
       {/* Top brand strip */}
-      <header className="relative z-10 flex w-full items-center justify-between gap-2 px-4 pt-4 sm:px-6">
-        <span className="font-mono text-[9px] tracking-[0.25em] text-muted-foreground sm:text-[10px] sm:tracking-[0.3em]">
+      <header className="relative z-10 flex w-full items-center justify-between gap-2 px-5 pt-4 sm:px-8">
+        <span className="font-mono text-[9px] tracking-[0.32em] text-muted-foreground sm:text-[10px] sm:tracking-[0.36em]">
           VAEL&apos;THRAND · 814
         </span>
         <span
           className={cn(
-            "rounded-full border px-2 py-0.5 font-mono text-[8px] tracking-[0.25em] sm:text-[9px]",
+            "rounded-sm border px-2 py-1 font-mono text-[8px] tracking-[0.28em] sm:text-[9px]",
             hasSave
-              ? "border-accent/60 bg-accent/10 text-accent"
+              ? "border-accent/70 bg-accent/15 text-accent"
               : "border-border bg-card/60 text-muted-foreground",
           )}
         >
-          {hasSave ? "SAVE" : "NOVO"}
+          {hasSave ? "SAVE PRESENTE" : "NOVO REINADO"}
         </span>
       </header>
 
-      {/* Title block — pushed to upper-middle so the lower 45% stays clear for thumbs */}
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-end px-4 pb-2 text-center sm:px-6">
-        <p className="font-mono text-[9px] uppercase tracking-[0.32em] text-accent sm:text-xs">
+      {/* Title block */}
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-end px-5 pb-3 text-center sm:px-8">
+        {/* Decorative chapter mark */}
+        <div className="mb-3 flex items-center gap-3 opacity-90">
+          <span className="h-px w-10 bg-gradient-to-r from-transparent to-accent/60" />
+          <span className="font-mono text-[9px] uppercase tracking-[0.4em] text-accent sm:text-[10px]">
+            Capítulo Zero
+          </span>
+          <span className="h-px w-10 bg-gradient-to-l from-transparent to-accent/60" />
+        </div>
+
+        <p className="font-mono text-[9px] uppercase tracking-[0.32em] text-foreground/85 sm:text-xs">
           As Cinzas da Coroa Submersa
         </p>
-        <h1 className="mt-1 font-display text-[18vw] font-black uppercase leading-[0.82] tracking-tight text-foreground glow-text sm:text-[8rem]">
+
+        {/* Hero title with stacked text-shadow for cinematic depth */}
+        <h1
+          className="mt-2 font-display text-[19vw] font-black uppercase leading-[0.82] tracking-tight text-foreground sm:text-[8.5rem]"
+          style={{
+            textShadow:
+              "0 0 30px oklch(0.55 0.21 22 / 0.55), 0 0 60px oklch(0.72 0.17 60 / 0.30), 0 4px 0 oklch(0.10 0.012 22)",
+          }}
+        >
           Underlord
         </h1>
-        <p className="mt-3 max-w-xs text-balance text-base font-bold leading-tight text-foreground/95 sm:max-w-sm sm:text-lg">
+
+        {/* Underline ornament */}
+        <div className="mt-2 flex items-center gap-2 opacity-90">
+          <span className="h-px w-12 bg-gradient-to-r from-transparent to-primary" />
+          <span className="size-1.5 rotate-45 bg-primary" />
+          <span className="h-px w-12 bg-gradient-to-l from-transparent to-primary" />
+        </div>
+
+        <p className="mt-4 max-w-xs text-balance text-base font-bold leading-tight text-foreground sm:max-w-md sm:text-lg">
           Você foi enterrado por{" "}
           <span className="text-primary">14 séculos</span>.
           <br />
@@ -92,21 +86,29 @@ export function TitleScreen({
       </main>
 
       {/* PRIMARY ACTION ZONE — bottom 40% reserved for thumbs */}
-      <footer className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-2.5 px-4 pb-5 sm:px-6 sm:pb-6">
+      <footer className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-2.5 px-5 pb-6 sm:px-8 sm:pb-7">
         {hasSave ? (
           <>
             <button
               type="button"
               onClick={tap(onContinue)}
-              className="pulse-glow flex h-16 items-center justify-center gap-3 rounded-md border-2 border-primary bg-primary px-5 font-display text-base font-black uppercase tracking-[0.22em] text-primary-foreground transition active:scale-[0.97] sm:h-[4.5rem] sm:text-lg sm:tracking-[0.25em]"
+              className="pulse-glow group relative flex h-16 items-center justify-center gap-3 overflow-hidden rounded-md border-2 border-primary bg-primary px-5 font-display text-base font-black uppercase tracking-[0.24em] text-primary-foreground transition active:scale-[0.97] sm:h-[4.5rem] sm:text-lg sm:tracking-[0.28em]"
+              style={{
+                boxShadow:
+                  "inset 0 1px 0 oklch(1 0 0 / 0.18), inset 0 -2px 0 oklch(0 0 0 / 0.35), 0 6px 24px oklch(0.55 0.21 22 / 0.45)",
+              }}
             >
               <Skull className="size-5 sm:size-6" />
               CONTINUAR
+              <span
+                className="absolute inset-y-0 left-[-30%] w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-[400%]"
+                aria-hidden="true"
+              />
             </button>
             <button
               type="button"
               onClick={tap(onStart)}
-              className="flex h-12 items-center justify-center gap-2 rounded-md border-2 border-border bg-card/80 px-4 font-display text-xs font-black uppercase tracking-[0.22em] text-foreground transition active:scale-[0.97] hover:border-accent/60 sm:text-sm"
+              className="flex h-12 items-center justify-center gap-2 rounded-md border-2 border-border bg-card/85 px-4 font-display text-xs font-black uppercase tracking-[0.24em] text-foreground backdrop-blur transition active:scale-[0.97] hover:border-accent/60 sm:text-sm"
             >
               <Crown className="size-4" />
               NOVA CRUZADA
@@ -114,7 +116,7 @@ export function TitleScreen({
             <button
               type="button"
               onClick={tap(onWipe)}
-              className="flex h-9 items-center justify-center gap-2 rounded-md border border-border/50 bg-background/40 font-mono text-[9px] uppercase tracking-[0.3em] text-muted-foreground backdrop-blur transition hover:border-destructive/40 hover:text-destructive"
+              className="flex h-9 items-center justify-center gap-2 rounded-md border border-border/40 bg-background/30 font-mono text-[9px] uppercase tracking-[0.32em] text-muted-foreground backdrop-blur transition hover:border-destructive/40 hover:text-destructive"
             >
               <Trash2 className="size-3" />
               apagar tudo
@@ -124,14 +126,22 @@ export function TitleScreen({
           <button
             type="button"
             onClick={tap(onStart)}
-            className="pulse-glow flex h-[4.5rem] items-center justify-center gap-3 rounded-md border-2 border-primary bg-primary px-5 font-display text-lg font-black uppercase tracking-[0.22em] text-primary-foreground transition active:scale-[0.97] sm:h-20 sm:text-xl sm:tracking-[0.25em]"
+            className="pulse-glow group relative flex h-[4.5rem] items-center justify-center gap-3 overflow-hidden rounded-md border-2 border-primary bg-primary px-5 font-display text-lg font-black uppercase tracking-[0.24em] text-primary-foreground transition active:scale-[0.97] sm:h-20 sm:text-xl sm:tracking-[0.28em]"
+            style={{
+              boxShadow:
+                "inset 0 1px 0 oklch(1 0 0 / 0.18), inset 0 -2px 0 oklch(0 0 0 / 0.35), 0 8px 32px oklch(0.55 0.21 22 / 0.55)",
+            }}
           >
             <Crown className="size-6 sm:size-7" />
             BAIXAR A LENHA
+            <span
+              className="absolute inset-y-0 left-[-30%] w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-[400%]"
+              aria-hidden="true"
+            />
           </button>
         )}
-        <p className="pt-1 text-center font-mono text-[8px] tracking-[0.3em] text-muted-foreground/60 sm:text-[9px]">
-          v0.3 · vertical slice
+        <p className="pt-1 text-center font-mono text-[8px] tracking-[0.34em] text-muted-foreground/70 sm:text-[9px]">
+          v0.4 · vertical slice
         </p>
       </footer>
     </div>

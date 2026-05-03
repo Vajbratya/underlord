@@ -7,6 +7,7 @@ import type { Region, SaveState } from "@/lib/underlord/types"
 import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { getHeroById } from "@/lib/elementum-flavor"
 import { haptic } from "@/lib/underlord/haptics"
+import { Atmosphere } from "./atmosphere"
 
 const TONE_TO_VAR: Record<string, string> = {
   primary: "var(--primary)",
@@ -36,8 +37,9 @@ export function Briefing({
     .filter((h): h is NonNullable<typeof h> => h !== null)
 
   return (
-    <div className="flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe">
-      <header className="flex items-center justify-between gap-3 border-b border-border bg-card/60 px-2 py-2 backdrop-blur sm:px-4 sm:py-3">
+    <div className="relative flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe">
+      <Atmosphere src="/images/bg/briefing.jpg" intensity="heavy" embers={12} />
+      <header className="relative z-10 flex items-center justify-between gap-3 border-b border-border/60 bg-background/85 px-2 py-2 backdrop-blur sm:px-4 sm:py-3">
         <button
           type="button"
           onClick={() => {
@@ -54,7 +56,7 @@ export function Briefing({
         </p>
       </header>
 
-      <main className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-3 sm:px-6 sm:py-6">
+      <main className="relative z-10 flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-3 sm:px-6 sm:py-6">
         {/* Region heading — compact on mobile */}
         <div>
           <h1 className="font-display text-2xl font-black uppercase leading-none tracking-tight text-foreground sm:text-4xl">
@@ -162,7 +164,7 @@ export function Briefing({
         </section>
       </main>
 
-      <div className="shrink-0 border-t border-border bg-card/70 px-3 py-3 backdrop-blur sm:px-4 sm:py-4">
+      <div className="relative z-10 shrink-0 border-t border-border/60 bg-background/90 px-3 py-3 backdrop-blur sm:px-4 sm:py-4">
         <button
           type="button"
           onClick={() => {

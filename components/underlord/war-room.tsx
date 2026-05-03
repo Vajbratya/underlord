@@ -2,7 +2,20 @@
 
 import Image from "next/image"
 import { useMemo, useState } from "react"
-import { Coins, Crown, Flame, Map, Skull, Swords, Users, X, Zap } from "lucide-react"
+import {
+  ChevronRight,
+  Coins,
+  Crown,
+  Flame,
+  Lock,
+  Map,
+  Shield,
+  Skull,
+  Swords,
+  Users,
+  X,
+  Zap,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Region, SaveState } from "@/lib/underlord/types"
 import { REGIONS } from "@/lib/underlord/regions"
@@ -10,6 +23,7 @@ import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { getHero } from "@/lib/elementum-flavor"
 import { haptic } from "@/lib/underlord/haptics"
 import { xpProgress } from "@/lib/underlord/meta"
+import { Atmosphere } from "./atmosphere"
 
 const TONE_TO_VAR: Record<string, string> = {
   primary: "var(--primary)",
@@ -21,10 +35,18 @@ const TONE_TO_VAR: Record<string, string> = {
 
 const BIOME_COLOR: Record<Region["biome"], string> = {
   ash: "oklch(0.55 0.21 22)",
-  moor: "oklch(0.45 0.04 220)",
-  iron: "oklch(0.55 0.02 240)",
-  verdant: "oklch(0.55 0.12 140)",
+  moor: "oklch(0.50 0.07 220)",
+  iron: "oklch(0.62 0.025 240)",
+  verdant: "oklch(0.55 0.13 140)",
   crown: "oklch(0.78 0.14 78)",
+}
+
+const BIOME_LABEL: Record<Region["biome"], string> = {
+  ash: "CINZA",
+  moor: "PÂNTANO",
+  iron: "FERRO",
+  verdant: "VIÇO",
+  crown: "COROA",
 }
 
 export function WarRoom({
@@ -54,40 +76,60 @@ export function WarRoom({
   }
 
   return (
-    <div className="flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe">
+    <div className="relative flex min-h-dvh w-full flex-col bg-background pb-safe">
+      <Atmosphere src="/images/bg/war-room.jpg" intensity="heavy" embers={14} />
+
       {/* Header — meta progression */}
-      <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur">
-        <div className="mx-auto w-full max-w-5xl px-3 py-2 sm:px-6 sm:py-2.5">
+      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/85 backdrop-blur">
+        <div className="mx-auto w-full max-w-3xl px-4 pt-3 pb-2.5 sm:px-6">
           {/* Top row: title + chips */}
           <div className="flex items-center gap-2">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <Map className="size-4 shrink-0 text-accent" />
-              <h1 className="truncate font-display text-sm font-black uppercase tracking-[0.18em] text-foreground sm:text-base">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="grid size-7 place-items-center rounded-sm border border-accent/60 bg-accent/15 text-accent">
+                <Map className="size-3.5" />
+              </span>
+              <h1 className="truncate font-display text-base font-black uppercase tracking-[0.22em] text-foreground sm:text-lg">
                 Sala de Guerra
               </h1>
             </div>
             <div className="ml-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar">
               {save.dailyStreak > 0 ? (
-                <span className="flex shrink-0 items-center gap-1 rounded border border-gold/50 bg-gold/10 px-1.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-gold">
+                <span className="flex shrink-0 items-center gap-1 rounded-sm border border-gold/60 bg-gold/15 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-gold">
                   <Flame className="size-3" />
                   {save.dailyStreak}D
                 </span>
               ) : null}
               <Stat icon={<Coins className="size-3.5" />} label="OURO" value={save.gold} />
-              <Stat icon={<Skull className="size-3.5" />} label="HERÓIS" value={`${save.heroesKilled.length}/14`} />
-              <Stat icon={<Crown className="size-3.5" />} label="REG." value={`${cleared}/${total}`} />
+              <Stat
+                icon={<Skull className="size-3.5" />}
+                label="HERÓIS"
+                value={`${save.heroesKilled.length}/14`}
+              />
+              <Stat
+                icon={<Crown className="size-3.5" />}
+                label="REG"
+                value={`${cleared}/${total}`}
+              />
             </div>
           </div>
           {/* XP bar + level */}
-          <div className="mt-2 flex items-center gap-2">
-            <span className="flex shrink-0 items-center gap-1 rounded border border-accent/60 bg-accent/15 px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-wider text-accent">
+          <div className="mt-2.5 flex items-center gap-2">
+            <span className="flex shrink-0 items-center gap-1 rounded-sm border border-accent/70 bg-accent/15 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.18em] text-accent">
               <Zap className="size-3" />
               LV {xp.level}
             </span>
-            <div className="relative flex-1 overflow-hidden rounded-full border border-border bg-secondary/40">
+            <div className="relative h-2.5 flex-1 overflow-hidden rounded-full border border-border bg-secondary/50">
               <div
-                className="h-2 bg-gradient-to-r from-primary to-accent transition-[width] duration-700"
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary via-primary to-accent transition-[width] duration-700"
                 style={{ width: `${xp.pct * 100}%` }}
+              />
+              <div
+                className="absolute inset-y-0 left-0 opacity-50 mix-blend-overlay"
+                style={{
+                  width: `${xp.pct * 100}%`,
+                  background:
+                    "repeating-linear-gradient(135deg, transparent 0px, transparent 4px, oklch(1 0 0 / 0.15) 4px, oklch(1 0 0 / 0.15) 5px)",
+                }}
               />
             </div>
             <span className="shrink-0 font-mono text-[9px] tabular-nums text-muted-foreground">
@@ -97,181 +139,58 @@ export function WarRoom({
         </div>
         {/* Streak bonus banner */}
         {streakBonus && streakBonus > 0 ? (
-          <div className="slam-in border-t border-gold/40 bg-gold/15 px-3 py-1.5 sm:px-6">
-            <p className="text-center font-mono text-[10px] uppercase tracking-[0.22em] text-gold">
-              <Flame className="mr-1 inline size-3" />
-              Streak {save.dailyStreak} dia{save.dailyStreak > 1 ? "s" : ""} · +{streakBonus} ouro
+          <div className="slam-in border-t border-gold/50 bg-gradient-to-r from-gold/10 via-gold/25 to-gold/10 px-3 py-2 sm:px-6">
+            <p className="text-center font-mono text-[10px] uppercase tracking-[0.28em] text-gold">
+              <Flame className="mr-1.5 inline size-3.5" />
+              Streak {save.dailyStreak}D · +{streakBonus} ouro
             </p>
           </div>
         ) : null}
       </header>
 
-      {/* Map — bigger nodes, portrait-friendly viewBox */}
-      <main className="relative flex flex-1 flex-col">
-        <div className="grain relative mx-auto w-full max-w-5xl flex-1 overflow-hidden">
-          <svg
-            viewBox="0 0 100 100"
-            className="h-full w-full"
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <defs>
-              <radialGradient id="land" cx="50%" cy="55%" r="70%">
-                <stop offset="0%" stopColor="oklch(0.18 0.014 22)" />
-                <stop offset="100%" stopColor="oklch(0.10 0.012 22)" />
-              </radialGradient>
-              <pattern id="grid" width="4" height="4" patternUnits="userSpaceOnUse">
-                <path
-                  d="M4 0 L0 0 0 4"
-                  fill="none"
-                  stroke="oklch(0.24 0.012 30)"
-                  strokeWidth="0.1"
-                />
-              </pattern>
-            </defs>
-            <rect x="0" y="0" width="100" height="100" fill="url(#land)" />
-            <rect x="0" y="0" width="100" height="100" fill="url(#grid)" opacity="0.5" />
+      {/* Region cards — luxe vertical list */}
+      <main className="relative z-10 flex-1">
+        <div className="mx-auto w-full max-w-3xl px-3 py-4 sm:px-6">
+          {/* Section header */}
+          <div className="mb-3 flex items-center gap-3 px-1">
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-border" />
+            <p className="font-mono text-[9px] uppercase tracking-[0.4em] text-muted-foreground">
+              Mapa da Cruzada
+            </p>
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-border" />
+          </div>
 
-            {/* Region links */}
-            {REGIONS.map((r) =>
-              r.links.map((linkId) => {
-                const target = REGIONS.find((x) => x.id === linkId)
-                if (!target) return null
-                if (r.id > target.id) return null
-                const status = save.regions[r.id]
-                const linkStatus = save.regions[linkId]
-                const active =
-                  status === "cleared" ||
-                  status === "available" ||
-                  linkStatus === "cleared" ||
-                  linkStatus === "available"
-                return (
-                  <line
-                    key={`${r.id}-${linkId}`}
-                    x1={r.x}
-                    y1={r.y * 1.25}
-                    x2={target.x}
-                    y2={target.y * 1.25}
-                    stroke={active ? "oklch(0.55 0.21 22 / 0.55)" : "oklch(0.24 0.012 30)"}
-                    strokeWidth={active ? 0.5 : 0.3}
-                    strokeDasharray={active ? "0.9 0.6" : "0.4 0.4"}
-                  />
-                )
-              }),
-            )}
-
-            {/* Region nodes — 60% bigger for thumb tapping */}
-            {REGIONS.map((r) => {
-              const status = save.regions[r.id]
-              const fill = BIOME_COLOR[r.biome]
-              const isSelected = selectedId === r.id
-              const isCleared = status === "cleared"
-              const isLocked = status === "locked"
-              const isAvailable = status === "available"
-              const cy = r.y * 1.25 // stretch vertically into the 100x100 view
-              return (
-                <g
-                  key={r.id}
-                  transform={`translate(${r.x}, ${cy})`}
-                  className="cursor-pointer"
-                  onClick={() => !isLocked && pickRegion(r.id)}
-                  style={{ pointerEvents: isLocked ? "none" : "auto" }}
-                >
-                  {/* Larger transparent hit-area */}
-                  <circle r={9} fill="transparent" />
-                  {/* Available pulse aura */}
-                  {isAvailable && !isSelected ? (
-                    <circle r={6} fill={fill} opacity="0.18">
-                      <animate attributeName="r" values="5.5;7.5;5.5" dur="2.4s" repeatCount="indefinite" />
-                      <animate attributeName="opacity" values="0.30;0.05;0.30" dur="2.4s" repeatCount="indefinite" />
-                    </circle>
-                  ) : null}
-                  <circle
-                    r={isSelected ? 6.4 : 5.6}
-                    fill="oklch(0.10 0.012 22)"
-                    stroke={isLocked ? "oklch(0.24 0.012 30)" : fill}
-                    strokeWidth={isSelected ? 0.9 : 0.55}
-                    opacity={isLocked ? 0.5 : 1}
-                  />
-                  <circle
-                    r={3.2}
-                    fill={isLocked ? "oklch(0.18 0.008 30)" : fill}
-                    opacity={isLocked ? 0.4 : isCleared ? 0.4 : 1}
-                  />
-                  {isCleared ? (
-                    <text
-                      textAnchor="middle"
-                      y={1.4}
-                      className="fill-foreground font-mono"
-                      style={{ fontSize: "3.6px", fontWeight: 900 }}
-                    >
-                      ✕
-                    </text>
-                  ) : null}
-                  {!isCleared && !isLocked ? (
-                    <text
-                      textAnchor="middle"
-                      y={1.3}
-                      className="fill-foreground font-mono"
-                      style={{ fontSize: "3.4px", fontWeight: 700 }}
-                    >
-                      {r.stage}
-                    </text>
-                  ) : null}
-                  <text
-                    textAnchor="middle"
-                    y={-7.4}
-                    className="font-mono"
-                    style={{
-                      fontSize: "2.1px",
-                      fontWeight: 700,
-                      letterSpacing: "0.15em",
-                      fill: isLocked ? "oklch(0.45 0.018 60)" : "oklch(0.93 0.014 80)",
-                    }}
-                  >
-                    {r.name}
-                  </text>
-                  {isSelected ? (
-                    <circle
-                      r={8.4}
-                      fill="none"
-                      stroke="oklch(0.72 0.17 60)"
-                      strokeWidth={0.4}
-                      strokeDasharray="0.8 0.5"
-                    >
-                      <animateTransform
-                        attributeName="transform"
-                        type="rotate"
-                        from="0"
-                        to="360"
-                        dur="20s"
-                        repeatCount="indefinite"
-                      />
-                    </circle>
-                  ) : null}
-                </g>
-              )
-            })}
-          </svg>
+          <div className="flex flex-col gap-2.5">
+            {REGIONS.map((r, idx) => (
+              <RegionCard
+                key={r.id}
+                region={r}
+                index={idx}
+                status={save.regions[r.id]}
+                onTap={() => pickRegion(r.id)}
+              />
+            ))}
+          </div>
         </div>
       </main>
 
       {/* Bottom squad bar */}
-      <div className="border-t border-border bg-card/60 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-3 py-2.5 sm:px-6 sm:py-3">
+      <div className="sticky bottom-0 z-10 border-t border-border/60 bg-background/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-4 py-3 sm:px-6">
           <button
             type="button"
             onClick={() => {
               haptic.select()
               onOpenSquad()
             }}
-            className="flex h-12 shrink-0 items-center gap-2 rounded-md border-2 border-border bg-card px-3 font-mono text-[10px] uppercase tracking-[0.22em] text-foreground transition active:scale-[0.97] hover:border-accent/60"
+            className="flex h-12 shrink-0 items-center gap-2 rounded-md border-2 border-border bg-card px-3 font-mono text-[10px] uppercase tracking-[0.24em] text-foreground transition active:scale-[0.97] hover:border-accent/60"
           >
             <Users className="size-4" />
-            <span className="font-black">{save.squad.length}/3</span>
+            <span className="font-black tabular-nums">{save.squad.length}/3</span>
           </button>
           <div className="flex flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar">
             {save.squad.length === 0 ? (
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
                 monte o esquadrão →
               </span>
             ) : (
@@ -283,21 +202,17 @@ export function WarRoom({
                 return (
                   <span
                     key={id}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded border border-border bg-secondary/60 py-1 pl-1 pr-2 font-mono text-[9px] uppercase tracking-wider text-foreground"
+                    className="relative size-10 shrink-0 overflow-hidden rounded-full border-2"
+                    style={{ borderColor: tone }}
+                    title={u.name}
                   >
-                    <span
-                      className="relative size-7 shrink-0 overflow-hidden rounded border"
-                      style={{ borderColor: tone }}
-                    >
-                      <Image
-                        src={`/images/minions/${u.templateId}.jpg`}
-                        alt={tpl.name}
-                        fill
-                        sizes="28px"
-                        className="object-cover"
-                      />
-                    </span>
-                    {u.name}
+                    <Image
+                      src={`/images/minions/${u.templateId}.jpg`}
+                      alt={tpl.name}
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                    />
                   </span>
                 )
               })
@@ -323,6 +238,144 @@ export function WarRoom({
   )
 }
 
+function RegionCard({
+  region,
+  index,
+  status,
+  onTap,
+}: {
+  region: Region
+  index: number
+  status: "available" | "cleared" | "locked"
+  onTap: () => void
+}) {
+  const biomeColor = BIOME_COLOR[region.biome]
+  const isLocked = status === "locked"
+  const isCleared = status === "cleared"
+  const isAvailable = status === "available"
+  const heroes = region.heroIds
+    .map((heroId) => {
+      for (let s = 1; s <= 14; s++) {
+        const h = getHero(s)
+        if (h.id === heroId) return h
+      }
+      return null
+    })
+    .filter((h): h is NonNullable<typeof h> => h !== null)
+
+  return (
+    <button
+      type="button"
+      onClick={onTap}
+      disabled={isLocked}
+      className={cn(
+        "group relative flex w-full items-stretch gap-0 overflow-hidden rounded-md border-2 text-left transition active:scale-[0.99]",
+        isLocked
+          ? "border-border/40 bg-card/40 opacity-60"
+          : isCleared
+            ? "border-border bg-card/70 backdrop-blur"
+            : "border-primary/60 bg-card/85 backdrop-blur shadow-[0_4px_24px_oklch(0.55_0.21_22/0.20)]",
+      )}
+      style={{ animation: `drop-in 0.4s ${index * 0.05}s ease-out both` }}
+    >
+      {/* Left biome stripe */}
+      <span
+        className="w-1.5 shrink-0"
+        style={{ backgroundColor: biomeColor }}
+      />
+
+      {/* Stage badge column */}
+      <div className="flex w-14 shrink-0 flex-col items-center justify-center gap-0.5 border-r border-border/50 bg-background/50 px-2 py-3">
+        <p className="font-mono text-[8px] uppercase tracking-[0.24em] text-muted-foreground">
+          ESTÁGIO
+        </p>
+        <p className="font-display text-2xl font-black leading-none tabular-nums text-foreground">
+          {String(region.stage).padStart(2, "0")}
+        </p>
+        <span
+          className="mt-0.5 rounded-sm border px-1 py-0.5 font-mono text-[7px] font-black uppercase tracking-wider"
+          style={{ color: biomeColor, borderColor: biomeColor }}
+        >
+          {BIOME_LABEL[region.biome]}
+        </span>
+      </div>
+
+      {/* Main content */}
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 p-3">
+        <div className="min-w-0">
+          <h3 className="truncate font-display text-base font-black uppercase leading-tight tracking-tight text-foreground sm:text-lg">
+            {region.name}
+          </h3>
+          <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            {region.subtitle}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          {/* Hero portrait stack */}
+          <div className="flex -space-x-2">
+            {heroes.slice(0, 3).map((h) => (
+              <span
+                key={h.id}
+                className="relative size-7 overflow-hidden rounded-full border-2 border-background"
+              >
+                <Image
+                  src={`/images/heroes/${h.id}.jpg`}
+                  alt={h.name}
+                  fill
+                  sizes="28px"
+                  className={cn(
+                    "object-cover",
+                    isCleared && "grayscale",
+                  )}
+                />
+              </span>
+            ))}
+          </div>
+          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+            {heroes.length} {heroes.length === 1 ? "herói" : "heróis"}
+          </span>
+          <span className="ml-auto flex items-center gap-1 font-mono text-[10px] font-black uppercase tracking-wider text-gold">
+            <Coins className="size-3" />
+            {region.goldReward}
+          </span>
+        </div>
+      </div>
+
+      {/* Right action column */}
+      <div
+        className={cn(
+          "flex w-12 shrink-0 flex-col items-center justify-center gap-1 border-l text-center",
+          isAvailable
+            ? "border-primary/40 bg-primary/15 text-primary"
+            : isCleared
+              ? "border-border/40 bg-secondary/30 text-muted-foreground"
+              : "border-border/40 bg-secondary/30 text-muted-foreground",
+        )}
+      >
+        {isLocked ? (
+          <Lock className="size-4" />
+        ) : isCleared ? (
+          <Shield className="size-4" />
+        ) : (
+          <ChevronRight className={cn("size-5", isAvailable && "ready-pulse")} />
+        )}
+        <p className="font-mono text-[7px] font-black uppercase tracking-wider">
+          {isLocked ? "BLOC." : isCleared ? "LIMPO" : "INVADIR"}
+        </p>
+      </div>
+
+      {/* Sheen on hover for available cards */}
+      {isAvailable ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-[-30%] w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/8 to-transparent transition-transform duration-1000 group-hover:translate-x-[400%]"
+        />
+      ) : null}
+    </button>
+  )
+}
+
 function Stat({
   icon,
   label,
@@ -333,9 +386,9 @@ function Stat({
   value: number | string
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-1.5 rounded border border-border bg-card/60 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground sm:text-[10px] sm:tracking-[0.2em]">
+    <div className="flex shrink-0 items-center gap-1.5 rounded-sm border border-border/70 bg-card/70 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground sm:text-[10px]">
       <span className="text-accent">{icon}</span>
-      <span className="text-foreground tabular-nums">{value}</span>
+      <span className="font-black tabular-nums text-foreground">{value}</span>
       <span className="hidden sm:inline">{label}</span>
     </div>
   )
@@ -366,25 +419,30 @@ function RegionDrawer({
 
   const canInvade = status === "available" && squadCount > 0
   return (
-    <div className="fixed inset-0 z-30 flex items-end justify-center bg-background/70 backdrop-blur sm:items-center">
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-background/75 backdrop-blur sm:items-center">
       <button
         type="button"
         aria-label="Fechar"
         onClick={onClose}
         className="absolute inset-0 cursor-default"
       />
-      <div className="vellum drop-in relative w-full max-w-md overflow-hidden rounded-t-lg border-2 border-border sm:rounded-lg">
+      <div className="relative w-full max-w-md overflow-hidden rounded-t-lg border-2 border-border bg-card/95 backdrop-blur sm:rounded-lg">
         {/* Top bar */}
-        <div className="flex items-center justify-between gap-2 border-b border-border bg-card/80 px-4 py-3">
+        <div
+          className="flex items-center justify-between gap-2 border-b border-border bg-card/80 px-4 py-3"
+          style={{
+            backgroundImage: `linear-gradient(180deg, ${BIOME_COLOR[region.biome]}33, transparent 100%)`,
+          }}
+        >
           <div className="min-w-0">
-            <p className="font-mono text-[9px] tracking-[0.3em] text-accent">
+            <p className="font-mono text-[9px] tracking-[0.32em] text-accent">
               ESTÁGIO {String(region.stage).padStart(2, "0")} ·{" "}
-              {region.biome.toUpperCase()}
+              {BIOME_LABEL[region.biome]}
             </p>
-            <h3 className="truncate font-display text-xl font-black uppercase leading-tight text-foreground sm:text-2xl">
+            <h3 className="truncate font-display text-xl font-black uppercase leading-tight tracking-tight text-foreground sm:text-2xl">
               {region.name}
             </h3>
-            <p className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
               {region.subtitle}
             </p>
           </div>
@@ -400,12 +458,12 @@ function RegionDrawer({
 
         {/* Body */}
         <div className="space-y-3 p-4">
-          <p className="text-pretty text-sm leading-relaxed text-foreground/85">
+          <p className="text-pretty text-sm leading-relaxed text-foreground/90">
             {region.lore}
           </p>
 
           <div>
-            <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.3em] text-muted-foreground">
+            <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.32em] text-muted-foreground">
               Defensores
             </p>
             <div className="flex flex-col gap-2">
@@ -427,7 +485,7 @@ function RegionDrawer({
                     <p className="truncate font-display text-xs font-black uppercase leading-tight text-destructive sm:text-sm">
                       {h.name}
                     </p>
-                    <p className="truncate font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground sm:text-[10px]">
+                    <p className="truncate font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground sm:text-[10px]">
                       {h.title}
                     </p>
                   </div>
@@ -436,7 +494,7 @@ function RegionDrawer({
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded border border-border bg-secondary/40 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">
+          <div className="flex items-center justify-between rounded border border-border bg-secondary/40 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.22em]">
             <span className="text-muted-foreground">Recompensa</span>
             <span className="flex items-center gap-1.5 text-gold">
               <Coins className="size-3.5" />
@@ -452,11 +510,19 @@ function RegionDrawer({
             onClick={onInvade}
             disabled={!canInvade}
             className={cn(
-              "flex h-14 w-full items-center justify-center gap-2 rounded-md border-2 px-4 font-display text-sm font-black uppercase tracking-[0.22em] transition active:scale-[0.97] sm:h-16 sm:tracking-[0.25em]",
+              "flex h-14 w-full items-center justify-center gap-2 rounded-md border-2 px-4 font-display text-sm font-black uppercase tracking-[0.24em] transition active:scale-[0.97] sm:h-16 sm:tracking-[0.28em]",
               canInvade
                 ? "border-primary bg-primary text-primary-foreground pulse-glow"
                 : "cursor-not-allowed border-border bg-secondary/60 text-muted-foreground",
             )}
+            style={
+              canInvade
+                ? {
+                    boxShadow:
+                      "inset 0 1px 0 oklch(1 0 0 / 0.18), inset 0 -2px 0 oklch(0 0 0 / 0.35), 0 6px 24px oklch(0.55 0.21 22 / 0.45)",
+                  }
+                : undefined
+            }
           >
             <Swords className="size-5" />
             {status === "cleared"
