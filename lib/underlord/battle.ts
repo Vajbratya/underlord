@@ -100,10 +100,16 @@ export type AttackOutcome = {
   state: BattleState
   hit: boolean
   damage: number
+  /** True when the roll landed a critical strike (×1.7 damage). */
+  crit: boolean
   killed: boolean
   attackerName: string
   targetName: string
 }
+
+/** Probability a given attack rolls a critical (variable-ratio dopamine). */
+const CRIT_CHANCE = 0.18
+const CRIT_MULT = 1.7
 
 /** Attack target if in range. Marks attacker as acted. */
 export function attackUnit(
@@ -118,6 +124,7 @@ export function attackUnit(
       state: s,
       hit: false,
       damage: 0,
+      crit: false,
       killed: false,
       attackerName: att?.name ?? '?',
       targetName: tgt?.name ?? '?',
@@ -129,14 +136,17 @@ export function attackUnit(
       state: s,
       hit: false,
       damage: 0,
+      crit: false,
       killed: false,
       attackerName: att.name,
       targetName: tgt.name,
     }
   }
-  // Damage roll: atk ±20%
+  // Damage roll: atk ±20% with chance of critical (variable-ratio reward)
+  const crit = Math.random() < CRIT_CHANCE
   const variance = 1 + (Math.random() - 0.5) * 0.4
-  const dmg = Math.max(1, Math.round(att.atk * variance))
+  const baseDmg = att.atk * variance * (crit ? CRIT_MULT : 1)
+  const dmg = Math.max(1, Math.round(baseDmg))
   const newHp = Math.max(0, tgt.hp - dmg)
   const killed = newHp === 0
   const nextUnits = s.units.map((u) => {
@@ -146,12 +156,13 @@ export function attackUnit(
   })
   const log = [
     ...s.log,
-    `${att.name} → ${tgt.name}: -${dmg}${killed ? ' (abatido)' : ''}`,
+    `${att.name} → ${tgt.name}: -${dmg}${crit ? ' CRIT' : ''}${killed ? ' (abatido)' : ''}`,
   ].slice(-6)
   return {
     state: { ...s, units: nextUnits, log },
     hit: true,
     damage: dmg,
+    crit,
     killed,
     attackerName: att.name,
     targetName: tgt.name,

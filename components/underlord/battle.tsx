@@ -535,7 +535,13 @@ export function BattleScreen({
       {/* Footer: turn info + actions */}
       <footer className="border-t border-border bg-card/70 px-2.5 py-2.5 backdrop-blur sm:px-3 sm:py-3">
         <div className="mx-auto flex w-full max-w-2xl items-center gap-2.5 sm:gap-3">
-          {active ? <ActiveUnitCard unit={active} /> : null}
+          {active ? (
+            <div className="min-w-0 flex-1">
+              <ActiveUnitCard unit={active} />
+            </div>
+          ) : (
+            <div className="min-w-0 flex-1" />
+          )}
           <div className="flex shrink-0 flex-col items-end gap-1">
             <p className="hidden truncate text-right font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground sm:block sm:tracking-[0.25em]">
               {state.log[state.log.length - 1]}
