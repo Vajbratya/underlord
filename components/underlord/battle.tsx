@@ -84,13 +84,16 @@ function reducer(local: LocalState, action: LocalAction): LocalState {
   }
 }
 
-/** Build initial battle: minions at bottom 2 rows, heroes at top 2 rows. */
+/** Build initial battle: minions at bottom 2 rows, heroes at top 2 rows.
+ * Up to 3 minions on the front row; extras go to the row behind, so the
+ * EXÉRCITO perk (cap 4 or 5) can deploy a wider line. */
 function buildBattle(squad: Unit[], region: Region): BattleState {
-  const placedSquad: Unit[] = squad.slice(0, 3).map((u, i) => {
-    const q = 1 + i * 2
-    const r = ROWS - 2
-    const offset = -Math.floor(r / 2)
-    return makeUnit(u.templateId, { q: q + offset, r }, {
+  const placedSquad: Unit[] = squad.slice(0, 5).map((u, i) => {
+    const row = i < 3 ? ROWS - 2 : ROWS - 3
+    const colIdx = i < 3 ? i : i - 3
+    const q = 1 + colIdx * 2
+    const offset = -Math.floor(row / 2)
+    return makeUnit(u.templateId, { q: q + offset, r: row }, {
       name: u.name,
       hp: u.hpMax,
       hpMax: u.hpMax,

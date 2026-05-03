@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import type { SaveState, Unit } from "@/lib/underlord/types"
 import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { LOOT_POOL } from "@/lib/underlord/loot"
+import { squadCap } from "@/lib/underlord/perks"
 import { haptic } from "@/lib/underlord/haptics"
 
 const TONE_TO_VAR: Record<string, string> = {
@@ -25,12 +26,14 @@ export function SquadPicker({
   onSetSquad: (ids: string[]) => void
   onClose: () => void
 }) {
+  const cap = squadCap(save.perks)
+
   function toggle(unit: Unit) {
     const has = save.squad.includes(unit.id)
     if (has) {
       haptic.tap()
       onSetSquad(save.squad.filter((id) => id !== unit.id))
-    } else if (save.squad.length < 3) {
+    } else if (save.squad.length < cap) {
       haptic.select()
       onSetSquad([...save.squad, unit.id])
     } else {
@@ -38,7 +41,7 @@ export function SquadPicker({
     }
   }
 
-  const slotsLeft = 3 - save.squad.length
+  const slotsLeft = cap - save.squad.length
 
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-background/85 backdrop-blur sm:items-center sm:px-4">
@@ -53,11 +56,13 @@ export function SquadPicker({
         <div className="flex items-center justify-between gap-2 border-b border-border bg-card/80 px-4 py-3">
           <div className="min-w-0">
             <p className="font-mono text-[9px] tracking-[0.3em] text-accent">
-              ESCOLHA SEU TRIO
+              {cap === 3 ? "ESCOLHA SEU TRIO" : `ESCOLHA SEUS ${cap}`}
             </p>
             <h3 className="font-display text-lg font-black uppercase leading-tight text-foreground sm:text-xl">
               Esquadrão{" "}
-              <span className="text-accent">({save.squad.length}/3)</span>
+              <span className="text-accent">
+                ({save.squad.length}/{cap})
+              </span>
             </h3>
           </div>
           <button
@@ -70,9 +75,9 @@ export function SquadPicker({
           </button>
         </div>
 
-        {/* Slots progress bar — visible compulsion-loop progress */}
+        {/* Slots progress bar — grows with EXÉRCITO perk */}
         <div className="flex shrink-0 gap-1.5 border-b border-border bg-card/60 px-4 py-2">
-          {[0, 1, 2].map((i) => {
+          {Array.from({ length: cap }).map((_, i) => {
             const filled = i < save.squad.length
             return (
               <span
@@ -95,7 +100,7 @@ export function SquadPicker({
               : null
             const selected = save.squad.includes(u.id)
             const tone = TONE_TO_VAR[tpl.tone]
-            const disabled = !selected && save.squad.length >= 3
+            const disabled = !selected && save.squad.length >= cap
             return (
               <button
                 key={u.id}
@@ -180,8 +185,10 @@ export function SquadPicker({
             {save.squad.length === 0
               ? "ESCOLHA AO MENOS UM"
               : slotsLeft === 0
-                ? "TRIO COMPLETO · FECHAR"
-                : `CONFIRMAR (${save.squad.length}/3)`}
+                ? cap === 3
+                  ? "TRIO COMPLETO · FECHAR"
+                  : "ESQUADRÃO COMPLETO · FECHAR"
+                : `CONFIRMAR (${save.squad.length}/${cap})`}
           </button>
         </div>
       </div>
