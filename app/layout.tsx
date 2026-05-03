@@ -18,10 +18,20 @@ const jetbrains = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "UNDERLORD — Ashes of the Sunken Crown",
+  title: "UNDERLORD — As Cinzas da Coroa Submersa",
   description:
-    "Turn-based dark-fantasy tactics. Command minion broods, raid the overworld, and reclaim the Sunken Crown as the resurrected Underlord.",
+    "Tática turn-based em hex. Você é o último Underlord. Comande broods de minions e descarregue 14 séculos de raiva contra um reino inteiro de heróis insuportáveis.",
   generator: "v0.app",
+  icons: {
+    icon: "/images/app-icon.jpg",
+    apple: "/images/app-icon.jpg",
+  },
+  openGraph: {
+    title: "UNDERLORD — As Cinzas da Coroa Submersa",
+    description:
+      "Hex tactics dark-fantasy. 14 séculos de raiva contra heróis insuportáveis.",
+    images: ["/images/cover.jpg"],
+  },
 }
 
 export const viewport: Viewport = {

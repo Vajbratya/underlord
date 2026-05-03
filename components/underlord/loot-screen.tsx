@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { ChevronRight, Coins, Skull, Trophy } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RARITY_LABEL, RARITY_TONE } from "@/lib/underlord/loot"
@@ -29,36 +30,36 @@ export function LootScreen({
 
   return (
     <div className="flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe">
-      <main className="flex flex-1 flex-col items-center justify-center px-4 py-6">
+      <main className="flex flex-1 flex-col items-center justify-start px-3 py-5 sm:justify-center sm:px-4 sm:py-6">
         <div className="grain w-full max-w-md">
           {/* Header */}
           <div className="text-center">
             <span
               className={cn(
-                "inline-grid size-16 place-items-center rounded-full ring-4 sm:size-20",
+                "inline-grid size-14 place-items-center rounded-full ring-4 sm:size-20",
                 victory
                   ? "bg-accent/15 text-accent ring-accent/40"
                   : "bg-destructive/15 text-destructive ring-destructive/40",
               )}
             >
-              {victory ? <Trophy className="size-8 sm:size-10" /> : <Skull className="size-8 sm:size-10" />}
+              {victory ? <Trophy className="size-7 sm:size-10" /> : <Skull className="size-7 sm:size-10" />}
             </span>
             <h1
               className={cn(
-                "mt-4 font-display text-4xl font-black uppercase leading-none tracking-tight sm:text-5xl",
+                "mt-3 font-display text-3xl font-black uppercase leading-none tracking-tight sm:mt-4 sm:text-5xl",
                 victory ? "text-accent" : "text-destructive",
               )}
             >
               {victory ? "Região Limpa" : "Esquadrão Aniquilado"}
             </h1>
-            <p className="mt-2 max-w-sm text-balance font-mono text-xs uppercase leading-relaxed tracking-[0.18em] text-muted-foreground">
+            <p className="mt-2 max-w-sm text-balance font-mono text-[11px] uppercase leading-relaxed tracking-[0.18em] text-muted-foreground sm:text-xs">
               UNDERLORD: &ldquo;{headline}&rdquo;
             </p>
           </div>
 
           {/* Killed heroes */}
           {killedHeroIds.length ? (
-            <div className="vellum mt-6 rounded-lg border-2 border-border p-4">
+            <div className="vellum mt-5 rounded-lg border-2 border-border p-3 sm:mt-6 sm:p-4">
               <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-muted-foreground">
                 Heróis Abatidos
               </p>
@@ -67,13 +68,30 @@ export function LootScreen({
                   const h = getHeroById(id)
                   if (!h) return null
                   return (
-                    <li key={id} className="flex items-start gap-2">
-                      <Skull className="mt-0.5 size-3.5 text-destructive" />
-                      <div className="flex-1">
-                        <p className="font-display text-sm font-black uppercase leading-tight text-destructive">
+                    <li
+                      key={id}
+                      className="flex items-start gap-2.5 rounded border border-destructive/30 bg-destructive/5 p-2"
+                    >
+                      <span className="relative size-12 shrink-0 overflow-hidden rounded border border-destructive/60 sm:size-14">
+                        <Image
+                          src={`/images/heroes/${h.id}.jpg`}
+                          alt={h.name}
+                          fill
+                          sizes="(max-width: 640px) 48px, 56px"
+                          className="object-cover grayscale"
+                        />
+                        <span className="absolute inset-0 grid place-items-center bg-destructive/35">
+                          <Skull className="size-5 text-foreground drop-shadow sm:size-6" />
+                        </span>
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-display text-xs font-black uppercase leading-tight text-destructive sm:text-sm">
                           {h.name}
                         </p>
-                        <p className="font-mono text-[10px] tracking-wider text-foreground/80">
+                        <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground sm:text-[10px]">
+                          {h.title}
+                        </p>
+                        <p className="mt-1 font-mono text-[10px] leading-snug tracking-wide text-foreground/85 sm:text-[11px]">
                           &ldquo;{h.underlordKill}&rdquo;
                         </p>
                       </div>
@@ -86,11 +104,11 @@ export function LootScreen({
 
           {/* Fallen squad */}
           {fallenNames.length ? (
-            <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+            <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 sm:mt-4">
               <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-destructive">
                 Caídos da sua brood
               </p>
-              <p className="mt-1 font-mono text-xs uppercase tracking-wider text-foreground/80">
+              <p className="mt-1 font-mono text-[11px] uppercase tracking-wider text-foreground/85 sm:text-xs">
                 {fallenNames.join(" · ")}
               </p>
               <p className="mt-1 font-mono text-[10px] tracking-wider text-muted-foreground">
@@ -102,18 +120,18 @@ export function LootScreen({
           {/* Gold + Loot */}
           {victory ? (
             <>
-              <div className="mt-4 flex items-center justify-between rounded-lg border border-gold/40 bg-card/60 px-4 py-3">
+              <div className="mt-3 flex items-center justify-between rounded-lg border border-gold/40 bg-card/60 px-3 py-2.5 sm:mt-4 sm:px-4 sm:py-3">
                 <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
                   Ouro Saqueado
                 </span>
-                <span className="flex items-center gap-2 font-display text-xl font-black text-gold">
+                <span className="flex items-center gap-2 font-display text-lg font-black text-gold sm:text-xl">
                   <Coins className="size-5" />
                   {goldEarned}
                 </span>
               </div>
 
               {loot.length ? (
-                <div className="mt-4">
+                <div className="mt-3 sm:mt-4">
                   <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.3em] text-muted-foreground">
                     Drops
                   </p>
@@ -121,11 +139,11 @@ export function LootScreen({
                     {loot.map((item, i) => (
                       <li
                         key={`${item.id}-${i}`}
-                        className="rounded-md border border-border bg-card/60 p-3"
+                        className="rounded-md border border-border bg-card/60 p-2.5 sm:p-3"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <p
-                            className="font-display text-sm font-black uppercase leading-tight"
+                            className="font-display text-xs font-black uppercase leading-tight sm:text-sm"
                             style={{ color: rarityColor(item.rarity) }}
                           >
                             {item.name}
@@ -152,7 +170,7 @@ export function LootScreen({
                             .filter(Boolean)
                             .join(" · ")}
                         </p>
-                        <p className="mt-1 text-[11px] leading-relaxed text-foreground/80">
+                        <p className="mt-1 text-[11px] leading-relaxed text-foreground/85">
                           {item.flavor}
                         </p>
                       </li>
@@ -165,11 +183,11 @@ export function LootScreen({
         </div>
       </main>
 
-      <div className="px-4 pb-4">
+      <div className="border-t border-border bg-card/60 p-3 backdrop-blur sm:p-4">
         <button
           type="button"
           onClick={onContinue}
-          className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-md border-2 border-primary bg-primary px-6 py-4 font-display text-base font-black uppercase tracking-[0.25em] text-primary-foreground transition active:scale-[0.98]"
+          className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-md border-2 border-primary bg-primary px-5 py-3.5 font-display text-sm font-black uppercase tracking-[0.22em] text-primary-foreground transition active:scale-[0.98] sm:px-6 sm:py-4 sm:text-base sm:tracking-[0.25em]"
         >
           DE VOLTA À SALA DE GUERRA
           <ChevronRight className="size-5" />

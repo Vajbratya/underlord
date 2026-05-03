@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useMemo, useState } from "react"
 import { Coins, Crown, Map, Skull, Swords, Users, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -7,6 +8,14 @@ import type { Region, SaveState } from "@/lib/underlord/types"
 import { REGIONS } from "@/lib/underlord/regions"
 import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { getHero } from "@/lib/elementum-flavor"
+
+const TONE_TO_VAR: Record<string, string> = {
+  primary: "var(--primary)",
+  destructive: "var(--destructive)",
+  accent: "var(--accent)",
+  gold: "var(--gold)",
+  foreground: "var(--foreground)",
+}
 
 const BIOME_COLOR: Record<Region["biome"], string> = {
   ash: "oklch(0.55 0.21 22)",
@@ -214,27 +223,23 @@ export function WarRoom({
               const u = save.roster.find((x) => x.id === id)
               if (!u) return null
               const tpl = MINION_TEMPLATES[u.templateId]
+              const tone = TONE_TO_VAR[tpl.tone]
               return (
                 <span
                   key={id}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded border border-border bg-secondary/60 px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-foreground"
+                  className="inline-flex shrink-0 items-center gap-2 rounded border border-border bg-secondary/60 py-1 pl-1 pr-2 font-mono text-[9px] uppercase tracking-wider text-foreground"
                 >
                   <span
-                    className="text-sm leading-none"
-                    style={{
-                      color:
-                        tpl.tone === "destructive"
-                          ? "var(--destructive)"
-                          : tpl.tone === "accent"
-                            ? "var(--accent)"
-                            : tpl.tone === "primary"
-                              ? "var(--primary)"
-                              : tpl.tone === "gold"
-                                ? "var(--gold)"
-                                : "var(--foreground)",
-                    }}
+                    className="relative size-7 shrink-0 overflow-hidden rounded border"
+                    style={{ borderColor: tone }}
                   >
-                    {tpl.glyph}
+                    <Image
+                      src={`/images/minions/${u.templateId}.jpg`}
+                      alt={tpl.name}
+                      fill
+                      sizes="28px"
+                      className="object-cover"
+                    />
                   </span>
                   {u.name}
                 </span>
@@ -345,21 +350,30 @@ function RegionDrawer({
               Defensores
             </p>
             <div className="flex flex-col gap-2">
-              {heroDetails.map((h) =>
-                h ? (
-                  <div
-                    key={h.id}
-                    className="rounded border border-border bg-secondary/40 px-3 py-2"
-                  >
-                    <p className="font-display text-sm font-black uppercase leading-tight text-destructive">
+              {heroDetails.map((h) => (
+                <div
+                  key={h.id}
+                  className="flex items-start gap-2.5 rounded border border-destructive/40 bg-destructive/5 p-2"
+                >
+                  <span className="relative size-12 shrink-0 overflow-hidden rounded border border-destructive/60">
+                    <Image
+                      src={`/images/heroes/${h.id}.jpg`}
+                      alt={h.name}
+                      fill
+                      sizes="48px"
+                      className="object-cover"
+                    />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-xs font-black uppercase leading-tight text-destructive sm:text-sm">
                       {h.name}
                     </p>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    <p className="truncate font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground sm:text-[10px]">
                       {h.title}
                     </p>
                   </div>
-                ) : null,
-              )}
+                </div>
+              ))}
             </div>
           </div>
 

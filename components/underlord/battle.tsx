@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useMemo, useReducer, useRef, useState } from "react"
 import { Skull, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -323,12 +324,12 @@ export function BattleScreen({
       style={{ backgroundColor: BIOME_BG[region.biome] }}
     >
       {/* HUD */}
-      <header className="flex items-center justify-between gap-3 border-b border-border bg-card/40 px-4 py-2 backdrop-blur">
-        <div className="flex flex-col">
-          <p className="font-mono text-[9px] tracking-[0.3em] text-accent">
-            COMBATE · ROUND {state.round}
+      <header className="flex flex-col gap-1.5 border-b border-border bg-card/60 px-3 py-2 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
+        <div className="flex items-baseline gap-2 sm:flex-col sm:items-start sm:gap-0">
+          <p className="font-mono text-[9px] tracking-[0.25em] text-accent sm:tracking-[0.3em]">
+            R{state.round}
           </p>
-          <h1 className="font-display text-sm font-black uppercase leading-none tracking-tight text-foreground sm:text-base">
+          <h1 className="truncate font-display text-sm font-black uppercase leading-none tracking-tight text-foreground sm:text-base">
             {region.name}
           </h1>
         </div>
@@ -342,6 +343,12 @@ export function BattleScreen({
           style={{ aspectRatio: `${viewW} / ${viewH}` }}
         >
           <svg viewBox={`0 0 ${viewW} ${viewH}`} className="h-full w-full">
+            <defs>
+              {/* Single shared clipPath for circular unit portraits */}
+              <clipPath id="unitClip">
+                <circle r={HEX_SIZE * 0.55} />
+              </clipPath>
+            </defs>
             {/* Tiles */}
             {pixelTiles.map((t) => {
               const k = axialKey(t)
@@ -407,7 +414,7 @@ export function BattleScreen({
                       />
                     </circle>
                   ) : null}
-                  {/* Body chip */}
+                  {/* Body backing (filled circle behind portrait, also serves as fallback while image loads) */}
                   <circle
                     r={HEX_SIZE * 0.55}
                     fill={
@@ -415,23 +422,32 @@ export function BattleScreen({
                         ? "oklch(0.55 0.21 22)"
                         : tonePixel(u.tone)
                     }
-                    stroke="oklch(0.10 0.012 22)"
+                  />
+                  {/* Portrait clipped into a circle */}
+                  <image
+                    href={
+                      u.faction === "hero"
+                        ? `/images/heroes/${u.heroId ?? "bryan"}.jpg`
+                        : `/images/minions/${u.templateId}.jpg`
+                    }
+                    x={-HEX_SIZE * 0.55}
+                    y={-HEX_SIZE * 0.55}
+                    width={HEX_SIZE * 1.1}
+                    height={HEX_SIZE * 1.1}
+                    clipPath="url(#unitClip)"
+                    preserveAspectRatio="xMidYMid slice"
+                  />
+                  {/* Faction ring stroke on top */}
+                  <circle
+                    r={HEX_SIZE * 0.55}
+                    fill="none"
+                    stroke={
+                      u.faction === "hero"
+                        ? "oklch(0.55 0.21 22)"
+                        : tonePixel(u.tone)
+                    }
                     strokeWidth={1.5}
                   />
-                  {/* Glyph */}
-                  <text
-                    textAnchor="middle"
-                    dy={5}
-                    style={{
-                      fontSize: HEX_SIZE * 0.7,
-                      fontWeight: 900,
-                      fill:
-                        u.faction === "hero" ? "var(--primary-foreground)" : "var(--background)",
-                      fontFamily: "var(--font-mono)",
-                    }}
-                  >
-                    {u.glyph}
-                  </text>
                   {/* HP bar */}
                   <rect
                     x={-HEX_SIZE * 0.6}
@@ -517,11 +533,11 @@ export function BattleScreen({
       ) : null}
 
       {/* Footer: turn info + actions */}
-      <footer className="border-t border-border bg-card/60 px-3 py-3 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-2xl items-center gap-3">
+      <footer className="border-t border-border bg-card/70 px-2.5 py-2.5 backdrop-blur sm:px-3 sm:py-3">
+        <div className="mx-auto flex w-full max-w-2xl items-center gap-2.5 sm:gap-3">
           {active ? <ActiveUnitCard unit={active} /> : null}
-          <div className="flex flex-1 flex-col items-end gap-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground">
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <p className="hidden truncate text-right font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground sm:block sm:tracking-[0.25em]">
               {state.log[state.log.length - 1]}
             </p>
             <button
@@ -529,14 +545,14 @@ export function BattleScreen({
               onClick={handleEndTurn}
               disabled={!isMinionTurn}
               className={cn(
-                "flex items-center gap-2 rounded-md border-2 px-4 py-2 font-display text-xs font-black uppercase tracking-[0.25em] transition active:scale-[0.98]",
+                "flex items-center gap-1.5 rounded-md border-2 px-3 py-2 font-display text-[11px] font-black uppercase tracking-[0.18em] transition active:scale-[0.98] sm:px-4 sm:text-xs sm:tracking-[0.25em]",
                 isMinionTurn
                   ? "border-primary bg-primary text-primary-foreground"
                   : "cursor-not-allowed border-border bg-secondary/60 text-muted-foreground",
               )}
             >
-              {isHeroTurn ? "VEZ DELE…" : "ENCERRAR TURNO"}
-              <Zap className="size-3.5" />
+              {isHeroTurn ? "VEZ DELE…" : "TURNO"}
+              <Zap className="size-3" />
             </button>
           </div>
         </div>
@@ -573,7 +589,7 @@ function hexPoints(cx: number, cy: number, size: number): string {
 
 function InitiativeLadder({ state }: { state: BattleState }) {
   return (
-    <div className="flex max-w-[60%] items-center gap-1 overflow-x-auto no-scrollbar">
+    <div className="flex w-full items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar sm:w-auto sm:max-w-[60%] sm:pb-0">
       {state.order.map((id, i) => {
         const u = state.units.find((x) => x.id === id)
         if (!u) return null
@@ -582,7 +598,7 @@ function InitiativeLadder({ state }: { state: BattleState }) {
           <span
             key={id}
             className={cn(
-              "flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider transition",
+              "flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider transition",
               u.dead
                 ? "border-border/40 bg-transparent text-muted-foreground/40 line-through"
                 : isCurrent
@@ -602,32 +618,43 @@ function InitiativeLadder({ state }: { state: BattleState }) {
 
 function ActiveUnitCard({ unit }: { unit: Unit }) {
   const tpl = unit.faction === "minion" ? MINION_TEMPLATES[unit.templateId] : null
+  const src =
+    unit.faction === "hero"
+      ? `/images/heroes/${unit.heroId ?? "bryan"}.jpg`
+      : `/images/minions/${unit.templateId}.jpg`
+  const borderColor =
+    unit.faction === "hero" ? "var(--destructive)" : tonePixel(unit.tone)
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex min-w-0 items-center gap-2.5">
       <span
-        className="hex-tile grid size-12 shrink-0 place-items-center text-xl font-black"
-        style={{
-          background: unit.faction === "hero" ? "var(--destructive)" : tonePixel(unit.tone),
-          color: "var(--background)",
-        }}
+        className="relative size-12 shrink-0 overflow-hidden rounded-md border-2"
+        style={{ borderColor }}
       >
-        {unit.glyph}
+        <Image
+          src={src || "/placeholder.svg"}
+          alt={unit.name}
+          fill
+          sizes="48px"
+          className="object-cover"
+        />
       </span>
       <div className="min-w-0">
-        <p className="font-display text-sm font-black uppercase leading-tight text-foreground">
+        <p className="truncate font-display text-xs font-black uppercase leading-tight text-foreground sm:text-sm">
           {unit.name}
           {unit.faction === "hero" ? (
             <Skull className="ml-1 inline size-3 text-destructive" />
           ) : null}
         </p>
         <div className="flex flex-wrap gap-x-2 gap-y-0 font-mono text-[9px] tabular-nums uppercase tracking-wider text-muted-foreground">
-          <span className="text-foreground">{unit.hp}/{unit.hpMax} HP</span>
+          <span className="text-foreground">
+            {unit.hp}/{unit.hpMax} HP
+          </span>
           <span>{unit.atk} ATK</span>
           <span>{unit.range} ALC</span>
           <span>{unit.move} MOV</span>
         </div>
         {tpl ? (
-          <p className="mt-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+          <p className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
             {tpl.role}
           </p>
         ) : null}
