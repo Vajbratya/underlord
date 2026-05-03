@@ -46,6 +46,7 @@ import {
   POSITION_LABELS,
   PERFECT_CHAIN_BONUS,
   PERFECT_CHAIN_RAGE,
+  COMBO_TIERS,
   getCombo,
   getTier,
   getNextTier,
@@ -1668,6 +1669,20 @@ function ElementBriefing() {
   const order: Move[] = ["pyro", "terra", "hydro"] // PYRO, TERRA, HYDRO for visual punch
   return (
     <div className="mt-8 w-full max-w-3xl">
+      <div className="mb-3 rounded-md border border-primary/40 bg-primary/5 p-3 text-left backdrop-blur sm:p-4">
+        <p className="font-mono text-[10px] font-bold tracking-[0.3em] text-primary sm:text-xs">
+          CHAIN CAST
+        </p>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
+          Monte uma sequência de <span className="font-bold text-foreground">3 feitiços</span> antes
+          de lançar. A CPU monta a dela em paralelo. Resolução posição por posição —{" "}
+          <span className="font-bold text-foreground">slot III</span> bate{" "}
+          <span className="font-mono font-bold text-primary">x1.4</span>, então guarde o golpe pesado.
+          Vencer todos os 3 ativa{" "}
+          <span className="font-mono font-black tracking-wider text-destructive">PERFECT CAST</span>{" "}
+          (+{PERFECT_CHAIN_BONUS} dano, +{PERFECT_CHAIN_RAGE} fúria).
+        </p>
+      </div>
       <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground sm:text-xs">
         ELEMENTOS — assimétricos
       </p>
@@ -2367,144 +2382,6 @@ function ActiveBuffsFloat({ buffs }: { buffs: Buffs }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Battle side                                                          */
-/* ------------------------------------------------------------------ */
-
-function BattleSide({
-  side,
-  phase,
-  choice,
-  result,
-  floats,
-  particles,
-}: {
-  side: "player" | "cpu"
-  phase: Phase
-  choice: Move | null
-  result: Result | null
-  floats: FloatingNumber[]
-  particles: Particle[]
-}) {
-  const isShaking = phase === "shaking"
-  const isReveal = phase === "reveal"
-  const sideResult: Result | null =
-    !result ? null : side === "player" ? result : result === "win" ? "lose" : result === "lose" ? "win" : "draw"
-
-  const ringTone =
-    isReveal && sideResult === "win"
-      ? "ring-primary shadow-[0_0_24px_oklch(0.78_0.17_205/0.4)]"
-      : isReveal && sideResult === "lose"
-        ? "ring-destructive shadow-[0_0_24px_oklch(0.66_0.24_22/0.4)]"
-        : isReveal && sideResult === "draw"
-          ? "ring-accent"
-          : "ring-border"
-
-  return (
-    <div
-      className={cn(
-        "relative flex h-full min-h-[160px] flex-col items-center justify-center rounded-lg bg-background/60 px-1 py-2 ring-2 transition sm:min-h-[220px] sm:py-4",
-        ringTone,
-      )}
-    >
-      <div className="font-mono text-[9px] font-bold tracking-[0.25em] text-muted-foreground sm:text-[10px] sm:tracking-[0.3em]">
-        {side === "player" ? "VOCÊ" : "CPU"}
-      </div>
-
-      <div className="relative mt-1 flex flex-1 items-center justify-center sm:mt-2">
-        <div
-          className={cn(
-            "select-none leading-none",
-            "text-[clamp(3.5rem,18vw,7rem)] sm:text-8xl",
-            isShaking && "shake-hand",
-            isReveal && "slam-in",
-          )}
-          aria-hidden="true"
-        >
-          {isShaking || (!choice && phase === "choosing") ? "✊" : choice ? MOVES[choice].emoji : "✊"}
-        </div>
-
-        {/* Floating numbers */}
-        {floats.map((f) => (
-          <span
-            key={f.id}
-            className={cn(
-              "pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-lg font-black tabular-nums sm:text-2xl",
-              "float-up",
-              f.tone === "damage" && "text-destructive",
-              f.tone === "heal" && "text-primary",
-              f.tone === "info" && "text-accent",
-              f.tone === "crit" && "text-accent",
-              f.tone === "ultimate" && "text-destructive drop-shadow-[0_0_8px_oklch(0.66_0.24_22/0.8)]",
-            )}
-          >
-            {f.value}
-          </span>
-        ))}
-
-        {/* Particles */}
-        {particles.map((p) => (
-          <span
-            key={p.id}
-            className={cn(
-              "pointer-events-none absolute top-1/2 size-1.5 rounded-full sm:size-2",
-              "confetti",
-              p.color === "primary" && "bg-primary",
-              p.color === "accent" && "bg-accent",
-              p.color === "destructive" && "bg-destructive",
-            )}
-            style={{
-              left: `${p.left}%`,
-              ["--tx" as string]: `${p.tx}px`,
-              animationDelay: `${p.delay}s`,
-            }}
-          />
-        ))}
-      </div>
-
-      {choice && (isReveal || isShaking) ? (
-        <div className="mt-1 font-mono text-[10px] font-bold tracking-[0.18em] text-foreground/80 sm:mt-2 sm:text-xs sm:tracking-[0.2em]">
-          {isShaking ? "..." : MOVES[choice].label}
-        </div>
-      ) : (
-        <div className="mt-1 font-mono text-[9px] tracking-[0.18em] text-muted-foreground sm:mt-2 sm:text-xs sm:tracking-[0.2em]">
-          {phase === "choosing" && side === "player" ? "ESCOLHA" : "AGUARDA"}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ResultBadge({ phase, result }: { phase: Phase; result: Result | null }) {
-  if (phase === "choosing") {
-    return (
-      <div className="rounded-full border border-border bg-card/80 px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.2em] text-muted-foreground backdrop-blur sm:px-3 sm:py-1 sm:text-xs">
-        VS
-      </div>
-    )
-  }
-  if (phase === "shaking") {
-    return (
-      <div className="rounded-full border border-accent/60 bg-accent/15 px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.2em] text-accent backdrop-blur sm:px-3 sm:py-1 sm:text-xs">
-        JO �� KEN · PÔ
-      </div>
-    )
-  }
-  if (phase === "reveal" && result) {
-    const map = {
-      win: { text: "VITÓRIA", cls: "border-primary/60 bg-primary/20 text-primary" },
-      lose: { text: "DERROTA", cls: "border-destructive/60 bg-destructive/20 text-destructive" },
-      draw: { text: "EMPATE", cls: "border-accent/60 bg-accent/20 text-accent" },
-    }[result]
-    return (
-      <div className={cn("slam-in rounded-md border px-2.5 py-1 font-mono text-xs font-black tracking-[0.25em] backdrop-blur sm:px-3 sm:py-1.5 sm:text-base sm:tracking-[0.3em]", map.cls)}>
-        {map.text}
-      </div>
-    )
-  }
-  return null
-}
-
-/* ------------------------------------------------------------------ */
 /* Choice button                                                        */
 /* ------------------------------------------------------------------ */
 
@@ -2524,30 +2401,28 @@ function ChoiceButton({ move, disabled, onClick }: { move: Move; disabled: boole
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "group relative flex min-h-[88px] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl border-2 bg-card py-2 transition sm:min-h-[120px] sm:gap-1 sm:py-3",
+        "group relative flex min-h-[60px] flex-row items-center justify-center gap-1.5 overflow-hidden rounded-lg border-2 bg-card px-2 py-1.5 transition sm:min-h-[72px] sm:gap-2 sm:py-2",
         accent,
         "active:scale-[0.95]",
         "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:shadow-none disabled:active:scale-100",
       )}
-      aria-label={`Lançar ${MOVES[move].label}, dano base ${profile.baseDamage}, passiva ${profile.passiveLabel}`}
+      aria-label={`Adicionar ${MOVES[move].label} à cadeia, dano base ${profile.baseDamage}, passiva ${profile.passiveLabel}`}
     >
-      <div
-        className="text-[2.25rem] leading-none transition group-hover:scale-110 sm:text-5xl"
-        aria-hidden="true"
-      >
+      <span className="text-2xl leading-none transition group-hover:scale-110 sm:text-3xl" aria-hidden="true">
         {MOVES[move].emoji}
-      </div>
-      <div className="font-mono text-[9px] font-black tracking-[0.22em] text-foreground sm:text-xs sm:tracking-[0.28em]">
-        {MOVES[move].label}
-      </div>
-      <div className="flex items-center gap-1 font-mono text-[9px] tabular-nums text-muted-foreground sm:text-[10px]">
-        <Swords className="size-2.5 sm:size-3" />
-        <span className="font-bold text-foreground">{profile.baseDamage}</span>
-        <span aria-hidden="true">·</span>
-        <span className={cn("font-black tracking-wider", passiveColor)}>
-          {profile.passiveLabel}
+      </span>
+      <span className="flex flex-col items-start gap-0">
+        <span className="font-mono text-[10px] font-black tracking-[0.18em] text-foreground sm:text-xs sm:tracking-[0.22em]">
+          {MOVES[move].label}
         </span>
-      </div>
+        <span className="flex items-center gap-1 font-mono text-[8px] tabular-nums text-muted-foreground sm:text-[10px]">
+          <span className="font-bold text-foreground">{profile.baseDamage}</span>
+          <span aria-hidden="true">·</span>
+          <span className={cn("font-black tracking-wider", passiveColor)}>
+            {profile.passiveLabel}
+          </span>
+        </span>
+      </span>
     </button>
   )
 }
