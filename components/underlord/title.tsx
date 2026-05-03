@@ -44,8 +44,8 @@ export function TitleScreen({
         </span>
       </header>
 
-      {/* Title block */}
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-end px-5 pb-3 text-center sm:px-8">
+      {/* Title block — vertically centered with hard caps so desktop stays compact */}
+      <main className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-end px-5 pb-3 text-center sm:justify-center sm:px-8 sm:pb-12">
         {/* Decorative chapter mark */}
         <div className="mb-3 flex items-center gap-3 opacity-90">
           <span className="h-px w-10 bg-gradient-to-r from-transparent to-accent/60" />
@@ -59,10 +59,11 @@ export function TitleScreen({
           As Cinzas da Coroa Submersa
         </p>
 
-        {/* Hero title with stacked text-shadow for cinematic depth */}
+        {/* Hero title — clamp() guarantees a sane size from 360px phones to 4K monitors */}
         <h1
-          className="mt-2 font-display text-[19vw] font-black uppercase leading-[0.82] tracking-tight text-foreground sm:text-[8.5rem]"
+          className="mt-2 font-display font-black uppercase leading-[0.82] tracking-tight text-foreground"
           style={{
+            fontSize: "clamp(3.5rem, 18vw, 9rem)",
             textShadow:
               "0 0 30px oklch(0.55 0.21 22 / 0.55), 0 0 60px oklch(0.72 0.17 60 / 0.30), 0 4px 0 oklch(0.10 0.012 22)",
           }}

@@ -39,7 +39,7 @@ export function Briefing({
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe">
       <Atmosphere src="/images/bg/briefing.jpg" intensity="heavy" embers={12} />
-      <header className="relative z-10 flex items-center justify-between gap-3 border-b border-border/60 bg-background/85 px-2 py-2 backdrop-blur sm:px-4 sm:py-3">
+      <header className="relative z-10 border-b border-border/60 bg-background/85 backdrop-blur"><div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-2 py-2 sm:px-4 sm:py-3">
         <button
           type="button"
           onClick={() => {
@@ -54,9 +54,10 @@ export function Briefing({
         <p className="font-mono text-[9px] tracking-[0.25em] text-accent sm:text-[10px] sm:tracking-[0.3em]">
           BRIEFING · {String(region.stage).padStart(2, "0")}
         </p>
+        </div>
       </header>
 
-      <main className="relative z-10 flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-3 sm:px-6 sm:py-6">
+      <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 overflow-y-auto px-3 py-3 sm:px-6 sm:py-6">
         {/* Region heading — compact on mobile */}
         <div>
           <h1 className="font-display text-2xl font-black uppercase leading-none tracking-tight text-foreground sm:text-4xl">
@@ -164,25 +165,27 @@ export function Briefing({
         </section>
       </main>
 
-      <div className="relative z-10 shrink-0 border-t border-border/60 bg-background/90 px-3 py-3 backdrop-blur sm:px-4 sm:py-4">
-        <button
-          type="button"
-          onClick={() => {
-            if (squad.length === 0) return
-            haptic.select()
-            onCommit()
-          }}
-          disabled={squad.length === 0}
-          className={cn(
-            "mx-auto flex h-16 w-full max-w-md items-center justify-center gap-2 rounded-md border-2 px-5 font-display text-base font-black uppercase tracking-[0.22em] transition active:scale-[0.97] sm:h-[4.5rem] sm:px-6 sm:text-lg sm:tracking-[0.25em]",
-            squad.length === 0
-              ? "cursor-not-allowed border-border bg-secondary/60 text-muted-foreground"
-              : "border-primary bg-primary text-primary-foreground pulse-glow",
-          )}
-        >
-          <Swords className="size-5 sm:size-6" />
-          {squad.length === 0 ? "MONTE O ESQUADRÃO" : "DESCER NA TORRE"}
-        </button>
+      <div className="relative z-10 shrink-0 border-t border-border/60 bg-background/90 backdrop-blur">
+        <div className="mx-auto w-full max-w-3xl px-3 py-3 sm:px-4 sm:py-4">
+          <button
+            type="button"
+            onClick={() => {
+              if (squad.length === 0) return
+              haptic.select()
+              onCommit()
+            }}
+            disabled={squad.length === 0}
+            className={cn(
+              "mx-auto flex h-16 w-full max-w-md items-center justify-center gap-2 rounded-md border-2 px-5 font-display text-base font-black uppercase tracking-[0.22em] transition active:scale-[0.97] sm:h-[4.5rem] sm:px-6 sm:text-lg sm:tracking-[0.25em]",
+              squad.length === 0
+                ? "cursor-not-allowed border-border bg-secondary/60 text-muted-foreground"
+                : "border-primary bg-primary text-primary-foreground pulse-glow",
+            )}
+          >
+            <Swords className="size-5 sm:size-6" />
+            {squad.length === 0 ? "MONTE O ESQUADRÃO" : "DESCER NA TORRE"}
+          </button>
+        </div>
       </div>
     </div>
   )

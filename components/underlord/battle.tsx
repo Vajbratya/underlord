@@ -324,7 +324,7 @@ export function BattleScreen({
 
       {/* Top HUD */}
       <header className="relative z-20 border-b border-border/60 bg-background/85 backdrop-blur">
-        <div className="flex items-center gap-2 px-3 pt-2.5 pb-2">
+        <div className="mx-auto flex w-full max-w-2xl items-center gap-2 px-3 pt-2.5 pb-2">
           <div className="flex min-w-0 flex-1 flex-col">
             <p className="font-mono text-[8px] uppercase tracking-[0.32em] text-accent">
               ROUND {String(state.round).padStart(2, "0")}
@@ -354,24 +354,27 @@ export function BattleScreen({
           ) : null}
         </div>
         {/* Initiative ladder */}
-        <div className="border-t border-border/40 px-2 py-1.5">
-          <InitiativeLadder state={state} />
+        <div className="border-t border-border/40">
+          <div className="mx-auto w-full max-w-2xl px-2 py-1.5">
+            <InitiativeLadder state={state} />
+          </div>
         </div>
       </header>
 
-      {/* Battle area */}
-      <main className="relative z-10 flex flex-1 items-stretch justify-center overflow-hidden">
-        {/* Faction floor labels */}
-        <div className="pointer-events-none absolute inset-x-0 top-2 z-0 text-center">
-          <p className="font-mono text-[8px] uppercase tracking-[0.4em] text-destructive/70">
-            ─── FORÇAS DA LUZ ───
-          </p>
-        </div>
-        <div className="pointer-events-none absolute inset-x-0 bottom-2 z-0 text-center">
-          <p className="font-mono text-[8px] uppercase tracking-[0.4em] text-accent/70">
-            ─── SEU EXÉRCITO ───
-          </p>
-        </div>
+      {/* Battle area — clamps width on desktop, full bleed on mobile */}
+      <main className="relative z-10 flex flex-1 items-stretch justify-center overflow-hidden px-2 sm:px-4">
+        <div className="relative mx-auto flex w-full max-w-md flex-1 items-stretch sm:max-w-lg">
+          {/* Faction floor labels */}
+          <div className="pointer-events-none absolute inset-x-0 top-2 z-0 text-center">
+            <p className="font-mono text-[8px] uppercase tracking-[0.4em] text-destructive/70">
+              ─── FORÇAS DA LUZ ───
+            </p>
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-2 z-0 text-center">
+            <p className="font-mono text-[8px] uppercase tracking-[0.4em] text-accent/70">
+              ─── SEU EXÉRCITO ───
+            </p>
+          </div>
 
         <div
           className="relative h-full w-full"
@@ -592,6 +595,7 @@ export function BattleScreen({
               </div>
             </div>
           ) : null}
+        </div>
         </div>
       </main>
 
