@@ -17,12 +17,16 @@ export const MINION_TEMPLATES: Record<MinionArchetype, UnitTemplate> = {
     spd: 4,
     tone: 'foreground',
     flavor: 'Bate, apanha, ri. Repete. Cheira a couro queimado.',
+    attackKind: 'cleave',
+    abilityTag: 'CLIVA',
+    abilityText:
+      'Ataque atinge o alvo + um inimigo adjacente (50% dano colateral). Atrai a IA.',
   },
   red: {
     archetype: 'red',
     name: 'RED',
     glyph: '◆',
-    role: 'Pirômano de alcance',
+    role: 'Pirômano de área',
     hp: 18,
     move: 3,
     atk: 9,
@@ -30,12 +34,16 @@ export const MINION_TEMPLATES: Record<MinionArchetype, UnitTemplate> = {
     spd: 6,
     tone: 'destructive',
     flavor: 'Imune a fogo. Não imune a tropeçar no próprio fogo.',
+    attackKind: 'splash',
+    abilityTag: 'AOE',
+    abilityText:
+      'Explosão atinge o alvo + todos os inimigos a 1 hex dele (50% colateral).',
   },
   green: {
     archetype: 'green',
     name: 'GREEN',
     glyph: '◇',
-    role: 'Assassino furtivo',
+    role: 'Assassino executor',
     hp: 14,
     move: 5,
     atk: 11,
@@ -43,12 +51,16 @@ export const MINION_TEMPLATES: Record<MinionArchetype, UnitTemplate> = {
     spd: 9,
     tone: 'accent',
     flavor: 'Aparece pelas costas. Se desculpa enquanto enfia a faca.',
+    attackKind: 'execute',
+    abilityTag: 'EXECUTA',
+    abilityText:
+      'Causa +50% dano contra alvos com HP abaixo de 40%. Mata feridos rápido.',
   },
   blue: {
     archetype: 'blue',
     name: 'BLUE',
     glyph: '◈',
-    role: 'Sapador-xamã de suporte',
+    role: 'Xamã curandeiro',
     hp: 20,
     move: 4,
     atk: 5,
@@ -56,12 +68,16 @@ export const MINION_TEMPLATES: Record<MinionArchetype, UnitTemplate> = {
     spd: 5,
     tone: 'primary',
     flavor: 'Cura, ressuscita, dá conselho ruim. Tudo na mesma vibe.',
+    attackKind: 'heal',
+    abilityTag: 'CURA',
+    abilityText:
+      'Em vez de atacar, toque um aliado em alcance pra restaurar 30% do HP máximo.',
   },
   grey: {
     archetype: 'grey',
     name: 'GREY',
     glyph: '▣',
-    role: 'Engenheiro de cerco',
+    role: 'Cerco perfurante',
     hp: 22,
     move: 2,
     atk: 8,
@@ -69,6 +85,10 @@ export const MINION_TEMPLATES: Record<MinionArchetype, UnitTemplate> = {
     spd: 3,
     tone: 'gold',
     flavor: 'Lê manual. Constrói catapulta. Detesta pressa.',
+    attackKind: 'pierce',
+    abilityTag: 'PERFURA',
+    abilityText:
+      'Tiro atravessa: atinge o alvo + o hex atrás dele (50% no segundo).',
   },
 }
 
@@ -100,7 +120,9 @@ export function makeUnit(
     spd: t.spd,
     tone: t.tone,
     acted: false,
+    moved: false,
     dead: false,
+    attackKind: t.attackKind,
     ...overrides,
   }
 }
@@ -135,7 +157,9 @@ export function makeHero(
     spd,
     tone: 'foreground',
     acted: false,
+    moved: false,
     dead: false,
+    attackKind: 'basic',
     heroId,
   }
 }

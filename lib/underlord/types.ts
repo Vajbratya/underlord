@@ -16,6 +16,17 @@ export type Faction = 'minion' | 'hero'
 
 export type MinionArchetype = 'brown' | 'red' | 'green' | 'blue' | 'grey'
 
+/**
+ * Each archetype has a single distinguishing attack rule:
+ *  - basic    : single target, full damage (heroes default).
+ *  - cleave   : target full + adjacent enemies 50% (brown bruiser).
+ *  - splash   : target full + all enemies within 1 hex of target 50% (red AOE).
+ *  - execute  : single target, +50% damage if target HP < 40% (green assassin).
+ *  - heal     : alternate action — restore 30% hpMax to ally (blue support).
+ *  - pierce   : target full + tile beyond in attacker→target line 50% (grey siege).
+ */
+export type AttackKind = 'basic' | 'cleave' | 'splash' | 'execute' | 'heal' | 'pierce'
+
 export type UnitTemplate = {
   archetype: MinionArchetype
   name: string
@@ -28,6 +39,12 @@ export type UnitTemplate = {
   spd: number
   tone: 'primary' | 'destructive' | 'accent' | 'gold' | 'foreground'
   flavor: string
+  /** What its attack does. */
+  attackKind: AttackKind
+  /** Short ability tag shown in UI (e.g. "CLIVA", "AOE"). */
+  abilityTag: string
+  /** Long-form description of the special. */
+  abilityText: string
 }
 
 export type Unit = {
@@ -44,8 +61,13 @@ export type Unit = {
   range: number
   spd: number
   tone: 'primary' | 'destructive' | 'accent' | 'gold' | 'foreground'
+  /** True after the unit has acted (attacked / healed / waited). */
   acted: boolean
+  /** True after the unit has moved (separate from acted — XCOM style). */
+  moved: boolean
   dead: boolean
+  /** Combat kind for outgoing attacks. */
+  attackKind: AttackKind
   equipped?: string
   heroId?: string
 }
