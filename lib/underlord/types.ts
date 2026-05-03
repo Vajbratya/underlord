@@ -106,6 +106,9 @@ export type Region = {
   lore: string
   goldReward: number
   heroIds: string[]
+  /** Only loot-bearing regions drop equipment on victory. The others give
+   * gold + XP only, so a true item haul becomes a campaign milestone. */
+  dropsLoot: boolean
 }
 
 /* ---------- Battle ---------- */

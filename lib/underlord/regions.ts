@@ -18,6 +18,7 @@ export const REGIONS: Region[] = [
     lore: 'Bryan diz que aqui ele "sentiu o chamado". Bryan sente o chamado em qualquer lugar com sinal de Wi-Fi.',
     goldReward: 40,
     heroIds: ['bryan'],
+    dropsLoot: false,
   },
   {
     id: 'ironreach',
@@ -31,6 +32,7 @@ export const REGIONS: Region[] = [
     lore: 'Kevin abriu uma franquia de capelas-posto-de-gasolina. Tyrella é gerente. Tyrella quer falar com você.',
     goldReward: 65,
     heroIds: ['kevin', 'tyrella'],
+    dropsLoot: false,
   },
   {
     id: 'ashfen',
@@ -44,6 +46,7 @@ export const REGIONS: Region[] = [
     lore: 'Daggor faz lives de surf. Gandolfini estuda pra prova. Sangue na areia. Engajamento alto.',
     goldReward: 90,
     heroIds: ['daggor', 'gandolfini'],
+    dropsLoot: true,
   },
   {
     id: 'midgrove',
@@ -57,6 +60,7 @@ export const REGIONS: Region[] = [
     lore: 'Vexanna manifesta. Blazborn conta os macros. Bianca já abriu um thread sobre você.',
     goldReward: 120,
     heroIds: ['vexanna', 'blazborn', 'bianca'],
+    dropsLoot: false,
   },
   {
     id: 'kingreach',
@@ -70,6 +74,7 @@ export const REGIONS: Region[] = [
     lore: 'Baldrik patenteou a lei. Midas auditou seu CNPJ. Gregórius está mandando áudio.',
     goldReward: 180,
     heroIds: ['baldrik', 'gregorius', 'midas'],
+    dropsLoot: true,
   },
   {
     id: 'sunkencrown',
@@ -83,6 +88,7 @@ export const REGIONS: Region[] = [
     lore: 'A Profecia em Pessoa te aguarda. Heliarch também. Nem dão bom dia.',
     goldReward: 300,
     heroIds: ['profecia', 'heliarch'],
+    dropsLoot: true,
   },
 ]
 

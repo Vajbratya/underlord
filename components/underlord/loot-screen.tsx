@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { ChevronRight, Coins, Flame, Skull, Sparkles, Trophy, Zap } from "lucide-react"
+import { ChevronRight, Coins, Flame, Gem, Skull, Sparkles, Trophy, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RARITY_LABEL, RARITY_TONE } from "@/lib/underlord/loot"
 import type { LootItem } from "@/lib/underlord/types"
@@ -19,6 +19,7 @@ export function LootScreen({
   levelsGained = 0,
   comboMax = 0,
   flawless = false,
+  regionDropsLoot = true,
   onContinue,
 }: {
   victory: boolean
@@ -30,6 +31,9 @@ export function LootScreen({
   levelsGained?: number
   comboMax?: number
   flawless?: boolean
+  /** Whether the cleared region drops equipment at all. Non-loot regions
+   * still grant gold + XP but never drop items. */
+  regionDropsLoot?: boolean
   onContinue: () => void
 }) {
   // Gold ticker animates count-up for satisfying victory pop
@@ -194,6 +198,28 @@ export function LootScreen({
                   <p className="mt-0.5 font-display text-lg font-black uppercase tracking-tight text-foreground sm:text-xl">
                     +{levelsGained} {levelsGained > 1 ? "níveis" : "nível"}
                   </p>
+                </div>
+              ) : null}
+
+              {!regionDropsLoot ? (
+                <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-border bg-card/60 p-3 sm:mt-4 sm:p-4">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-sm border border-border bg-secondary/40 text-muted-foreground">
+                    <Gem className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-muted-foreground">
+                      Sem Saque
+                    </p>
+                    <p className="mt-0.5 text-pretty font-mono text-[11px] leading-relaxed tracking-wider text-foreground/85 sm:text-xs">
+                      Região árida. Os defensores não tinham nada que valesse a
+                      pena carregar. Próxima região com{" "}
+                      <span className="text-gold">
+                        <Gem className="mr-0.5 inline size-3" />
+                        SAQUE
+                      </span>{" "}
+                      cai equipamento.
+                    </p>
+                  </div>
                 </div>
               ) : null}
 

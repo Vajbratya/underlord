@@ -186,7 +186,12 @@ export function UnderlordGame() {
           onComplete={(result) => {
             const goldEarned = result.victory ? region.goldReward : 0
             const forceRare = shouldForceRare(state.save) && result.victory
-            const loot = result.victory ? rollLoot(region.stage, 2, forceRare) : []
+            // Only loot-bearing regions actually drop equipment. Other wins
+            // still pay gold + XP, so true loot becomes a campaign milestone.
+            const loot =
+              result.victory && region.dropsLoot
+                ? rollLoot(region.stage, 2, forceRare)
+                : []
             const fallenIds = result.fallenIds
             fallenNameCache = fallenIds
               .map((id) => state.save.roster.find((u) => u.id === id)?.name)
@@ -217,6 +222,7 @@ export function UnderlordGame() {
   if (state.phase === "loot" && state.lastResult) {
     const fallenNames = fallenNameCache
     const result = state.lastResult
+    const lootRegion = REGIONS.find((r) => r.id === result.regionId)
     return (
       <>
         <LootScreen
@@ -227,6 +233,7 @@ export function UnderlordGame() {
           comboMax={result.comboHigh}
           flawless={result.flawless}
           loot={result.loot}
+          regionDropsLoot={lootRegion?.dropsLoot ?? false}
           fallenNames={fallenNames}
           killedHeroIds={result.killedHeroIds}
           onContinue={() => {

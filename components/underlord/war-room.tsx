@@ -7,6 +7,7 @@ import {
   Coins,
   Crown,
   Flame,
+  Gem,
   Lock,
   Map,
   Shield,
@@ -335,7 +336,21 @@ function RegionCard({
           <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
             {heroes.length} {heroes.length === 1 ? "herói" : "heróis"}
           </span>
-          <span className="ml-auto flex items-center gap-1 font-mono text-[10px] font-black uppercase tracking-wider text-gold">
+          {region.dropsLoot ? (
+            <span
+              className="ml-auto flex items-center gap-1 rounded-sm border border-gold/50 bg-gold/15 px-1.5 py-0.5 font-mono text-[8px] font-black uppercase tracking-[0.18em] text-gold"
+              title="Esta região cai equipamento"
+            >
+              <Gem className="size-3" />
+              SAQUE
+            </span>
+          ) : null}
+          <span
+            className={cn(
+              "flex items-center gap-1 font-mono text-[10px] font-black uppercase tracking-wider text-gold",
+              !region.dropsLoot && "ml-auto",
+            )}
+          >
             <Coins className="size-3" />
             {region.goldReward}
           </span>
@@ -498,7 +513,18 @@ function RegionDrawer({
             <span className="text-muted-foreground">Recompensa</span>
             <span className="flex items-center gap-1.5 text-gold">
               <Coins className="size-3.5" />
-              {region.goldReward} ouro + saque
+              {region.goldReward} ouro
+              {region.dropsLoot ? (
+                <>
+                  <span className="opacity-60">·</span>
+                  <Gem className="size-3.5" />
+                  saque
+                </>
+              ) : (
+                <span className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground">
+                  · sem saque
+                </span>
+              )}
             </span>
           </div>
         </div>
