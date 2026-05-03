@@ -8,6 +8,7 @@ import {
   Crown,
   Flame,
   Gem,
+  Hammer,
   Lock,
   Map,
   Shield,
@@ -24,6 +25,7 @@ import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { getHero } from "@/lib/elementum-flavor"
 import { haptic } from "@/lib/underlord/haptics"
 import { xpProgress } from "@/lib/underlord/meta"
+import { squadCap } from "@/lib/underlord/perks"
 import { Atmosphere } from "./atmosphere"
 
 const TONE_TO_VAR: Record<string, string> = {
@@ -54,13 +56,16 @@ export function WarRoom({
   save,
   onPickRegion,
   onOpenSquad,
+  onOpenForge,
   streakBonus,
 }: {
   save: SaveState
   onPickRegion: (regionId: string) => void
   onOpenSquad: () => void
+  onOpenForge: () => void
   streakBonus?: number | null
 }) {
+  const cap = squadCap(save.perks)
   const xp = xpProgress(save.xp)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = REGIONS.find((r) => r.id === selectedId) ?? null
@@ -113,7 +118,7 @@ export function WarRoom({
               />
             </div>
           </div>
-          {/* XP bar + level */}
+          {/* XP bar + level + Forja button */}
           <div className="mt-2.5 flex items-center gap-2">
             <span className="flex shrink-0 items-center gap-1 rounded-sm border border-accent/70 bg-accent/15 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.18em] text-accent">
               <Zap className="size-3" />
@@ -136,6 +141,33 @@ export function WarRoom({
             <span className="shrink-0 font-mono text-[9px] tabular-nums text-muted-foreground">
               {xp.intoLevel}/{xp.needed}
             </span>
+            <button
+              type="button"
+              onClick={() => {
+                haptic.select()
+                onOpenForge()
+              }}
+              aria-label="Forja"
+              title={
+                save.perkPoints > 0
+                  ? `Forja · ${save.perkPoints} ponto${save.perkPoints === 1 ? "" : "s"} para gastar`
+                  : "Forja"
+              }
+              className={cn(
+                "relative flex h-7 shrink-0 items-center gap-1 rounded-sm border px-2 font-mono text-[9px] font-black uppercase tracking-[0.18em] transition active:scale-95",
+                save.perkPoints > 0
+                  ? "border-gold bg-gold/15 text-gold ready-pulse"
+                  : "border-border bg-card/70 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Hammer className="size-3" />
+              <span className="hidden sm:inline">FORJA</span>
+              {save.perkPoints > 0 ? (
+                <span className="rounded bg-gold text-background px-1 font-display text-[10px] leading-none tabular-nums">
+                  {save.perkPoints}
+                </span>
+              ) : null}
+            </button>
           </div>
         </div>
         {/* Streak bonus banner */}
@@ -187,7 +219,9 @@ export function WarRoom({
             className="flex h-12 shrink-0 items-center gap-2 rounded-md border-2 border-border bg-card px-3 font-mono text-[10px] uppercase tracking-[0.24em] text-foreground transition active:scale-[0.97] hover:border-accent/60"
           >
             <Users className="size-4" />
-            <span className="font-black tabular-nums">{save.squad.length}/3</span>
+            <span className="font-black tabular-nums">
+              {save.squad.length}/{cap}
+            </span>
           </button>
           <div className="flex flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar">
             {save.squad.length === 0 ? (

@@ -1,7 +1,17 @@
 "use client"
 
 import Image from "next/image"
-import { ChevronRight, Coins, Flame, Gem, Skull, Sparkles, Trophy, Zap } from "lucide-react"
+import {
+  ChevronRight,
+  Coins,
+  Flame,
+  Gem,
+  Hammer,
+  Skull,
+  Sparkles,
+  Trophy,
+  Zap,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RARITY_LABEL, RARITY_TONE } from "@/lib/underlord/loot"
 import type { LootItem } from "@/lib/underlord/types"
@@ -17,6 +27,7 @@ export function LootScreen({
   killedHeroIds,
   xpEarned = 0,
   levelsGained = 0,
+  perkPointsGained = 0,
   comboMax = 0,
   flawless = false,
   regionDropsLoot = true,
@@ -29,6 +40,8 @@ export function LootScreen({
   killedHeroIds: string[]
   xpEarned?: number
   levelsGained?: number
+  /** Forge points granted by levels gained — drives the FORJA beat. */
+  perkPointsGained?: number
   comboMax?: number
   flawless?: boolean
   /** Whether the cleared region drops equipment at all. Non-loot regions
@@ -198,6 +211,12 @@ export function LootScreen({
                   <p className="mt-0.5 font-display text-lg font-black uppercase tracking-tight text-foreground sm:text-xl">
                     +{levelsGained} {levelsGained > 1 ? "níveis" : "nível"}
                   </p>
+                  {perkPointsGained > 0 ? (
+                    <p className="mt-1.5 inline-flex items-center gap-1 rounded-sm border border-gold/60 bg-gold/15 px-2 py-1 font-mono text-[10px] font-black uppercase tracking-[0.22em] text-gold">
+                      <Hammer className="size-3" />+{perkPointsGained} ponto
+                      {perkPointsGained === 1 ? "" : "s"} de Forja
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
 

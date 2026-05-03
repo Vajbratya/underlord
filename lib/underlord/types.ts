@@ -70,6 +70,20 @@ export type Unit = {
   attackKind: AttackKind
   equipped?: string
   heroId?: string
+
+  /* ---------- Active ability state ---------- */
+  /** Cooldown counter (in rounds) until the special can be used again. */
+  specialCd: number
+  /** True once the unit has used a once-per-battle special. */
+  specialSpent: boolean
+  /** Multiplier applied to the next outgoing attack ONLY (e.g. 1.6 from Sombra). */
+  nextAttackBonus?: number
+  /** Multiplier applied to incoming damage (0..1; 0.5 = -50%). Lasts 1 round. */
+  damageTakenMod?: number
+  /** Forced target by Provocar; the AI will prefer this ID for one turn. */
+  tauntedBy?: string
+  /** True when this unit is a Muralha barrier (no actions, just walls a hex). */
+  isBarrier?: boolean
 }
 
 /* ---------- Loot ---------- */
@@ -165,4 +179,13 @@ export type SaveState = {
   battlesSinceRare: number
   /** Unlocked achievement ids. */
   achievements: string[]
+
+  /* ---- Forja (perk tree) ---- */
+  /** Unspent perk points (gained 1 per Underlord level above 1). */
+  perkPoints: number
+  /** Highest level reached so far — used to know how many points to grant
+   * across loads even if the player respecs. */
+  highestLevel: number
+  /** Map of perk id → invested rank. */
+  perks: Record<string, number>
 }

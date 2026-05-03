@@ -4,7 +4,7 @@
  */
 
 import type { LootItem, Phase, Region, RegionStatus, SaveState, Unit } from './types'
-import { makeStarterRoster } from './units'
+import { makeStarterRoster, rebuildRosterStats } from './units'
 import { REGIONS } from './regions'
 import {
   ACHIEVEMENTS,
@@ -13,8 +13,10 @@ import {
   todayKey,
   xpForBattle,
 } from './meta'
+import { goldMult, PERKS, type PerkId, perksSpent, squadCap, xpMult } from './perks'
 
-const STORAGE_KEY = 'underlord-save-v2'
+const STORAGE_KEY = 'underlord-save-v3'
+const LEGACY_KEY_V2 = 'underlord-save-v2'
 
 export type GameState = {
   phase: Phase
@@ -34,13 +36,15 @@ export type GameState = {
     unlockedAchievements: AchievementId[]
     /** Levels gained from this battle's XP (typically 0 or 1+). */
     levelsGained: number
+    /** Perk points granted by those level-ups. */
+    perkPointsGained: number
   } | null
 }
 
 export function freshSave(name: string): SaveState {
   const roster = makeStarterRoster()
   return {
-    version: 2,
+    version: 3,
     underlordName: name,
     roster,
     squad: roster.slice(0, 3).map((u) => u.id),
@@ -58,6 +62,9 @@ export function freshSave(name: string): SaveState {
     critsLanded: 0,
     battlesSinceRare: 0,
     achievements: [],
+    perkPoints: 0,
+    highestLevel: 1,
+    perks: {},
   }
 }
 
@@ -78,19 +85,74 @@ export function freshGame(): GameState {
   }
 }
 
+/** Migrate a v2 save into v3 shape. */
+function migrateV2(parsed: { save?: Partial<SaveState> }): SaveState | null {
+  const s = parsed.save
+  if (!s) return null
+  const level = levelFromXP(s.xp ?? 0)
+  return {
+    version: 3,
+    underlordName: s.underlordName ?? 'Underlord',
+    roster: s.roster ?? makeStarterRoster(),
+    squad: s.squad ?? [],
+    regions: s.regions ?? makeFreshRegionMap(),
+    inventory: s.inventory ?? [],
+    gold: s.gold ?? 50,
+    taint: s.taint ?? 0,
+    heroesKilled: s.heroesKilled ?? [],
+    battlesWon: s.battlesWon ?? 0,
+    battlesLost: s.battlesLost ?? 0,
+    xp: s.xp ?? 0,
+    dailyStreak: s.dailyStreak ?? 0,
+    lastPlayedDay: s.lastPlayedDay ?? '',
+    comboHigh: s.comboHigh ?? 0,
+    critsLanded: s.critsLanded ?? 0,
+    battlesSinceRare: s.battlesSinceRare ?? 0,
+    achievements: s.achievements ?? [],
+    // Grant retroactive perk points so existing players don't lose progress.
+    perkPoints: Math.max(0, level - 1),
+    highestLevel: level,
+    perks: {},
+  }
+}
+
 export function loadGame(): GameState | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<GameState>
-    if (!parsed.save || parsed.save.version !== 2) return null
-    return {
-      phase: 'warroom',
-      save: parsed.save as SaveState,
-      pendingRegionId: null,
-      lastResult: null,
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<GameState>
+      if (!parsed.save || parsed.save.version !== 3) {
+        // Same key but bad version — try the migration path below.
+      } else {
+        return {
+          phase: 'warroom',
+          save: parsed.save as SaveState,
+          pendingRegionId: null,
+          lastResult: null,
+        }
+      }
     }
+    // Try v2 migration
+    const legacy = window.localStorage.getItem(LEGACY_KEY_V2)
+    if (legacy) {
+      const parsed = JSON.parse(legacy) as { save?: Partial<SaveState> }
+      const migrated = migrateV2(parsed)
+      if (migrated) {
+        // Persist migrated under v3 key
+        window.localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ save: migrated }),
+        )
+        return {
+          phase: 'warroom',
+          save: migrated,
+          pendingRegionId: null,
+          lastResult: null,
+        }
+      }
+    }
+    return null
   } catch {
     return null
   }
@@ -109,7 +171,7 @@ export function wipeSave(): void {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.removeItem(STORAGE_KEY)
-    // Also wipe v1 if present
+    window.localStorage.removeItem(LEGACY_KEY_V2)
     window.localStorage.removeItem('underlord-save-v1')
   } catch {
     // ignore
@@ -140,6 +202,8 @@ export type Action =
     }
   | { type: 'equip'; unitId: string; lootId: string | null }
   | { type: 'daily-checkin'; bonus: number; streak: number; today: string }
+  | { type: 'spend-perk'; perkId: PerkId }
+  | { type: 'respec' }
   | { type: 'reset' }
 
 function unlockNew(save: SaveState, ids: AchievementId[]): {
@@ -168,8 +232,54 @@ export function reduce(state: GameState, action: Action): GameState {
       return { ...state, save: { ...state.save, underlordName: action.name } }
     case 'select-region':
       return { ...state, pendingRegionId: action.regionId, phase: 'briefing' }
-    case 'set-squad':
-      return { ...state, save: { ...state.save, squad: action.squadIds } }
+    case 'set-squad': {
+      // Cap squad size at the perk-derived max. Silently drop overflow.
+      const cap = squadCap(state.save.perks)
+      const trimmed = action.squadIds.slice(0, cap)
+      return { ...state, save: { ...state.save, squad: trimmed } }
+    }
+    case 'spend-perk': {
+      const def = PERKS[action.perkId]
+      if (!def) return state
+      const cur = state.save.perks[action.perkId] ?? 0
+      if (cur >= def.maxRank) return state
+      const lvl = levelFromXP(state.save.xp)
+      if (lvl < def.tierLevel) return state
+      if (state.save.perkPoints <= 0) return state
+      const nextPerks = { ...state.save.perks, [action.perkId]: cur + 1 }
+      // Recompute roster stats so the rank takes effect on existing minions.
+      const nextRoster = rebuildRosterStats(state.save.roster, nextPerks)
+      // If squad cap shrank somehow (it can't — perks only grow), trim. If it
+      // grew, leave the squad alone; player picks new slots themselves.
+      const cap = squadCap(nextPerks)
+      const trimmedSquad = state.save.squad.slice(0, cap)
+      return {
+        ...state,
+        save: {
+          ...state.save,
+          perkPoints: state.save.perkPoints - 1,
+          perks: nextPerks,
+          roster: nextRoster,
+          squad: trimmedSquad,
+        },
+      }
+    }
+    case 'respec': {
+      // Refund every spent point. Roster reverts to baseline stats.
+      const refund = perksSpent(state.save.perks)
+      const nextRoster = rebuildRosterStats(state.save.roster, {})
+      const cap = squadCap({})
+      return {
+        ...state,
+        save: {
+          ...state.save,
+          perkPoints: state.save.perkPoints + refund,
+          perks: {},
+          roster: nextRoster,
+          squad: state.save.squad.slice(0, cap),
+        },
+      }
+    }
     case 'daily-checkin': {
       return {
         ...state,
@@ -190,33 +300,43 @@ export function reduce(state: GameState, action: Action): GameState {
       save.critsLanded = save.critsLanded + result.critsLanded
       save.comboHigh = Math.max(save.comboHigh, result.comboHigh)
 
-      // Calculate XP
-      const xpEarned = xpForBattle({
+      // XP: scaled by perk
+      const baseXp = xpForBattle({
         victory: result.victory,
         stage: region.stage,
         heroesKilled: result.killedHeroIds.length,
         comboHigh: result.comboHigh,
       })
+      const xpEarned = Math.floor(baseXp * xpMult(save.perks))
 
-      // Capture old level for comparison
       const oldLevel = levelFromXP(save.xp)
       save.xp = save.xp + xpEarned
       const newLevel = levelFromXP(save.xp)
       const levelsGained = newLevel - oldLevel
 
+      // Award one perk point per NEW level reached (capped vs. highestLevel
+      // so respecs/reloads can't farm extra points).
+      let perkPointsGained = 0
+      if (newLevel > save.highestLevel) {
+        perkPointsGained = newLevel - save.highestLevel
+        save.perkPoints = save.perkPoints + perkPointsGained
+        save.highestLevel = newLevel
+      }
+
+      // Gold: scaled by perk
+      const goldFinal = Math.floor(goldEarned * goldMult(save.perks))
+
       if (result.victory) {
-        save.gold += goldEarned
+        save.gold += goldFinal
         save.inventory = [...save.inventory, ...loot]
         save.heroesKilled = Array.from(
           new Set([...save.heroesKilled, ...result.killedHeroIds]),
         )
         save.battlesWon += 1
 
-        // Pity timer reset/increment
         const gotRare = loot.some((l) => l.rarity === 'cursed' || l.rarity === 'relic')
         save.battlesSinceRare = gotRare ? 0 : save.battlesSinceRare + 1
 
-        // Mark region cleared, unlock linked regions
         const regions = { ...save.regions, [region.id]: 'cleared' as RegionStatus }
         for (const linkId of region.links) {
           if (regions[linkId] === 'locked') regions[linkId] = 'available'
@@ -250,7 +370,6 @@ export function reduce(state: GameState, action: Action): GameState {
       save.achievements = achievements
       save.gold = save.gold + bonusGold
 
-      // Stamp last played day for streak
       save.lastPlayedDay = todayKey()
 
       return {
@@ -258,7 +377,7 @@ export function reduce(state: GameState, action: Action): GameState {
         save,
         lastResult: {
           victory: result.victory,
-          goldEarned: goldEarned + bonusGold,
+          goldEarned: goldFinal + bonusGold,
           xpEarned,
           loot,
           fallenIds: result.fallenIds,
@@ -268,6 +387,7 @@ export function reduce(state: GameState, action: Action): GameState {
           flawless: result.flawless,
           unlockedAchievements: unlocked,
           levelsGained,
+          perkPointsGained,
         },
       }
     }

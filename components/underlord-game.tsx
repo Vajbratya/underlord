@@ -8,6 +8,7 @@ import { Briefing } from "@/components/underlord/briefing"
 import { BattleScreen } from "@/components/underlord/battle"
 import { LootScreen } from "@/components/underlord/loot-screen"
 import { SquadPicker } from "@/components/underlord/squad-picker"
+import { Forge } from "@/components/underlord/forge"
 import {
   AchievementToaster,
   fireAchievement,
@@ -34,6 +35,7 @@ export function UnderlordGame() {
   const [hydrated, setHydrated] = useState(false)
   const [hasSave, setHasSave] = useState(false)
   const [showSquadPicker, setShowSquadPicker] = useState(false)
+  const [showForge, setShowForge] = useState(false)
   const [streakBonusToShow, setStreakBonusToShow] = useState<number | null>(null)
   const dailyCheckedToday = useRef<string>("")
 
@@ -136,6 +138,7 @@ export function UnderlordGame() {
           save={state.save}
           onPickRegion={(rid) => dispatch({ type: "select-region", regionId: rid })}
           onOpenSquad={() => setShowSquadPicker(true)}
+          onOpenForge={() => setShowForge(true)}
           streakBonus={streakBonusToShow}
         />
         {showSquadPicker ? (
@@ -143,6 +146,14 @@ export function UnderlordGame() {
             save={state.save}
             onSetSquad={(ids) => dispatch({ type: "set-squad", squadIds: ids })}
             onClose={() => setShowSquadPicker(false)}
+          />
+        ) : null}
+        {showForge ? (
+          <Forge
+            save={state.save}
+            onSpend={(perkId) => dispatch({ type: "spend-perk", perkId })}
+            onRespec={() => dispatch({ type: "respec" })}
+            onClose={() => setShowForge(false)}
           />
         ) : null}
         <AchievementToaster />
@@ -183,6 +194,7 @@ export function UnderlordGame() {
         <BattleScreen
           squad={squad}
           region={region}
+          perks={state.save.perks}
           onComplete={(result) => {
             const goldEarned = result.victory ? region.goldReward : 0
             const forceRare = shouldForceRare(state.save) && result.victory
@@ -230,6 +242,7 @@ export function UnderlordGame() {
           goldEarned={result.goldEarned}
           xpEarned={result.xpEarned}
           levelsGained={result.levelsGained}
+          perkPointsGained={result.perkPointsGained}
           comboMax={result.comboHigh}
           flawless={result.flawless}
           loot={result.loot}

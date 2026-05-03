@@ -3,6 +3,7 @@
  */
 
 import type { MinionArchetype, Unit, UnitTemplate, Axial } from './types'
+import { BARRIER_HP } from './specials'
 
 export const MINION_TEMPLATES: Record<MinionArchetype, UnitTemplate> = {
   brown: {
@@ -123,7 +124,35 @@ export function makeUnit(
     moved: false,
     dead: false,
     attackKind: t.attackKind,
+    specialCd: 0,
+    specialSpent: false,
     ...overrides,
+  }
+}
+
+/** Build a Muralha barrier unit (no actions, just blocks a hex). */
+export function makeBarrier(pos: Axial, ownerName: string = 'MURALHA'): Unit {
+  return {
+    id: nextUnitId(),
+    templateId: 'grey',
+    name: ownerName,
+    glyph: '▓',
+    faction: 'minion',
+    pos,
+    hp: BARRIER_HP,
+    hpMax: BARRIER_HP,
+    atk: 0,
+    move: 0,
+    range: 0,
+    spd: 0,
+    tone: 'foreground',
+    acted: true,
+    moved: true,
+    dead: false,
+    attackKind: 'basic',
+    specialCd: 999,
+    specialSpent: true,
+    isBarrier: true,
   }
 }
 
@@ -160,6 +189,8 @@ export function makeHero(
     moved: false,
     dead: false,
     attackKind: 'basic',
+    specialCd: 999,
+    specialSpent: true,
     heroId,
   }
 }
@@ -174,4 +205,33 @@ export function makeStarterRoster(): Unit[] {
     makeUnit('blue', { q: 0, r: 0 }, { name: 'MURR' }),
     makeUnit('grey', { q: 0, r: 0 }, { name: 'KORM' }),
   ]
+}
+
+/* ------------------------------------------------------------------ */
+/* Perk-driven roster rebuild.                                         */
+/*                                                                     */
+/* Roster units store their CURRENT (perk-buffed) stats. When the      */
+/* player spends or refunds a perk, we recompute every unit from its   */
+/* archetype baseline plus the new perk map, preserving HP-percent.     */
+/* ------------------------------------------------------------------ */
+
+import { statBuffsFor } from './perks'
+
+export function rebuildRosterStats(
+  roster: Unit[],
+  perks: Record<string, number>,
+): Unit[] {
+  return roster.map((u) => {
+    if (u.faction !== 'minion' || u.isBarrier) return u
+    const tpl = MINION_TEMPLATES[u.templateId]
+    if (!tpl) return u
+    const buff = statBuffsFor(u.templateId, perks)
+    const hpMax = tpl.hp + buff.hp
+    const atk = tpl.atk + buff.atk
+    const move = tpl.move + buff.move
+    const range = tpl.range + buff.range
+    const ratio = u.hpMax > 0 ? u.hp / u.hpMax : 1
+    const hp = Math.max(1, Math.round(hpMax * ratio))
+    return { ...u, hpMax, hp, atk, move, range }
+  })
 }
