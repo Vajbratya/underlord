@@ -84,6 +84,8 @@ export type Unit = {
   tauntedBy?: string
   /** True when this unit is a Muralha barrier (no actions, just walls a hex). */
   isBarrier?: boolean
+  /** True for the player's Underlord avatar — if it dies, battle is lost. */
+  isOverlord?: boolean
 }
 
 /* ---------- Loot ---------- */

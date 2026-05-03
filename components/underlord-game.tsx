@@ -23,7 +23,7 @@ import {
 } from "@/lib/underlord/state"
 import { rollLoot } from "@/lib/underlord/loot"
 import { REGIONS } from "@/lib/underlord/regions"
-import { tickStreak, todayKey, shouldForceRare } from "@/lib/underlord/meta"
+import { tickStreak, todayKey, shouldForceRare, xpProgress } from "@/lib/underlord/meta"
 import type { Unit } from "@/lib/underlord/types"
 
 let fallenNameCache: string[] = []
@@ -189,12 +189,15 @@ export function UnderlordGame() {
     const squad: Unit[] = state.save.squad
       .map((id) => state.save.roster.find((u) => u.id === id))
       .filter((u): u is NonNullable<typeof u> => Boolean(u))
+    const overlordLevel = xpProgress(state.save.xp).level
     return (
       <>
         <BattleScreen
           squad={squad}
           region={region}
           perks={state.save.perks}
+          overlordLevel={overlordLevel}
+          overlordName={state.save.underlordName}
           onComplete={(result) => {
             const goldEarned = result.victory ? region.goldReward : 0
             const forceRare = shouldForceRare(state.save) && result.victory

@@ -3,6 +3,7 @@
 import Image from "next/image"
 import { useEffect, useMemo, useReducer, useRef, useState } from "react"
 import {
+  Crown,
   Flame,
   Heart,
   RotateCcw,
@@ -44,7 +45,13 @@ import {
 } from "@/lib/underlord/battle"
 import type { BattleState } from "@/lib/underlord/battle"
 import type { Axial, Region, Unit } from "@/lib/underlord/types"
-import { MINION_TEMPLATES, makeHero, makeUnit } from "@/lib/underlord/units"
+import {
+  MINION_TEMPLATES,
+  makeHero,
+  makeHeroMinion,
+  makeOverlord,
+  makeUnit,
+} from "@/lib/underlord/units"
 import { SPECIALS } from "@/lib/underlord/specials"
 import { rand, getHeroById, UNDERLORD_LINES } from "@/lib/elementum-flavor"
 import { Atmosphere } from "./atmosphere"
@@ -85,9 +92,21 @@ function reducer(local: LocalState, action: LocalAction): LocalState {
 }
 
 /** Build initial battle: minions at bottom 2 rows, heroes at top 2 rows.
- * Up to 3 minions on the front row; extras go to the row behind, so the
- * EXÉRCITO perk (cap 4 or 5) can deploy a wider line. */
-function buildBattle(squad: Unit[], region: Region): BattleState {
+ *
+ * Player side (front to back):
+ *   - row ROWS-2: up to 3 minions on the front line.
+ *   - row ROWS-3: extras (squad cap 4-5) flank slightly back.
+ *   - row ROWS-1: the OVERLORD itself, dead-center, behind the wall.
+ *
+ * Enemy side (top, mirrored):
+ *   - row 0: each named hero.
+ *   - row 1: every hero's personal entourage spreads out behind them. */
+function buildBattle(
+  squad: Unit[],
+  region: Region,
+  overlordLevel: number,
+  overlordName: string,
+): BattleState {
   const placedSquad: Unit[] = squad.slice(0, 5).map((u, i) => {
     const row = i < 3 ? ROWS - 2 : ROWS - 3
     const colIdx = i < 3 ? i : i - 3
@@ -104,20 +123,75 @@ function buildBattle(squad: Unit[], region: Region): BattleState {
       equipped: u.equipped,
     })
   })
-  const heroUnits: Unit[] = region.heroIds.map((heroId, i) => {
+
+  // Overlord deploys dead-center on the back row.
+  const overlordRow = ROWS - 1
+  const overlordOffset = -Math.floor(overlordRow / 2)
+  const overlordCol = Math.floor(COLS / 2) + overlordOffset
+  const overlord = makeOverlord(
+    overlordLevel,
+    { q: overlordCol, r: overlordRow },
+    overlordName,
+  )
+
+  // Heroes on row 0; their entourages spread on row 1 nearby.
+  const heroUnits: Unit[] = []
+  region.heroIds.forEach((heroId, i) => {
     const hero = getHeroById(heroId)
-    const q = 1 + i * 2
-    const r = 1
-    const offset = -Math.floor(r / 2)
-    return makeHero(
-      heroId,
-      hero?.name.split(",")[0] ?? heroId.toUpperCase(),
-      "?",
-      { q: q + offset, r },
-      region.stage,
+    const heroRow = 0
+    const heroOffset = -Math.floor(heroRow / 2)
+    // Distribute heroes evenly across the row
+    const slot = i / Math.max(1, region.heroIds.length - 1)
+    const heroCol = Math.round(
+      heroOffset + slot * (COLS - 1) || heroOffset + 1 + i * 2,
     )
+    heroUnits.push(
+      makeHero(
+        heroId,
+        hero?.name.split(",")[0] ?? heroId.toUpperCase(),
+        "?",
+        { q: heroCol, r: heroRow },
+        region.stage,
+      ),
+    )
+    // Entourage spawns one row back, fanned out around the hero column.
+    const entRow = 1
+    const entOffset = -Math.floor(entRow / 2)
+    const entourage = hero?.entourage ?? []
+    entourage.forEach((arch, eIdx) => {
+      // Alternate left/right of the hero so they don't all stack on one side.
+      const side = eIdx % 2 === 0 ? -1 : 1
+      const stride = Math.ceil((eIdx + 1) / 2)
+      const candidateCol = heroCol + side * stride
+      const minCol = entOffset
+      const maxCol = COLS + entOffset - 1
+      const finalCol = Math.max(minCol, Math.min(maxCol, candidateCol))
+      heroUnits.push(
+        makeHeroMinion(
+          arch,
+          { q: finalCol, r: entRow },
+          region.stage,
+          hero?.name.split(",")[0]?.split(" ")[0] ?? "HERÓI",
+        ),
+      )
+    })
   })
-  return initBattle([...placedSquad, ...heroUnits], COLS, ROWS)
+
+  // De-dupe accidental position collisions on the enemy back-row by sliding
+  // overlapping units one column at a time. Cheap, runs once per battle.
+  const seen = new Set<string>()
+  for (const u of heroUnits) {
+    let key = `${u.pos.q},${u.pos.r}`
+    let tries = 0
+    while (seen.has(key) && tries < 20) {
+      u.pos = { q: u.pos.q + (tries % 2 === 0 ? 1 : -1) * (Math.floor(tries / 2) + 1), r: u.pos.r }
+      key = `${u.pos.q},${u.pos.r}`
+      tries++
+    }
+    seen.add(key)
+  }
+
+  return initBattle([...placedSquad, overlord, ...heroUnits], COLS, ROWS)
 }
 
 type Popup = {
@@ -132,12 +206,18 @@ export function BattleScreen({
   squad,
   region,
   perks,
+  overlordLevel = 1,
+  overlordName = "UNDERLORD",
   onComplete,
 }: {
   squad: Unit[]
   region: Region
   /** Perk map from the Underlord's save. Used for crit/combo/heal bonuses. */
   perks?: Record<string, number>
+  /** Underlord meta-level — drives the on-field Overlord unit's stats. */
+  overlordLevel?: number
+  /** Underlord display name — shown on the Overlord unit. */
+  overlordName?: string
   onComplete: (result: {
     victory: boolean
     fallenIds: string[]
@@ -151,7 +231,10 @@ export function BattleScreen({
   const critBonus = critChanceBonus(perks)
   const comboBonusExtra = comboBonusPerStack(perks)
   const healBonus = healMultiplier(perks)
-  const initialBattle = useMemo(() => buildBattle(squad, region), [squad, region])
+  const initialBattle = useMemo(
+    () => buildBattle(squad, region, overlordLevel, overlordName),
+    [squad, region, overlordLevel, overlordName],
+  )
   const [local, dispatch] = useReducer(reducer, {
     state: initialBattle,
     preMove: null,
@@ -891,11 +974,19 @@ export function BattleScreen({
               const xPct = (cx / viewW) * 100
               const yPct = (cy / viewH) * 100
               const sizePct = ((HEX_SIZE * 1.55) / viewW) * 100
+              const isOverlordUnit = !!u.isOverlord
               const isHero = u.faction === "hero"
-              const src = isHero
-                ? `/images/heroes/${u.heroId ?? "bryan"}.jpg`
-                : `/images/minions/${u.templateId}.jpg`
-              const ringColor = isHero ? "var(--destructive)" : tonePixel(u.tone)
+              const isHeroBoss = isHero && !!u.heroId
+              const src = isOverlordUnit
+                ? "/images/overlord.jpg"
+                : isHeroBoss
+                  ? `/images/heroes/${u.heroId}.jpg`
+                  : `/images/minions/${u.templateId}.jpg`
+              const ringColor = isOverlordUnit
+                ? "oklch(0.78 0.16 78)" // gold halo for the commander
+                : isHero
+                  ? "var(--destructive)"
+                  : tonePixel(u.tone)
               const hpRatio = u.hp / u.hpMax
               const k = axialKey(u.pos)
               const isAttackTarget = highlights.attack.has(k)
@@ -963,6 +1054,21 @@ export function BattleScreen({
                     className="absolute -top-1.5 left-1/2 size-2 -translate-x-1/2 rotate-45"
                     style={{ backgroundColor: ringColor }}
                   />
+                  {/* Crown badge: marks the Overlord — death = run lost. */}
+                  {isOverlordUnit ? (
+                    <span
+                      aria-hidden
+                      title="OVERLORD — proteja!"
+                      className="absolute -top-2.5 left-1/2 grid size-5 -translate-x-1/2 place-items-center rounded-full border-2 shadow"
+                      style={{
+                        borderColor: "oklch(0.78 0.16 78)",
+                        backgroundColor: "oklch(0.18 0.02 70)",
+                        color: "oklch(0.85 0.16 78)",
+                      }}
+                    >
+                      <Crown className="size-3" />
+                    </span>
+                  ) : null}
                   {/* Status badges (taunted / shielded / sombra-charged) */}
                   {hasShield ? (
                     <span
@@ -1138,11 +1244,12 @@ export function BattleScreen({
                   Volta
                 </button>
               ) : null}
-              {/* SPECIAL button — only minions, gated by archetype + cooldown */}
+              {/* SPECIAL button — only roster minions (not the Overlord, not a barrier) */}
               {isMinionTurn &&
               active &&
               active.faction === "minion" &&
-              !active.isBarrier ? (
+              !active.isBarrier &&
+              !active.isOverlord ? (
                 <SpecialButton
                   unit={active}
                   active={!!specialMode}
@@ -1248,9 +1355,10 @@ function InitiativeLadder({ state }: { state: BattleState }) {
         const u = state.units.find((x) => x.id === id)
         if (!u) return null
         const isCurrent = i === state.turn
-        const src =
-          u.faction === "hero"
-            ? `/images/heroes/${u.heroId ?? "bryan"}.jpg`
+        const src = u.isOverlord
+          ? "/images/overlord.jpg"
+          : u.faction === "hero" && u.heroId
+            ? `/images/heroes/${u.heroId}.jpg`
             : `/images/minions/${u.templateId}.jpg`
         return (
           <span
@@ -1344,13 +1452,20 @@ function SpecialButton({
 }
 
 function ActiveUnitCard({ unit }: { unit: Unit }) {
-  const tpl = unit.faction === "minion" ? MINION_TEMPLATES[unit.templateId] : null
-  const src =
-    unit.faction === "hero"
-      ? `/images/heroes/${unit.heroId ?? "bryan"}.jpg`
+  const tpl =
+    unit.faction === "minion" && !unit.isOverlord
+      ? MINION_TEMPLATES[unit.templateId]
+      : null
+  const src = unit.isOverlord
+    ? "/images/overlord.jpg"
+    : unit.faction === "hero" && unit.heroId
+      ? `/images/heroes/${unit.heroId}.jpg`
       : `/images/minions/${unit.templateId}.jpg`
-  const borderColor =
-    unit.faction === "hero" ? "var(--destructive)" : tonePixel(unit.tone)
+  const borderColor = unit.isOverlord
+    ? "oklch(0.78 0.16 78)"
+    : unit.faction === "hero"
+      ? "var(--destructive)"
+      : tonePixel(unit.tone)
   const hpRatio = unit.hp / unit.hpMax
   return (
     <div className="flex min-w-0 items-center gap-2.5">

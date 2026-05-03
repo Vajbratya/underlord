@@ -101,6 +101,35 @@ export function Briefing({
                   <p className="mt-1 line-clamp-2 font-mono text-[10px] leading-snug tracking-wide text-foreground/80 sm:line-clamp-3 sm:text-[11px]">
                     &ldquo;{h.entry}&rdquo;
                   </p>
+                  {/* Entourage: tiny portraits of the minions this hero brings. */}
+                  {h.entourage.length > 0 ? (
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-destructive/80">
+                        +
+                      </span>
+                      <div className="flex -space-x-1.5">
+                        {h.entourage.map((arch, idx) => (
+                          <span
+                            key={`${h.id}-ent-${idx}`}
+                            className="relative size-5 overflow-hidden rounded-full border border-destructive/70 ring-1 ring-background sm:size-6"
+                            style={{ borderColor: TONE_TO_VAR[MINION_TEMPLATES[arch].tone] }}
+                            title={`${MINION_TEMPLATES[arch].name} (escolta)`}
+                          >
+                            <Image
+                              src={`/images/minions/${arch}.jpg`}
+                              alt={MINION_TEMPLATES[arch].name}
+                              fill
+                              sizes="24px"
+                              className="object-cover opacity-90"
+                            />
+                          </span>
+                        ))}
+                      </div>
+                      <span className="line-clamp-1 font-mono text-[9px] tracking-wide text-muted-foreground/90">
+                        {h.entourageLabel}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               </li>
             ))}

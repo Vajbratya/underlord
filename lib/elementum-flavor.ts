@@ -10,6 +10,8 @@
  * Você está cansado. Você está com raiva. E desta vez, você vai responder.
  */
 
+import type { MinionArchetype } from './underlord/types'
+
 export type Hero = {
   /** Internal id used by stage routing. */
   id: string
@@ -27,6 +29,11 @@ export type Hero = {
   underlordKill: string
   /** Mid-combat taunts — pool, picked at random when triggered. */
   taunts: string[]
+  /** Minion archetypes that march in with this hero — their personal entourage.
+   * Each hero brings 1-3 themed flunkies onto the battlefield. */
+  entourage: MinionArchetype[]
+  /** Display flavor for the entourage (one-liner shown in war room briefing). */
+  entourageLabel: string
 }
 
 /**
@@ -50,6 +57,8 @@ export const HEROES: Hero[] = [
       'Tô gravando isso pra um documentário.',
       'Espera, deixa eu ajustar minha pose heroica.',
     ],
+    entourage: ['green'],
+    entourageLabel: 'Um stalker que ele chama de "amigo de jornada".',
   },
   {
     id: 'kevin',
@@ -64,6 +73,8 @@ export const HEROES: Hero[] = [
       'Meu pai paga minha armadura. Mas é mérito.',
       'Você precisa de oração e de terapia. Eu ofereço uma.',
     ],
+    entourage: ['brown', 'blue'],
+    entourageLabel: 'Coroinha brawler e um diácono que cura no nome do Santo CNPJ.',
   },
   {
     id: 'tyrella',
@@ -78,6 +89,8 @@ export const HEROES: Hero[] = [
       'Tem comentários POSITIVOS sobre sua gestão da masmorra?',
       'Eu sou cliente fidelidade do panteão.',
     ],
+    entourage: ['blue', 'grey'],
+    entourageLabel: 'Assistente que reza e um auditor que mira de longe.',
   },
   {
     id: 'daggor',
@@ -92,6 +105,8 @@ export const HEROES: Hero[] = [
       'Esse combate vai render no mínimo 3 conteúdos.',
       'Quer aparecer no meu pergaminho? 50 moedas.',
     ],
+    entourage: ['green', 'green'],
+    entourageLabel: 'Dois fanboys jurando que vão "ajudar com a edição".',
   },
   {
     id: 'gandolfini',
@@ -106,6 +121,8 @@ export const HEROES: Hero[] = [
       'Meu professor falou que isso ia funcionar.',
       'Hmm, preciso reler a apostila.',
     ],
+    entourage: ['red', 'red'],
+    entourageLabel: 'Dois aprendizes de bola-de-fogo que ainda não passaram na prova prática.',
   },
   {
     id: 'vexanna',
@@ -120,6 +137,8 @@ export const HEROES: Hero[] = [
       'Você atrai o que emana, vilão.',
       'Tenho uma cota mensal de monstros derrotados a bater.',
     ],
+    entourage: ['green', 'blue'],
+    entourageLabel: 'Mentee de manifestação e uma life-coach que cura traumas.',
   },
   {
     id: 'blazborn',
@@ -134,6 +153,8 @@ export const HEROES: Hero[] = [
       'Isso é peito ou volume? OBVIAMENTE peito.',
       'Sem dor, sem ganho, sem você.',
     ],
+    entourage: ['brown', 'brown'],
+    entourageLabel: 'Dois gym bros do bonding ritual de segunda-feira.',
   },
   {
     id: 'gregorius',
@@ -148,6 +169,8 @@ export const HEROES: Hero[] = [
       'Te mandei áudio. Ainda não escutou.',
       'Compartilha esse sermão em pelo menos 5 grimórios.',
     ],
+    entourage: ['blue', 'grey'],
+    entourageLabel: 'Tia do grupo da família e o sobrinho que toca o sininho.',
   },
   {
     id: 'bianca',
@@ -162,6 +185,8 @@ export const HEROES: Hero[] = [
       'Cês viram o que ele fez? CÊS VIRAM?',
       'Vou expor isso no fórum dos elfos.',
     ],
+    entourage: ['red', 'green'],
+    entourageLabel: 'Um pirômano "ativista" e uma assassina que printa antes de matar.',
   },
   {
     id: 'baldrik',
@@ -176,6 +201,8 @@ export const HEROES: Hero[] = [
       'Meus impostos pagaram essa armadura.',
       'O súdito médio aceita isto, por que você não?',
     ],
+    entourage: ['grey', 'grey', 'brown'],
+    entourageLabel: 'Dois besteiros da guarda real e um capitão que cobra hora extra.',
   },
   {
     id: 'irmandade',
@@ -190,6 +217,8 @@ export const HEROES: Hero[] = [
       'Tô atrasado pro split, faz logo.',
       'Esse boss tem padrão fixo né? Tedioso.',
     ],
+    entourage: ['green', 'green', 'red'],
+    entourageLabel: 'O time inteiro do speedrun: dois flankers e um damage check.',
   },
   {
     id: 'midas',
@@ -204,6 +233,8 @@ export const HEROES: Hero[] = [
       'Vou multar você por ESTAR em pé.',
       'Tem nota fiscal desse feitiço?',
     ],
+    entourage: ['blue', 'grey'],
+    entourageLabel: 'Um perito do fisco e um cobrador armado.',
   },
   {
     id: 'profecia',
@@ -218,6 +249,8 @@ export const HEROES: Hero[] = [
       'O autor não te deu motivação suficiente.',
       'Spoiler: isso aqui era pra acabar pior pra você.',
     ],
+    entourage: ['red', 'green', 'blue'],
+    entourageLabel: 'O elenco de apoio: um vilão de capítulo, uma rival e um deus ex machina.',
   },
   {
     id: 'heliarch',
@@ -232,6 +265,8 @@ export const HEROES: Hero[] = [
       'Há 4 bilhões de anos eu queimo idiotas como você.',
       'O dia continua. Você, não.',
     ],
+    entourage: ['red', 'red', 'grey'],
+    entourageLabel: 'Dois serafins-pirômanos e um arqueiro de raios solares.',
   },
 ]
 

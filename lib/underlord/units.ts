@@ -156,6 +156,104 @@ export function makeBarrier(pos: Axial, ownerName: string = 'MURALHA'): Unit {
   }
 }
 
+/**
+ * Build the Underlord avatar — the player's commander on the field.
+ *
+ * Faction is `'minion'` so it counts as part of your army; the `isOverlord`
+ * flag makes its death an instant battle loss (see `computeDone` in battle.ts).
+ * Stats scale with the Underlord's meta level so a leveled-up player feels
+ * stronger and a fresh save still has a tangible board threat.
+ */
+export function makeOverlord(
+  level: number,
+  pos: Axial,
+  name: string = 'UNDERLORD',
+): Unit {
+  const lv = Math.max(1, level)
+  const hp = 35 + lv * 5
+  const atk = 10 + lv
+  return {
+    id: nextUnitId(),
+    templateId: 'brown', // visual fallback — render path checks isOverlord first
+    name: name.toUpperCase(),
+    glyph: '✦',
+    faction: 'minion',
+    pos,
+    hp,
+    hpMax: hp,
+    atk,
+    move: 3,
+    range: 2,
+    spd: 7,
+    tone: 'gold',
+    acted: false,
+    moved: false,
+    dead: false,
+    attackKind: 'basic',
+    specialCd: 999,
+    specialSpent: true,
+    isOverlord: true,
+  }
+}
+
+/**
+ * Build an enemy minion that marches in with a hero. Same archetype template
+ * as the player's roster (so they share rules) but `faction: 'hero'` puts
+ * them on the enemy team. Slightly weaker than the hero so the hero remains
+ * the priority target — you still want to kill the named villain first.
+ */
+export function makeHeroMinion(
+  archetype: MinionArchetype,
+  pos: Axial,
+  stage: number,
+  ownerName: string,
+): Unit {
+  const t = MINION_TEMPLATES[archetype]
+  // Scale with stage but capped beneath a stage-tier hero.
+  const tier = Math.max(1, Math.min(14, stage))
+  const hpMul = 0.85 + tier * 0.04
+  const atkMul = 0.85 + tier * 0.025
+  const hp = Math.round(t.hp * hpMul)
+  const atk = Math.round(t.atk * atkMul)
+  return {
+    id: nextUnitId(),
+    templateId: archetype,
+    name: `${ownerName} ${archMinionTitle(archetype)}`,
+    glyph: t.glyph,
+    faction: 'hero',
+    pos,
+    hp,
+    hpMax: hp,
+    atk,
+    move: t.move,
+    range: t.range,
+    spd: t.spd,
+    tone: 'destructive', // red ring matches hero faction visual language
+    acted: false,
+    moved: false,
+    dead: false,
+    attackKind: t.attackKind,
+    specialCd: 999,
+    specialSpent: true,
+  }
+}
+
+/** Themed nickname suffix for entourage minions, used on tooltips/HUD. */
+function archMinionTitle(arch: MinionArchetype): string {
+  switch (arch) {
+    case 'brown':
+      return 'CAPANGA'
+    case 'red':
+      return 'PIRO'
+    case 'green':
+      return 'STALKER'
+    case 'blue':
+      return 'CLÉRIGO'
+    case 'grey':
+      return 'GUARDA'
+  }
+}
+
 /** Make a hero unit on the enemy team. */
 export function makeHero(
   heroId: string,
@@ -222,7 +320,7 @@ export function rebuildRosterStats(
   perks: Record<string, number>,
 ): Unit[] {
   return roster.map((u) => {
-    if (u.faction !== 'minion' || u.isBarrier) return u
+    if (u.faction !== 'minion' || u.isBarrier || u.isOverlord) return u
     const tpl = MINION_TEMPLATES[u.templateId]
     if (!tpl) return u
     const buff = statBuffsFor(u.templateId, perks)

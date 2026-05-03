@@ -661,6 +661,11 @@ export function endTurn(s: BattleState): BattleState {
 }
 
 function computeDone(units: Unit[]): BattleState['done'] {
+  // The Overlord IS the run. If it falls, the army flees regardless of
+  // remaining minions still on the board — instant defeat.
+  const overlord = units.find((u) => u.isOverlord)
+  if (overlord && overlord.dead) return 'defeat'
+
   const minionsAlive = units.some(
     (u) => u.faction === 'minion' && !u.dead && !u.isBarrier,
   )
@@ -762,6 +767,27 @@ export function aiTakeTurn(s: BattleState, heroId: string, smart: boolean = true
   const hero = s.units.find((u) => u.id === heroId)
   if (!hero || hero.dead) return endTurn(s)
 
+  // ENEMY HEALER BRANCH — if this unit's attack is `heal`, prefer mending the
+  // most wounded ally in range over wandering forward. Heroes' Blue clerics
+  // become genuinely annoying instead of just chip-damage units.
+  if (hero.attackKind === 'heal' && !hero.acted) {
+    const wounded = s.units
+      .filter(
+        (u) =>
+          u.faction === hero.faction &&
+          !u.dead &&
+          !u.isBarrier &&
+          u.id !== hero.id &&
+          u.hp < u.hpMax &&
+          hexDistance(u.pos, hero.pos) <= hero.range,
+      )
+      .sort((a, b) => a.hp / a.hpMax - b.hp / b.hpMax)
+    if (wounded.length) {
+      const out = healUnit(s, hero.id, wounded[0].id)
+      return endTurn(out.state)
+    }
+  }
+
   const allMinions = s.units.filter(
     (u) => u.faction === 'minion' && !u.dead && !u.isBarrier,
   )
@@ -857,6 +883,7 @@ export function aiTakeTurn(s: BattleState, heroId: string, smart: boolean = true
 
           // Priority bumps
           if (tauntTarget && tgt.id === tauntTarget.id) score += 800
+          if (tgt.isOverlord) score += 400 // KILL THE COMMANDER — wins the battle
           if (tgt.templateId === 'blue') score += 120 // kill the healer
           if (tgt.templateId === 'red') score += 60 // deny AOE
           if (tgt.hp < tgt.hpMax * 0.5) score += 40 // focus fire wounded
