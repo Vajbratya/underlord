@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { useEffect, useMemo, useReducer, useRef, useState } from "react"
-import { Skull, Zap } from "lucide-react"
+import { Skull, Swords, Zap, Flame } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   HEX_SIZE,
@@ -28,9 +28,12 @@ import type { BattleState } from "@/lib/underlord/battle"
 import type { Axial, Region, Unit } from "@/lib/underlord/types"
 import { MINION_TEMPLATES, makeHero, makeUnit } from "@/lib/underlord/units"
 import { rand, getHeroById, UNDERLORD_LINES } from "@/lib/elementum-flavor"
+import { haptic } from "@/lib/underlord/haptics"
 
-const COLS = 8
-const ROWS = 7
+/* Portrait-first hex map: narrower & taller so phones in portrait
+   show big touch targets without squeezing the playfield. */
+const COLS = 6
+const ROWS = 9
 
 const BIOME_BG: Record<Region["biome"], string> = {
   ash: "oklch(0.13 0.018 22)",
@@ -38,14 +41,6 @@ const BIOME_BG: Record<Region["biome"], string> = {
   iron: "oklch(0.13 0.010 240)",
   verdant: "oklch(0.13 0.020 140)",
   crown: "oklch(0.14 0.022 78)",
-}
-
-const TONE_TO_VAR = {
-  primary: "var(--primary)",
-  destructive: "var(--destructive)",
-  accent: "var(--accent)",
-  gold: "var(--gold)",
-  foreground: "var(--foreground)",
 }
 
 type Action =
@@ -64,66 +59,69 @@ function reducer(state: BattleState, action: Action): BattleState {
 /* ---------- Build initial battle from squad + region ---------- */
 
 function buildBattle(squad: Unit[], region: Region): BattleState {
-  // Place minions on left columns of grid
-  const placedSquad: Unit[] = squad.slice(0, 3).map((u, i) => {
-    const r = 1 + i * 2
-    const offset = -Math.floor(r / 2)
-    return makeUnit(u.templateId, { q: offset + 0, r }, { name: u.name, hp: u.hpMax, hpMax: u.hpMax, atk: u.atk, move: u.move, range: u.range, spd: u.spd, equipped: u.equipped })
-  })
-  // Heroes on right columns
+  // Heroes at the TOP (low r) of the portrait grid, spread across center columns.
   const heroUnits: Unit[] = region.heroIds.map((heroId, i) => {
     const hero = getHeroById(heroId)
-    const r = 1 + i * 2
+    const r = 0
     const offset = -Math.floor(r / 2)
-    const q = offset + COLS - 1
+    const q = offset + 1 + i * 2
     return makeHero(
       heroId,
       hero?.name.split(",")[0] ?? heroId.toUpperCase(),
       heroSymbol(heroId),
-      { q, r },
+      { q: Math.min(q, offset + COLS - 1), r },
       region.stage,
     )
+  })
+  // Minions at the BOTTOM (high r), spread across.
+  const placedSquad: Unit[] = squad.slice(0, 3).map((u, i) => {
+    const r = ROWS - 1
+    const offset = -Math.floor(r / 2)
+    const q = offset + 1 + i * 2
+    return makeUnit(u.templateId, { q: Math.min(q, offset + COLS - 1), r }, {
+      name: u.name,
+      hp: u.hpMax,
+      hpMax: u.hpMax,
+      atk: u.atk,
+      move: u.move,
+      range: u.range,
+      spd: u.spd,
+      equipped: u.equipped,
+    })
   })
   return initBattle([...placedSquad, ...heroUnits], COLS, ROWS)
 }
 
 function heroSymbol(heroId: string): string {
-  // Single-character symbol per hero — readable on map
   switch (heroId) {
-    case "bryan":
-      return "✦"
-    case "kevin":
-      return "✚"
-    case "tyrella":
-      return "✟"
-    case "daggor":
-      return "✪"
-    case "gandolfini":
-      return "✺"
-    case "vexanna":
-      return "✱"
-    case "blazborn":
-      return "✜"
-    case "gregorius":
-      return "☩"
-    case "bianca":
-      return "❄"
-    case "baldrik":
-      return "♛"
-    case "midas":
-      return "$"
-    case "profecia":
-      return "◉"
-    case "heliarch":
-      return "☼"
-    default:
-      return "?"
+    case "bryan": return "✦"
+    case "kevin": return "✚"
+    case "tyrella": return "✟"
+    case "daggor": return "✪"
+    case "gandolfini": return "✺"
+    case "vexanna": return "✱"
+    case "blazborn": return "✜"
+    case "gregorius": return "☩"
+    case "bianca": return "❄"
+    case "baldrik": return "♛"
+    case "midas": return "$"
+    case "profecia": return "◉"
+    case "heliarch": return "☼"
+    default: return "?"
   }
 }
 
-/* ---------- Damage popups ---------- */
+/* ---------- FX types ---------- */
 
-type Popup = { id: string; x: number; y: number; text: string; tone: "good" | "bad" }
+type Popup = {
+  id: string
+  x: number
+  y: number
+  text: string
+  tone: "good" | "bad" | "crit"
+}
+type Puff = { id: string; x: number; y: number }
+type FlashSet = Set<string>
 
 /* ---------- Component ---------- */
 
@@ -143,12 +141,15 @@ export function BattleScreen({
   const initialBattle = useMemo(() => buildBattle(squad, region), [squad, region])
   const [state, dispatch] = useReducer(reducer, initialBattle)
   const [popups, setPopups] = useState<Popup[]>([])
-  const [shake, setShake] = useState(false)
+  const [puffs, setPuffs] = useState<Puff[]>([])
+  const [flashIds, setFlashIds] = useState<FlashSet>(new Set())
+  const [shake, setShake] = useState<"soft" | "hard" | null>(null)
   const [taunt, setTaunt] = useState<{ from: string; text: string } | null>(null)
-  const popupCounter = useRef(0)
+  const [streak, setStreak] = useState(0)
+  const [turnBanner, setTurnBanner] = useState<string | null>(null)
+  const fxCounter = useRef(0)
 
   const inBounds = useMemo(() => makeBoundsChecker(COLS, ROWS), [])
-
   const tiles = useMemo(() => makeRectMap(COLS, ROWS), [])
   const active = activeUnit(state)
   const isMinionTurn = active?.faction === "minion" && !state.done
@@ -160,44 +161,64 @@ export function BattleScreen({
   const maxX = Math.max(...pixelTiles.map((p) => p.x))
   const minY = Math.min(...pixelTiles.map((p) => p.y))
   const maxY = Math.max(...pixelTiles.map((p) => p.y))
-  const padding = HEX_SIZE * 1.2
+  const padding = HEX_SIZE * 1.05
   const viewW = maxX - minX + padding * 2
   const viewH = maxY - minY + padding * 2
   const offsetX = -minX + padding
   const offsetY = -minY + padding
 
+  /* "Banner" whenever it becomes the player's turn (per active unit) */
+  useEffect(() => {
+    if (!isMinionTurn || !active) return
+    setTurnBanner(active.name)
+    const t = window.setTimeout(() => setTurnBanner(null), 1300)
+    haptic.select()
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.id, isMinionTurn])
+
+  /* Reset streak whenever the round changes */
+  useEffect(() => {
+    setStreak(0)
+  }, [state.round])
+
   /* AI auto-run on hero turn */
   useEffect(() => {
     if (!isHeroTurn || !active) return
     const timer = window.setTimeout(() => {
-      // Trigger taunt
       const hero = getHeroById(active.heroId ?? "")
-      if (hero && hero.taunts.length) {
+      if (hero && hero.taunts.length && Math.random() < 0.6) {
         setTaunt({ from: active.name, text: rand(hero.taunts) })
-        window.setTimeout(() => setTaunt(null), 1800)
+        window.setTimeout(() => setTaunt(null), 1500)
       }
-      // Run AI
       const beforeUnits = state.units
       const next = aiTakeTurn(state, active.id)
-      // Detect attack outcome to flash damage popup
       for (const u of next.units) {
         const before = beforeUnits.find((b) => b.id === u.id)
         if (before && before.hp > u.hp) {
           const px = axialToPixel(u.pos)
           pushPopup(`-${before.hp - u.hp}`, "bad", px.x, px.y)
-          setShake(true)
-          window.setTimeout(() => setShake(false), 400)
+          flashUnit(u.id)
+          setShake("hard")
+          window.setTimeout(() => setShake(null), 550)
+          haptic.hit()
+          if (u.dead) {
+            pushPuff(px.x, px.y)
+            haptic.kill()
+          }
         }
       }
       dispatch({ type: "set", state: next })
-    }, 700)
+    }, 600)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.turn, state.round, isHeroTurn])
 
-  /* Battle done callback */
+  /* Battle done → haptic + callback */
   useEffect(() => {
     if (!state.done) return
+    if (state.done === "victory") haptic.victory()
+    else haptic.defeat()
     const fallenIds = state.units
       .filter((u) => u.faction === "minion" && u.dead)
       .map((u) => u.id)
@@ -211,18 +232,45 @@ export function BattleScreen({
         fallenIds,
         killedHeroIds,
       })
-    }, 1500)
+    }, 1700)
     return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.done])
 
-  function pushPopup(text: string, tone: "good" | "bad", x: number, y: number) {
-    popupCounter.current += 1
-    const id = `p${popupCounter.current}`
+  function nextFxId(prefix: string): string {
+    fxCounter.current += 1
+    return `${prefix}${fxCounter.current}`
+  }
+
+  function pushPopup(text: string, tone: Popup["tone"], x: number, y: number) {
+    const id = nextFxId("p")
     setPopups((p) => [...p, { id, x, y, text, tone }])
     window.setTimeout(() => {
       setPopups((p) => p.filter((x) => x.id !== id))
-    }, 1200)
+    }, tone === "crit" ? 1400 : 1100)
+  }
+
+  function pushPuff(x: number, y: number) {
+    const id = nextFxId("k")
+    setPuffs((p) => [...p, { id, x, y }])
+    window.setTimeout(() => {
+      setPuffs((p) => p.filter((x) => x.id !== id))
+    }, 750)
+  }
+
+  function flashUnit(unitId: string) {
+    setFlashIds((s) => {
+      const n = new Set(s)
+      n.add(unitId)
+      return n
+    })
+    window.setTimeout(() => {
+      setFlashIds((s) => {
+        const n = new Set(s)
+        n.delete(unitId)
+        return n
+      })
+    }, 380)
   }
 
   /* Compute highlights based on selection */
@@ -234,7 +282,6 @@ export function BattleScreen({
     const moves = reachable(active.pos, active.move, inBounds, occ)
     const moveSet = new Set(moves.map(axialKey))
     moveSet.add(axialKey(active.pos))
-    // Attack tiles: any enemy within range from current pos OR any move-tile
     const allOrigins = [active.pos, ...moves]
     const attackSet = new Set<string>()
     for (const u of state.units) {
@@ -249,25 +296,23 @@ export function BattleScreen({
     return { move: moveSet, attack: attackSet }
   }, [active, state, isMinionTurn, inBounds])
 
-  /* Click handler */
+  const attackTargetsLeft = highlights.attack.size
+
   function handleHexClick(a: Axial) {
     if (!isMinionTurn || !active) return
+    haptic.tap()
     const target = unitAt(state, a)
 
-    // Click own active unit → toggle select
     if (target && target.id === active.id) {
       dispatch({ type: "select", id: state.selectedId === active.id ? null : active.id })
       return
     }
-    // Must select first
     if (state.selectedId !== active.id) {
       dispatch({ type: "select", id: active.id })
       return
     }
 
-    // Click enemy → try to attack (move adjacent first if needed)
     if (target && target.faction === "hero" && !target.dead) {
-      // If in range, attack directly
       const occ = blockedSet(state, active.id)
       const reach = reachable(active.pos, active.move, inBounds, occ)
       const allOrigins = [active.pos, ...reach]
@@ -289,22 +334,32 @@ export function BattleScreen({
       next = outcome.state
       if (outcome.hit) {
         const px = axialToPixel(target.pos)
-        pushPopup(`-${outcome.damage}`, "good", px.x, px.y)
-        setShake(true)
-        window.setTimeout(() => setShake(false), 400)
-        if (outcome.killed && Math.random() < 0.5) {
-          setTaunt({ from: "UNDERLORD", text: rand(UNDERLORD_LINES.roundWin) })
-          window.setTimeout(() => setTaunt(null), 1500)
+        if (outcome.crit) {
+          pushPopup(`CRÍTICO -${outcome.damage}`, "crit", px.x, px.y)
+          haptic.crit()
+        } else {
+          pushPopup(`-${outcome.damage}`, "good", px.x, px.y)
+          haptic.hit()
+        }
+        flashUnit(target.id)
+        setShake(outcome.crit ? "hard" : "soft")
+        window.setTimeout(() => setShake(null), outcome.crit ? 550 : 380)
+        if (outcome.killed) {
+          pushPuff(px.x, px.y)
+          haptic.kill()
+          setStreak((s) => s + 1)
+          if (Math.random() < 0.45) {
+            setTaunt({ from: "UNDERLORD", text: rand(UNDERLORD_LINES.roundWin) })
+            window.setTimeout(() => setTaunt(null), 1400)
+          }
         }
       }
       dispatch({ type: "set", state: endTurn(next) })
       return
     }
 
-    // Click empty tile → move
     if (highlights.move.has(axialKey(a)) && !target) {
       const next = moveUnit(state, active.id, a)
-      // Don't auto end turn — let player choose to attack or end
       dispatch({ type: "set", state: next })
       return
     }
@@ -312,44 +367,68 @@ export function BattleScreen({
 
   function handleEndTurn() {
     if (!isMinionTurn) return
+    haptic.select()
     dispatch({ type: "set", state: endTurn(state) })
   }
 
+  const minionsAlive = state.units.filter((u) => u.faction === "minion" && !u.dead).length
+  const heroesAlive = state.units.filter((u) => u.faction === "hero" && !u.dead).length
+
   return (
     <div
-      className={cn(
-        "flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe",
-        shake && "screen-shake",
-      )}
+      className="flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe"
       style={{ backgroundColor: BIOME_BG[region.biome] }}
     >
-      {/* HUD */}
-      <header className="flex flex-col gap-1.5 border-b border-border bg-card/60 px-3 py-2 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
-        <div className="flex items-baseline gap-2 sm:flex-col sm:items-start sm:gap-0">
-          <p className="font-mono text-[9px] tracking-[0.25em] text-accent sm:tracking-[0.3em]">
-            R{state.round}
-          </p>
-          <h1 className="truncate font-display text-sm font-black uppercase leading-none tracking-tight text-foreground sm:text-base">
-            {region.name}
-          </h1>
+      {/* TOP HUD — info only, away from the thumb zone */}
+      <header className="shrink-0 border-b border-border bg-card/70 px-3 py-2 backdrop-blur">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[9px] tracking-[0.3em] text-accent">
+              R{state.round} · ESTÁGIO {region.stage}
+            </p>
+            <h1 className="truncate font-display text-sm font-black uppercase leading-none tracking-tight text-foreground">
+              {region.name}
+            </h1>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 font-mono text-[10px] uppercase tracking-wider tabular-nums">
+            <span className="flex items-center gap-1 text-accent">
+              <span className="size-1.5 rounded-full bg-accent" />
+              {minionsAlive}
+            </span>
+            <span className="text-muted-foreground">vs</span>
+            <span className="flex items-center gap-1 text-destructive">
+              <span className="size-1.5 rounded-full bg-destructive" />
+              {heroesAlive}
+            </span>
+          </div>
         </div>
-        <InitiativeLadder state={state} />
+        <InitiativeStrip state={state} />
       </header>
 
-      {/* Battle area */}
-      <main className="relative flex flex-1 items-center justify-center overflow-hidden p-2">
+      {/* BATTLEFIELD */}
+      <main
+        className={cn(
+          "relative flex flex-1 items-center justify-center overflow-hidden p-1.5",
+          shake === "soft" && "screen-shake",
+          shake === "hard" && "screen-shake-hard",
+        )}
+      >
         <div
-          className="relative grain w-full max-w-2xl rounded-md border border-border/60"
-          style={{ aspectRatio: `${viewW} / ${viewH}` }}
+          className="relative grain mx-auto h-full w-full max-w-md rounded-md border border-border/60"
+          style={{ aspectRatio: `${viewW} / ${viewH}`, maxHeight: "100%" }}
         >
           <svg viewBox={`0 0 ${viewW} ${viewH}`} className="h-full w-full">
             <defs>
-              {/* Single shared clipPath for circular unit portraits */}
               <clipPath id="unitClip">
-                <circle r={HEX_SIZE * 0.55} />
+                <circle r={HEX_SIZE * 0.6} />
               </clipPath>
+              <radialGradient id="puffGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="oklch(0.78 0.14 78 / 0.95)" />
+                <stop offset="60%" stopColor="oklch(0.55 0.21 22 / 0.7)" />
+                <stop offset="100%" stopColor="oklch(0.55 0.21 22 / 0)" />
+              </radialGradient>
             </defs>
-            {/* Tiles */}
+            {/* Tiles: visible polygon + larger transparent hit area */}
             {pixelTiles.map((t) => {
               const k = axialKey(t)
               const inMove = highlights.move.has(k)
@@ -357,28 +436,36 @@ export function BattleScreen({
               const cx = t.x + offsetX
               const cy = t.y + offsetY
               const points = hexPoints(cx, cy, HEX_SIZE - 1)
+              const hitPoints = hexPoints(cx, cy, HEX_SIZE * 1.05)
               return (
-                <polygon
-                  key={k}
-                  points={points}
-                  fill={
-                    inAttack
-                      ? "oklch(0.55 0.21 22 / 0.30)"
-                      : inMove
-                        ? "oklch(0.72 0.17 60 / 0.18)"
-                        : "oklch(0.18 0.014 22 / 0.4)"
-                  }
-                  stroke={
-                    inAttack
-                      ? "oklch(0.55 0.21 22 / 0.7)"
-                      : inMove
-                        ? "oklch(0.72 0.17 60 / 0.6)"
-                        : "oklch(0.24 0.012 30)"
-                  }
-                  strokeWidth={inMove || inAttack ? 1.5 : 0.6}
-                  className="cursor-pointer transition"
-                  onClick={() => handleHexClick(t)}
-                />
+                <g key={k}>
+                  <polygon
+                    points={points}
+                    fill={
+                      inAttack
+                        ? "oklch(0.55 0.21 22 / 0.32)"
+                        : inMove
+                          ? "oklch(0.72 0.17 60 / 0.20)"
+                          : "oklch(0.18 0.014 22 / 0.4)"
+                    }
+                    stroke={
+                      inAttack
+                        ? "oklch(0.55 0.21 22 / 0.85)"
+                        : inMove
+                          ? "oklch(0.72 0.17 60 / 0.7)"
+                          : "oklch(0.24 0.012 30)"
+                    }
+                    strokeWidth={inMove || inAttack ? 1.5 : 0.6}
+                    className="transition"
+                    style={{ pointerEvents: "none" }}
+                  />
+                  <polygon
+                    points={hitPoints}
+                    fill="transparent"
+                    className="cursor-pointer"
+                    onClick={() => handleHexClick(t)}
+                  />
+                </g>
               )
             })}
 
@@ -389,20 +476,20 @@ export function BattleScreen({
               const cx = px.x + offsetX
               const cy = px.y + offsetY
               const isActive = active?.id === u.id
+              const flashing = flashIds.has(u.id)
               return (
                 <g
                   key={u.id}
                   transform={`translate(${cx}, ${cy})`}
                   className="pointer-events-none"
                 >
-                  {/* Active ring */}
                   {isActive ? (
                     <circle
-                      r={HEX_SIZE * 0.85}
+                      r={HEX_SIZE * 0.92}
                       fill="none"
                       stroke={u.faction === "minion" ? "oklch(0.72 0.17 60)" : "oklch(0.55 0.21 22)"}
-                      strokeWidth={1.5}
-                      strokeDasharray="3 2"
+                      strokeWidth={2}
+                      strokeDasharray="4 2.5"
                     >
                       <animateTransform
                         attributeName="transform"
@@ -414,69 +501,85 @@ export function BattleScreen({
                       />
                     </circle>
                   ) : null}
-                  {/* Body backing (filled circle behind portrait, also serves as fallback while image loads) */}
                   <circle
-                    r={HEX_SIZE * 0.55}
+                    r={HEX_SIZE * 0.6}
                     fill={
                       u.faction === "hero"
                         ? "oklch(0.55 0.21 22)"
                         : tonePixel(u.tone)
                     }
                   />
-                  {/* Portrait clipped into a circle */}
                   <image
                     href={
                       u.faction === "hero"
                         ? `/images/heroes/${u.heroId ?? "bryan"}.jpg`
                         : `/images/minions/${u.templateId}.jpg`
                     }
-                    x={-HEX_SIZE * 0.55}
-                    y={-HEX_SIZE * 0.55}
-                    width={HEX_SIZE * 1.1}
-                    height={HEX_SIZE * 1.1}
+                    x={-HEX_SIZE * 0.6}
+                    y={-HEX_SIZE * 0.6}
+                    width={HEX_SIZE * 1.2}
+                    height={HEX_SIZE * 1.2}
                     clipPath="url(#unitClip)"
                     preserveAspectRatio="xMidYMid slice"
                   />
-                  {/* Faction ring stroke on top */}
+                  {flashing ? (
+                    <circle
+                      r={HEX_SIZE * 0.6}
+                      fill="oklch(0.96 0.012 80 / 0.7)"
+                      className="hit-flash"
+                    />
+                  ) : null}
                   <circle
-                    r={HEX_SIZE * 0.55}
+                    r={HEX_SIZE * 0.6}
                     fill="none"
                     stroke={
                       u.faction === "hero"
                         ? "oklch(0.55 0.21 22)"
                         : tonePixel(u.tone)
                     }
-                    strokeWidth={1.5}
+                    strokeWidth={1.6}
                   />
-                  {/* HP bar */}
                   <rect
-                    x={-HEX_SIZE * 0.6}
-                    y={HEX_SIZE * 0.55}
-                    width={HEX_SIZE * 1.2}
-                    height={3}
+                    x={-HEX_SIZE * 0.65}
+                    y={HEX_SIZE * 0.62}
+                    width={HEX_SIZE * 1.3}
+                    height={3.5}
                     fill="oklch(0.10 0.012 22)"
                     stroke="oklch(0.24 0.012 30)"
                     strokeWidth={0.4}
                   />
                   <rect
-                    x={-HEX_SIZE * 0.6}
-                    y={HEX_SIZE * 0.55}
-                    width={HEX_SIZE * 1.2 * (u.hp / u.hpMax)}
-                    height={3}
+                    x={-HEX_SIZE * 0.65}
+                    y={HEX_SIZE * 0.62}
+                    width={HEX_SIZE * 1.3 * (u.hp / u.hpMax)}
+                    height={3.5}
                     fill={
                       u.faction === "hero"
                         ? "oklch(0.55 0.21 22)"
                         : "oklch(0.72 0.17 60)"
                     }
                   />
-                  {/* Acted indicator */}
                   {u.acted ? (
-                    <circle
-                      r={HEX_SIZE * 0.55}
-                      fill="oklch(0 0 0 / 0.55)"
-                    />
+                    <circle r={HEX_SIZE * 0.6} fill="oklch(0 0 0 / 0.55)" />
                   ) : null}
                 </g>
+              )
+            })}
+
+            {/* Kill puffs */}
+            {puffs.map((p) => {
+              const cx = p.x + offsetX
+              const cy = p.y + offsetY
+              return (
+                <circle
+                  key={p.id}
+                  cx={cx}
+                  cy={cy}
+                  r={HEX_SIZE * 0.9}
+                  fill="url(#puffGrad)"
+                  className="kill-puff"
+                  style={{ transformOrigin: `${cx}px ${cy}px` }}
+                />
               )
             })}
           </svg>
@@ -485,29 +588,69 @@ export function BattleScreen({
           {popups.map((p) => (
             <span
               key={p.id}
-              className="float-up pointer-events-none absolute font-display text-2xl font-black"
+              className={cn(
+                "pointer-events-none absolute font-display font-black text-outline",
+                p.tone === "crit"
+                  ? "crit-pop text-4xl text-gold sm:text-5xl"
+                  : "dmg-pop text-3xl sm:text-4xl",
+                p.tone === "good" && "text-accent",
+                p.tone === "bad" && "text-destructive",
+              )}
               style={{
                 left: `${((p.x + offsetX) / viewW) * 100}%`,
                 top: `${((p.y + offsetY) / viewH) * 100}%`,
-                color: p.tone === "good" ? "var(--accent)" : "var(--destructive)",
-                textShadow: "0 0 8px oklch(0 0 0 / 0.8)",
               }}
             >
               {p.text}
             </span>
           ))}
 
+          {/* Streak counter */}
+          {streak >= 2 ? (
+            <div
+              key={streak}
+              className="streak-bump pointer-events-none absolute right-2 top-2 rounded-md border-2 border-gold bg-background/85 px-2.5 py-1 text-right backdrop-blur"
+            >
+              <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-gold">
+                Domínio
+              </p>
+              <p className="font-display text-xl font-black leading-none text-gold">
+                ×{streak}
+              </p>
+            </div>
+          ) : null}
+
+          {/* Hero turn indicator */}
+          {isHeroTurn ? (
+            <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full border border-destructive/60 bg-background/80 px-3 py-1 backdrop-blur">
+              <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-destructive">
+                · vez do {active?.name ?? "herói"} ·
+              </p>
+            </div>
+          ) : null}
+
+          {/* Turn banner */}
+          {turnBanner && isMinionTurn ? (
+            <div className="pointer-events-none absolute inset-x-0 top-1/3 flex justify-center">
+              <div className="turn-banner border-y-2 border-accent bg-accent/15 px-6 py-1.5 backdrop-blur">
+                <p className="font-display text-2xl font-black uppercase tracking-[0.18em] text-accent">
+                  {turnBanner}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           {/* Result overlay */}
           {state.done ? (
-            <div className="slam-in absolute inset-0 grid place-items-center bg-background/80 backdrop-blur">
+            <div className="slam-in absolute inset-0 grid place-items-center bg-background/85 backdrop-blur">
               <div className="text-center">
                 <p
                   className={cn(
-                    "font-display text-4xl font-black uppercase tracking-tight sm:text-6xl",
+                    "font-display text-5xl font-black uppercase tracking-tight sm:text-7xl",
                     state.done === "victory" ? "text-accent" : "text-destructive",
                   )}
                 >
-                  {state.done === "victory" ? "Limpou" : "Caiu"}
+                  {state.done === "victory" ? "LIMPOU" : "CAIU"}
                 </p>
                 <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
                   apurando ganhos…
@@ -520,7 +663,7 @@ export function BattleScreen({
 
       {/* Taunt bubble */}
       {taunt ? (
-        <div className="pointer-events-none fixed bottom-32 left-1/2 z-30 w-[88vw] max-w-md -translate-x-1/2 px-4">
+        <div className="pointer-events-none fixed bottom-28 left-1/2 z-30 w-[92vw] max-w-md -translate-x-1/2 px-3">
           <div className="slam-in rounded-md border-2 border-destructive/60 bg-card/95 px-4 py-2 backdrop-blur">
             <p className="font-mono text-[9px] tracking-[0.3em] text-muted-foreground">
               {taunt.from}
@@ -532,35 +675,41 @@ export function BattleScreen({
         </div>
       ) : null}
 
-      {/* Footer: turn info + actions */}
-      <footer className="border-t border-border bg-card/70 px-2.5 py-2.5 backdrop-blur sm:px-3 sm:py-3">
-        <div className="mx-auto flex w-full max-w-2xl items-center gap-2.5 sm:gap-3">
-          {active ? (
-            <div className="min-w-0 flex-1">
-              <ActiveUnitCard unit={active} />
-            </div>
-          ) : (
-            <div className="min-w-0 flex-1" />
-          )}
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <p className="hidden truncate text-right font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground sm:block sm:tracking-[0.25em]">
-              {state.log[state.log.length - 1]}
-            </p>
-            <button
-              type="button"
-              onClick={handleEndTurn}
-              disabled={!isMinionTurn}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md border-2 px-3 py-2 font-display text-[11px] font-black uppercase tracking-[0.18em] transition active:scale-[0.98] sm:px-4 sm:text-xs sm:tracking-[0.25em]",
-                isMinionTurn
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "cursor-not-allowed border-border bg-secondary/60 text-muted-foreground",
-              )}
-            >
-              {isHeroTurn ? "VEZ DELE…" : "TURNO"}
-              <Zap className="size-3" />
-            </button>
-          </div>
+      {/* BOTTOM ACTION PANEL — primary thumb zone */}
+      <footer className="shrink-0 border-t border-border bg-card/85 px-2.5 pb-3 pt-2 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-md items-stretch gap-2">
+          {active ? <ActiveUnitCard unit={active} /> : <div className="flex-1" />}
+          <button
+            type="button"
+            onClick={handleEndTurn}
+            disabled={!isMinionTurn}
+            aria-label="Encerrar turno"
+            className={cn(
+              "flex h-16 min-w-[5.5rem] flex-col items-center justify-center gap-0.5 rounded-md border-2 px-3 font-display text-[11px] font-black uppercase tracking-[0.18em] transition active:scale-[0.96]",
+              isMinionTurn
+                ? attackTargetsLeft > 0 && state.selectedId === active?.id
+                  ? "border-accent bg-accent text-accent-foreground ready-pulse"
+                  : "border-primary bg-primary text-primary-foreground"
+                : "cursor-not-allowed border-border bg-secondary/60 text-muted-foreground",
+            )}
+          >
+            {isHeroTurn ? (
+              <>
+                <Flame className="size-5" />
+                <span>VEZ DELE</span>
+              </>
+            ) : attackTargetsLeft > 0 && state.selectedId === active?.id ? (
+              <>
+                <Swords className="size-5" />
+                <span>ATAQUE</span>
+              </>
+            ) : (
+              <>
+                <Zap className="size-5" />
+                <span>TURNO</span>
+              </>
+            )}
+          </button>
         </div>
       </footer>
     </div>
@@ -570,7 +719,6 @@ export function BattleScreen({
 function tonePixel(tone: Unit["tone"]): string {
   switch (tone) {
     case "primary":
-      return "oklch(0.55 0.21 22)"
     case "destructive":
       return "oklch(0.55 0.21 22)"
     case "accent":
@@ -593,9 +741,10 @@ function hexPoints(cx: number, cy: number, size: number): string {
   return pts.join(" ")
 }
 
-function InitiativeLadder({ state }: { state: BattleState }) {
+/* Compact initiative strip — fits the top HUD */
+function InitiativeStrip({ state }: { state: BattleState }) {
   return (
-    <div className="flex w-full items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar sm:w-auto sm:max-w-[60%] sm:pb-0">
+    <div className="mt-1.5 flex w-full items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar">
       {state.order.map((id, i) => {
         const u = state.units.find((x) => x.id === id)
         if (!u) return null
@@ -614,7 +763,14 @@ function InitiativeLadder({ state }: { state: BattleState }) {
                   : "border-border bg-secondary/40 text-muted-foreground",
             )}
           >
-            {u.glyph} {u.name}
+            <span
+              className="size-1.5 rounded-full"
+              style={{
+                backgroundColor:
+                  u.faction === "minion" ? "oklch(0.72 0.17 60)" : "oklch(0.55 0.21 22)",
+              }}
+            />
+            {u.name}
           </span>
         )
       })}
@@ -630,8 +786,9 @@ function ActiveUnitCard({ unit }: { unit: Unit }) {
       : `/images/minions/${unit.templateId}.jpg`
   const borderColor =
     unit.faction === "hero" ? "var(--destructive)" : tonePixel(unit.tone)
+  const hpPct = unit.hp / unit.hpMax
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
+    <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md border border-border bg-background/40 px-2 py-1.5">
       <span
         className="relative size-12 shrink-0 overflow-hidden rounded-md border-2"
         style={{ borderColor }}
@@ -644,23 +801,36 @@ function ActiveUnitCard({ unit }: { unit: Unit }) {
           className="object-cover"
         />
       </span>
-      <div className="min-w-0">
-        <p className="truncate font-display text-xs font-black uppercase leading-tight text-foreground sm:text-sm">
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1 truncate font-display text-sm font-black uppercase leading-none text-foreground">
           {unit.name}
           {unit.faction === "hero" ? (
-            <Skull className="ml-1 inline size-3 text-destructive" />
+            <Skull className="inline size-3 text-destructive" />
           ) : null}
         </p>
-        <div className="flex flex-wrap gap-x-2 gap-y-0 font-mono text-[9px] tabular-nums uppercase tracking-wider text-muted-foreground">
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-sm border border-border bg-background/60">
+          <div
+            className="h-full transition-[width] duration-300"
+            style={{
+              width: `${hpPct * 100}%`,
+              backgroundColor:
+                unit.faction === "hero"
+                  ? "oklch(0.55 0.21 22)"
+                  : "oklch(0.72 0.17 60)",
+            }}
+          />
+        </div>
+        <div className="mt-1 flex items-center gap-2 font-mono text-[9px] tabular-nums uppercase tracking-wider text-muted-foreground">
           <span className="text-foreground">
-            {unit.hp}/{unit.hpMax} HP
+            {unit.hp}/{unit.hpMax}
           </span>
+          <span>·</span>
           <span>{unit.atk} ATK</span>
           <span>{unit.range} ALC</span>
           <span>{unit.move} MOV</span>
         </div>
         {tpl ? (
-          <p className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+          <p className="truncate font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
             {tpl.role}
           </p>
         ) : null}

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import type { SaveState, Unit } from "@/lib/underlord/types"
 import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { LOOT_POOL } from "@/lib/underlord/loot"
+import { haptic } from "@/lib/underlord/haptics"
 
 const TONE_TO_VAR: Record<string, string> = {
   primary: "var(--primary)",
@@ -27,14 +28,20 @@ export function SquadPicker({
   function toggle(unit: Unit) {
     const has = save.squad.includes(unit.id)
     if (has) {
+      haptic.tap()
       onSetSquad(save.squad.filter((id) => id !== unit.id))
     } else if (save.squad.length < 3) {
+      haptic.select()
       onSetSquad([...save.squad, unit.id])
+    } else {
+      haptic.tap()
     }
   }
 
+  const slotsLeft = 3 - save.squad.length
+
   return (
-    <div className="fixed inset-0 z-30 flex items-end justify-center bg-background/80 backdrop-blur sm:items-center sm:px-4">
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-background/85 backdrop-blur sm:items-center sm:px-4">
       <button
         type="button"
         aria-label="Fechar"
@@ -56,11 +63,27 @@ export function SquadPicker({
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-muted-foreground transition hover:text-foreground"
+            className="grid size-10 shrink-0 place-items-center rounded text-muted-foreground transition hover:text-foreground"
             aria-label="Fechar"
           >
             <X className="size-5" />
           </button>
+        </div>
+
+        {/* Slots progress bar — visible compulsion-loop progress */}
+        <div className="flex shrink-0 gap-1.5 border-b border-border bg-card/60 px-4 py-2">
+          {[0, 1, 2].map((i) => {
+            const filled = i < save.squad.length
+            return (
+              <span
+                key={i}
+                className={cn(
+                  "h-1.5 flex-1 rounded-full transition-colors",
+                  filled ? "bg-accent" : "bg-border",
+                )}
+              />
+            )
+          })}
         </div>
 
         {/* Scroll area */}
@@ -72,17 +95,19 @@ export function SquadPicker({
               : null
             const selected = save.squad.includes(u.id)
             const tone = TONE_TO_VAR[tpl.tone]
+            const disabled = !selected && save.squad.length >= 3
             return (
               <button
                 key={u.id}
                 type="button"
                 onClick={() => toggle(u)}
+                aria-pressed={selected}
                 className={cn(
-                  "flex w-full items-center gap-3 border-b border-border/50 px-3 py-2.5 text-left transition active:bg-secondary/40 sm:px-4 sm:py-3",
-                  selected && "bg-primary/10",
+                  "flex min-h-[5rem] w-full items-center gap-3 border-b border-border/50 px-3 py-2.5 text-left transition active:bg-secondary/40 sm:px-4 sm:py-3",
+                  selected && "bg-primary/12",
+                  disabled && "opacity-50",
                 )}
               >
-                {/* Portrait */}
                 <span
                   className="relative size-14 shrink-0 overflow-hidden rounded-md border-2"
                   style={{ borderColor: tone }}
@@ -101,9 +126,8 @@ export function SquadPicker({
                     {tpl.name}
                   </span>
                 </span>
-                {/* Info */}
                 <div className="min-w-0 flex-1">
-                  <p className="font-display text-sm font-black uppercase leading-tight text-foreground">
+                  <p className="truncate font-display text-sm font-black uppercase leading-tight text-foreground">
                     {u.name}
                   </p>
                   <p className="truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -117,21 +141,20 @@ export function SquadPicker({
                     <span>SPD {u.spd}</span>
                   </div>
                   {equipped ? (
-                    <p className="mt-1 truncate font-mono text-[9px] uppercase tracking-[0.2em] text-accent">
+                    <p className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.2em] text-accent">
                       ◆ {equipped.name}
                     </p>
                   ) : null}
                 </div>
-                {/* Toggle */}
                 <span
                   className={cn(
-                    "grid size-7 shrink-0 place-items-center rounded-full border-2 transition",
+                    "grid size-9 shrink-0 place-items-center rounded-full border-2 transition",
                     selected
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-card",
                   )}
                 >
-                  {selected ? <Check className="size-4" /> : null}
+                  {selected ? <Check className="size-5" strokeWidth={3} /> : null}
                 </span>
               </button>
             )
@@ -142,10 +165,23 @@ export function SquadPicker({
         <div className="border-t border-border bg-card/60 p-3 sm:p-4">
           <button
             type="button"
-            onClick={onClose}
-            className="flex w-full items-center justify-center gap-2 rounded-md border-2 border-primary bg-primary px-4 py-3 font-display text-sm font-black uppercase tracking-[0.22em] text-primary-foreground transition active:scale-[0.98] sm:tracking-[0.25em]"
+            onClick={() => {
+              haptic.select()
+              onClose()
+            }}
+            disabled={save.squad.length === 0}
+            className={cn(
+              "flex h-14 w-full items-center justify-center gap-2 rounded-md border-2 px-4 font-display text-sm font-black uppercase tracking-[0.22em] transition active:scale-[0.97] sm:h-16 sm:tracking-[0.25em]",
+              save.squad.length === 0
+                ? "cursor-not-allowed border-border bg-secondary/60 text-muted-foreground"
+                : "border-primary bg-primary text-primary-foreground",
+            )}
           >
-            CONFIRMAR
+            {save.squad.length === 0
+              ? "ESCOLHA AO MENOS UM"
+              : slotsLeft === 0
+                ? "TRIO COMPLETO · FECHAR"
+                : `CONFIRMAR (${save.squad.length}/3)`}
           </button>
         </div>
       </div>
