@@ -848,7 +848,11 @@ export function ElementumGame() {
                   play("damage")
                   haptic(slot.isCpuCrit ? [40, 60, 80] : 30)
                   addRage(RAGE_GAIN_DAMAGE + (slot.isCpuCrit ? 12 : 0))
-                  if (slot.isCpuCrit) pushToast("FEITIÇO CRÍTICO!", "bad")
+                  if (slot.isCpuCrit) {
+                    const hero = getHero(cpuStats.stage)
+                    const taunt = hero.taunts.length > 0 ? rand(hero.taunts) : "FEITIÇO CRÍTICO!"
+                    pushToast(`${hero.name.split(",")[0]}: "${taunt}"`, "bad")
+                  }
                 } else {
                   play("powerup")
                   haptic([10, 20])
@@ -896,7 +900,7 @@ export function ElementumGame() {
             play("ultimate")
             haptic([60, 80, 60, 80, 200])
             addRage(PERFECT_CHAIN_RAGE)
-            pushToast("PERFECT CAST!", "epic")
+            pushToast(`PERFECT CAST · ${rand(UNDERLORD_LINES.perfect)}`, "epic")
           }
 
           // DRENO siphon: lifesteal % of total chain damage
@@ -991,7 +995,7 @@ export function ElementumGame() {
     if (rage < RAGE_MAX) return
     if (ultimateInProgress.current) return
     ultimateInProgress.current = true
-    pushToast("ULTIMATE!", "epic")
+    pushToast(`UNDERLORD: "${rand(UNDERLORD_LINES.ultimate)}"`, "epic")
     setRage(0)
     rageWasFull.current = false
 
@@ -1282,6 +1286,15 @@ function MenuScreen({
           <span className="text-foreground">.</span>
           <span className="text-accent">TERRA</span>
         </h2>
+        <p className="mt-3 text-center font-mono text-[10px] uppercase tracking-[0.32em] text-muted-foreground text-balance sm:mt-4 sm:text-xs">
+          O último Underlord vs.
+          <span className="ml-1 text-foreground">um reino inteiro de heróis insuportáveis.</span>
+        </p>
+        <p className="mx-auto mt-1 max-w-md text-center text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
+          14 séculos preso na torre, 14 séculos aturando paladino influencer,
+          profecia em primeira pessoa e sacerdotisa que pediu pra falar com o
+          gerente. <span className="font-bold text-foreground">Acabou.</span>
+        </p>
       </div>
 
       {/* Trophy + Tier badge */}
@@ -1306,7 +1319,7 @@ function MenuScreen({
         className="pulse-glow group mt-6 inline-flex items-center gap-3 rounded-md bg-primary px-10 py-4 font-mono text-base font-black tracking-[0.22em] text-primary-foreground shadow-[0_0_30px_oklch(0.78_0.17_205/0.4)] transition active:scale-95 hover:scale-[1.02] sm:text-lg"
       >
         <Swords className="size-5 transition group-hover:rotate-12" />
-        ENTRAR NA TORRE
+        BAIXAR A LENHA
       </button>
 
       {records.totalRuns > 0 ? (
@@ -2744,7 +2757,7 @@ function GameOverScreen({
         className="pulse-glow mt-8 inline-flex items-center gap-3 rounded-md bg-primary px-7 py-3.5 font-mono text-base font-black tracking-[0.2em] text-primary-foreground transition active:scale-95 hover:scale-[1.02]"
       >
         <RotateCcw className="size-4" />
-        REVANCHE
+        {won ? "DE NOVO. COM MAIS RAIVA." : "MATAR ESSE CUZÃO DE NOVO"}
       </button>
     </section>
   )

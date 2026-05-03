@@ -1,14 +1,13 @@
-import type { Archetype, ArchetypeId } from "./types"
+import type { Archetype, ArchetypeDef } from "./types"
 
-/* ===========================================================================
- * Tier 1 minion archetypes — five base broods.
- * Stats are tuned for ~12-min battles, max squad 4 minions + Underlord.
- * ======================================================================== */
+/* ==========================================================================
+ * Tier-1 minion archetypes — the five broods you can raise from the Pit.
+ * ======================================================================= */
 
-export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
+export const ARCHETYPES: Record<Archetype, ArchetypeDef> = {
   brown: {
     id: "brown",
-    name: "Brown",
+    name: "BROWN",
     title: "Brawler Brood",
     glyph: "B",
     hp: 32,
@@ -35,7 +34,7 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
   },
   red: {
     id: "red",
-    name: "Red",
+    name: "RED",
     title: "Pyro Skirmisher",
     glyph: "R",
     hp: 18,
@@ -45,9 +44,9 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     range: 2,
     crit: 0.15,
     description:
-      "Squishy. Fiery. Lights things and itself on fire with equal enthusiasm.",
+      "Squishy. Fiery. Lights things — and itself — on fire with equal enthusiasm.",
     signature:
-      "IMMOLATE: ranged attacks apply BURN (2 dmg/turn for 2 turns). Reds are fire-immune.",
+      "IMMOLATE: ranged hits apply BURN (2 dmg/turn for 2 turns). Fire-immune.",
     bark: {
       idle: [
         "FIRE GOOD",
@@ -62,7 +61,7 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
   },
   green: {
     id: "green",
-    name: "Green",
+    name: "GREEN",
     title: "Stealth Assassin",
     glyph: "G",
     hp: 20,
@@ -70,11 +69,10 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     def: 2,
     speed: 8,
     range: 1,
-    crit: 0.30,
+    crit: 0.3,
     description:
       "Sneaky. Petty. Will absolutely backstab you at the office party.",
-    signature:
-      "BACKSTAB: 3x damage when attacking from a hex the target isn't facing.",
+    signature: "BACKSTAB: 1.5× damage when attacking from a non-front facing.",
     bark: {
       idle: [
         "I am, in fact, behind you.",
@@ -89,7 +87,7 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
   },
   blue: {
     id: "blue",
-    name: "Blue",
+    name: "BLUE",
     title: "Sapper-Shaman",
     glyph: "U",
     hp: 22,
@@ -99,9 +97,9 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     range: 2,
     crit: 0.05,
     description:
-      "Damp. Diligent. The only one with a college degree. Heals and resurrects.",
+      "Damp. Diligent. The only one with a college degree. Heals adjacent allies.",
     signature:
-      "RIVERMARK: ranged spell heals friendly target 8 HP. Once per battle, revives a fallen ally at 1 HP.",
+      "RIVERMARK: ranged spell heals friendly target 6 HP. Once per battle, revives a fallen ally at 1 HP.",
     bark: {
       idle: [
         "I read the paperwork.",
@@ -116,7 +114,7 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
   },
   grey: {
     id: "grey",
-    name: "Grey",
+    name: "GREY",
     title: "Siege Engineer",
     glyph: "S",
     hp: 24,
@@ -124,11 +122,10 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     def: 3,
     speed: 4,
     range: 3,
-    crit: 0.10,
+    crit: 0.1,
     description:
       "Practical. Soot-stained. Carries a wrench and grievances about the budget.",
-    signature:
-      "OVERCHARGE: ranged shots ignore 2 DEF. Crits cause splash to adjacent hexes.",
+    signature: "OVERCHARGE: ranged shots ignore 2 DEF. Crits splash adjacent hexes.",
     bark: {
       idle: [
         "Budget? What budget.",
@@ -143,7 +140,7 @@ export const ARCHETYPES: Record<ArchetypeId, Archetype> = {
   },
 }
 
-export const ARCHETYPE_LIST: Archetype[] = [
+export const ARCHETYPE_LIST: ArchetypeDef[] = [
   ARCHETYPES.brown,
   ARCHETYPES.red,
   ARCHETYPES.green,
@@ -151,16 +148,17 @@ export const ARCHETYPE_LIST: Archetype[] = [
   ARCHETYPES.grey,
 ]
 
-export const ARCHETYPE_COLOR_VAR: Record<ArchetypeId, string> = {
-  brown: "var(--color-primary)",
-  red: "var(--color-destructive)",
-  green: "var(--color-shard)", // gold for visibility on dark bg
-  blue: "var(--color-accent)",
-  grey: "var(--color-muted-foreground)",
+/** CSS variable per archetype for sprite tint. */
+export const ARCHETYPE_TINT: Record<Archetype, string> = {
+  brown: "oklch(0.55 0.10 60)",
+  red: "oklch(0.62 0.22 25)",
+  green: "oklch(0.62 0.16 145)",
+  blue: "oklch(0.6 0.14 230)",
+  grey: "oklch(0.62 0.02 60)",
 }
 
-/** Per-archetype cost when recruiting from the Pit. */
-export const ARCHETYPE_COST: Record<ArchetypeId, number> = {
+/** Recruiting cost from the Pit. */
+export const ARCHETYPE_COST: Record<Archetype, number> = {
   brown: 30,
   red: 50,
   green: 60,
