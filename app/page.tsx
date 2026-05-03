@@ -1,5 +1,5 @@
-import { ElementumGame } from "@/components/elementum-game"
+import { UnderlordGame } from "@/components/underlord-game"
 
 export default function Page() {
-  return <ElementumGame />
+  return <UnderlordGame />
 }

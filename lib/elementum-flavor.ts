@@ -301,3 +301,8 @@ export function getHero(stage: number): Hero {
 export function rand<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
+
+/** Get hero by id (search across the canon roster). */
+export function getHeroById(id: string): Hero | null {
+  return HEROES.find((h) => h.id === id) ?? null
+}
