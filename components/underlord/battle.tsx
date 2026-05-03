@@ -213,7 +213,8 @@ export function BattleScreen({
         window.setTimeout(() => setTaunt(null), 1600)
       }
       const beforeUnits = state.units
-      const next = aiTakeTurn(state, active.id, region.stage >= 4)
+      // Tactical AI from stage 2 onward; stage 1 stays gentle for tutorial.
+      const next = aiTakeTurn(state, active.id, region.stage >= 2)
       // Visualize damage
       for (const u of next.units) {
         const before = beforeUnits.find((b) => b.id === u.id)

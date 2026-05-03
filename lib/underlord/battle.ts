@@ -670,76 +670,276 @@ function computeDone(units: Unit[]): BattleState['done'] {
   return null
 }
 
-/* ---------------- AI ---------------- */
-
+/* ---------------- Tactical AI ---------------- */
 /**
- * Hero AI — taunt-aware scoring picker plus pathing.
+ * Hero AI — full plan evaluation (XCOM-flavor).
  *
- *  - If hero is `tauntedBy` X and X is alive, X scores +500 (forced lock).
- *  - +200 reachable+attackable
- *  - +(80 - hp), +(atk*4), +30 if brown taunt-aura, -dist*3
- *  - Avoids walking onto fire tiles unless target is on/past them.
- *  - Will attack barriers if blocking the only path AND no minion in range.
+ * For every reachable destination tile (BFS up to `move`) AND for every
+ * attackable enemy from that tile (or "no attack"), we score the resulting
+ * (move, attack) PLAN as a single number. The best plan wins.
+ *
+ * Score components:
+ *   + 300 if the attack KILLS the target this turn (overkill avoided)
+ *   + expectedDamage * 4
+ *   + role bonus (sniper kills ranged; striker hunts healers; tank engages tank)
+ *   + 800 if it's the unit that taunted us (forced lock, but only if reachable)
+ *   + 120 if target is a Blue healer (focus fire on support)
+ *   + 60 if target is a Red splash caster (deny AOE)
+ *   + 40 if target is already wounded (focus fire)
+ *   - threatAt(destination) * roleWeight (squishy heroes care more)
+ *   - 80 if standing on fire
+ *   - 60 per adjacent ally if a Red is in splash range (avoid clusters)
+ *   - 25 per hex of distance to closest enemy (when no attack possible)
+ *
+ * The result: heroes will reposition behind cover, kite, focus-fire, and
+ * intentionally avoid AOE traps — instead of just walking forward.
  */
+
+export type AIRole = 'tank' | 'striker' | 'sniper' | 'soldier'
+
+export function aiRole(u: Unit): AIRole {
+  if (u.range >= 3) return 'sniper'
+  if (u.move >= 4 && u.atk >= 9 && u.hpMax <= 22) return 'striker'
+  if (u.hpMax >= 26) return 'tank'
+  return 'soldier'
+}
+
+/** Tiles a unit can step onto in `move` steps (BFS, blocked by other units). */
+function reachableHexes(s: BattleState, unit: Unit): Axial[] {
+  const out: Axial[] = []
+  const seen = new Set<string>()
+  seen.add(axialKey(unit.pos))
+  const occupied = blockedSet(s, unit.id)
+  const offsetFor = (r: number) => -Math.floor(r / 2)
+  const inBounds = (a: Axial) => {
+    if (a.r < 0 || a.r >= s.rows) return false
+    const off = offsetFor(a.r)
+    return a.q >= off && a.q < s.cols + off
+  }
+  type Node = { pos: Axial; depth: number }
+  const queue: Node[] = [{ pos: unit.pos, depth: 0 }]
+  while (queue.length) {
+    const { pos, depth } = queue.shift()!
+    if (depth >= unit.move) continue
+    for (const n of neighbors(pos)) {
+      const k = axialKey(n)
+      if (seen.has(k)) continue
+      if (!inBounds(n)) continue
+      if (occupied.has(k)) continue
+      seen.add(k)
+      out.push(n)
+      queue.push({ pos: n, depth: depth + 1 })
+    }
+  }
+  return out
+}
+
+/** Approximate damage taken if a hero stands at `pos`, from any minion that
+ * can reach + attack it (range OR range+move with discount). */
+function threatAt(s: BattleState, pos: Axial): number {
+  let total = 0
+  for (const m of s.units) {
+    if (m.dead || m.faction !== 'minion' || m.isBarrier) continue
+    const dist = hexDistance(m.pos, pos)
+    if (dist <= m.range) {
+      total += m.atk
+    } else if (dist <= m.range + m.move) {
+      // Approximate: minion would need to spend its move to reach
+      total += m.atk * 0.45
+    }
+  }
+  return total
+}
+
+/** Estimated damage a hero would deal to a target this turn (no variance). */
+function estimateDamage(att: Unit, tgt: Unit): number {
+  const base = att.atk * (1 + 0.18 * 0.7) // expected crit value
+  const mod = tgt.damageTakenMod ?? 1
+  return Math.max(1, Math.round(base * mod))
+}
+
 export function aiTakeTurn(s: BattleState, heroId: string, smart: boolean = true): BattleState {
   const hero = s.units.find((u) => u.id === heroId)
   if (!hero || hero.dead) return endTurn(s)
 
-  const allTargets = s.units.filter((u) => u.faction === 'minion' && !u.dead)
-  const realMinions = allTargets.filter((u) => !u.isBarrier)
-  if (allTargets.length === 0) return endTurn(s)
+  const allMinions = s.units.filter(
+    (u) => u.faction === 'minion' && !u.dead && !u.isBarrier,
+  )
+  const barriers = s.units.filter((u) => u.isBarrier && !u.dead)
+  if (allMinions.length === 0 && barriers.length === 0) return endTurn(s)
 
+  // Tutorial mode for stages 1–3: classic greedy rush. Keeps early game gentle.
+  if (!smart) return aiSimple(s, hero, allMinions)
+
+  const role = aiRole(hero)
   const tauntId = hero.tauntedBy
   const tauntTarget =
     tauntId ? s.units.find((u) => u.id === tauntId && !u.dead) : null
 
-  // Score targets — taunt overrides everything
-  const targets = realMinions.length ? realMinions : allTargets
-  const scored = targets.map((t) => {
-    const dist = hexDistance(hero.pos, t.pos)
-    const reachableNow = dist <= hero.range
-    const stepsNeeded = Math.max(0, dist - hero.range)
-    const reachable = stepsNeeded <= hero.move
-    let score = 0
-    if (tauntTarget && t.id === tauntTarget.id) score += 500
-    if (reachableNow) score += 200
-    else if (reachable) score += 100
-    score += Math.max(0, 80 - t.hp)
-    score += t.atk * 4
-    if (t.templateId === 'brown') score += 30
-    score -= dist * 3
-    return { unit: t, score, dist, reachableNow, reachable, stepsNeeded }
-  })
-  scored.sort((a, b) => b.score - a.score)
+  // Roles weighted threat aversion: squishy backliners care a lot, tanks barely.
+  const threatWeight =
+    role === 'sniper' ? 1.6 : role === 'soldier' ? 0.9 : role === 'striker' ? 1.0 : 0.4
 
-  const target = smart
-    ? scored[0].unit
-    : targets.slice().sort((a, b) => hexDistance(hero.pos, a.pos) - hexDistance(hero.pos, b.pos))[0]
+  // Pre-compute fire keys + Red splashers (to deny clustering)
+  const fireKeys = new Set(s.fires.map((f) => axialKey(f.pos)))
+  const reds = allMinions.filter((m) => m.templateId === 'red')
 
-  // Step toward target greedily up to `move` hexes, prefer non-fire tiles
+  // Candidate FROM hexes: reachable + current pos
+  const fromCandidates: Axial[] = [hero.pos, ...reachableHexes(s, hero)]
+
+  type Plan = {
+    from: Axial
+    targetId: string | null
+    score: number
+    kills: boolean
+  }
+  let best: Plan | null = null
+
+  for (const from of fromCandidates) {
+    // From this tile, what can we attack?
+    const inRange = allMinions.filter(
+      (m) => hexDistance(from, m.pos) <= hero.range,
+    )
+    const reachableBarriers = barriers.filter(
+      (b) => hexDistance(from, b.pos) <= hero.range,
+    )
+
+    const tilThreat = threatAt({ ...s }, from)
+    const onFire = fireKeys.has(axialKey(from))
+
+    // Adjacent allies count for splash-cluster penalty
+    const alliesAdjacent = s.units.filter(
+      (a) =>
+        a.faction === 'hero' &&
+        !a.dead &&
+        a.id !== hero.id &&
+        hexDistance(a.pos, from) <= 1,
+    ).length
+    const inRedSplash = reds.some(
+      (r) => hexDistance(r.pos, from) <= r.range + 1,
+    )
+
+    // Forced taunt: if reachable from this tile AND in attack range, lock it.
+    const tauntInRange =
+      tauntTarget && inRange.some((t) => t.id === tauntTarget.id)
+        ? tauntTarget
+        : null
+
+    const targetOptions: (Unit | null)[] = tauntInRange
+      ? [tauntInRange] // taunt is forced when reachable
+      : [...inRange, ...(inRange.length === 0 ? reachableBarriers : []), null]
+
+    for (const tgt of targetOptions) {
+      let score = 0
+
+      // ---- Positional safety (paid regardless of attack) ----
+      score -= tilThreat * threatWeight
+      if (onFire) score -= 80
+      if (inRedSplash && alliesAdjacent > 0) score -= 60 * alliesAdjacent
+
+      // Slight cost to moving (so heroes don't dance for nothing)
+      const moved = !axialEqual(from, hero.pos)
+      if (moved) score -= 6
+
+      if (tgt) {
+        if (tgt.isBarrier) {
+          // Only a fallback — small reward, pricey if real targets exist
+          score += 12
+          if (allMinions.some((m) => hexDistance(from, m.pos) <= hero.range)) {
+            score -= 60
+          }
+        } else {
+          const dmg = estimateDamage(hero, tgt)
+          const willKill = dmg >= tgt.hp
+
+          score += dmg * 4
+          if (willKill) score += 300 + tgt.atk * 5
+
+          // Priority bumps
+          if (tauntTarget && tgt.id === tauntTarget.id) score += 800
+          if (tgt.templateId === 'blue') score += 120 // kill the healer
+          if (tgt.templateId === 'red') score += 60 // deny AOE
+          if (tgt.hp < tgt.hpMax * 0.5) score += 40 // focus fire wounded
+          if (tgt.specialCd === 0 && SPECIALS[tgt.templateId].uses !== 1) {
+            score += 25 // catch them BEFORE they fire their special
+          }
+
+          // Role bonuses
+          if (role === 'sniper' && tgt.range >= 2) score += 50
+          if (role === 'striker' && tgt.attackKind === 'heal') score += 80
+          if (role === 'striker' && tgt.range >= 2) score += 30
+          if (role === 'tank' && tgt.templateId === 'brown') score += 50
+          if (role === 'soldier' && tgt.hp <= 12) score += 25
+        }
+      } else {
+        // No-attack plan: penalize, but reward closing distance toward best target
+        score -= 100
+        if (allMinions.length) {
+          const closest = Math.min(
+            ...allMinions.map((m) => hexDistance(from, m.pos)),
+          )
+          score -= closest * 25
+        }
+      }
+
+      // Snipers prefer maximum stand-off range when they can attack
+      if (tgt && !tgt.isBarrier && role === 'sniper') {
+        const d = hexDistance(from, tgt.pos)
+        const ideal = hero.range
+        score -= Math.abs(ideal - d) * 12
+      }
+      // Strikers prefer flanking — i.e. NOT adjacent to other heroes
+      if (tgt && !tgt.isBarrier && role === 'striker' && alliesAdjacent === 0) {
+        score += 15
+      }
+
+      const plan: Plan = {
+        from,
+        targetId: tgt?.id ?? null,
+        score,
+        kills: !!tgt && !tgt.isBarrier && estimateDamage(hero, tgt) >= tgt.hp,
+      }
+      if (!best || plan.score > best.score) best = plan
+    }
+  }
+
+  if (!best) return endTurn(s)
+
+  // Execute plan
+  let state = s
+  if (!axialEqual(best.from, hero.pos)) {
+    state = moveUnit(state, hero.id, best.from)
+  }
+  if (best.targetId) {
+    const out = attackUnit(state, hero.id, best.targetId)
+    state = out.state
+  }
+  return endTurn(state)
+}
+
+/** Tutorial-tier AI: walk straight at lowest-HP target, attack if in range. */
+function aiSimple(
+  s: BattleState,
+  hero: Unit,
+  enemies: Unit[],
+): BattleState {
+  if (!enemies.length) return endTurn(s)
+  const target = enemies.slice().sort((a, b) => a.hp - b.hp)[0]
+  let state = s
   let cur = hero.pos
   const occ = blockedSet(s, hero.id)
-  const fireKeys = new Set(s.fires.map((f) => axialKey(f.pos)))
-  let state = s
   for (let i = 0; i < hero.move; i++) {
     if (hexDistance(cur, target.pos) <= hero.range) break
     const ns = neighbors(cur)
       .filter((n) => {
         if (occ.has(axialKey(n))) return false
         if (n.r < 0 || n.r >= s.rows) return false
-        const offset = -Math.floor(n.r / 2)
-        if (n.q < offset || n.q >= s.cols + offset) return false
-        return true
+        const off = -Math.floor(n.r / 2)
+        return n.q >= off && n.q < s.cols + off
       })
-      .sort((a, b) => {
-        const aDist = hexDistance(a, target.pos)
-        const bDist = hexDistance(b, target.pos)
-        if (aDist !== bDist) return aDist - bDist
-        // Prefer non-fire tile when distance is equal
-        const aFire = fireKeys.has(axialKey(a)) ? 1 : 0
-        const bFire = fireKeys.has(axialKey(b)) ? 1 : 0
-        return aFire - bFire
-      })
+      .sort(
+        (a, b) => hexDistance(a, target.pos) - hexDistance(b, target.pos),
+      )
     if (!ns.length) break
     const best = ns[0]
     if (hexDistance(best, target.pos) >= hexDistance(cur, target.pos)) break
@@ -753,26 +953,11 @@ export function aiTakeTurn(s: BattleState, heroId: string, smart: boolean = true
     occ.add(axialKey(best))
     cur = best
   }
-
   const updated = state.units.find((u) => u.id === hero.id)
   if (updated && hexDistance(updated.pos, target.pos) <= updated.range) {
     const out = attackUnit(state, hero.id, target.id)
     state = out.state
-  } else {
-    // No reach — try to chip a barrier in range to clear path
-    const barrier = state.units.find(
-      (u) =>
-        u.isBarrier &&
-        !u.dead &&
-        updated &&
-        hexDistance(updated.pos, u.pos) <= updated.range,
-    )
-    if (barrier) {
-      const out = attackUnit(state, hero.id, barrier.id)
-      state = out.state
-    }
   }
-
   return endTurn(state)
 }
 
