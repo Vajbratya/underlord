@@ -52,6 +52,10 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${cinzel.variable} ${jetbrains.variable} bg-background`}
+      // Browser extensions (Tag Assistant, Grammarly, etc.) inject attributes
+      // onto <html> before React hydrates. We don't render any dynamic data
+      // on this element ourselves, so suppress the noisy mismatch warning.
+      suppressHydrationWarning
     >
       <body className="font-sans antialiased min-h-dvh">
         {children}
