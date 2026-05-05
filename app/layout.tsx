@@ -57,7 +57,13 @@ export default function RootLayout({
       // on this element ourselves, so suppress the noisy mismatch warning.
       suppressHydrationWarning
     >
-      <body className="font-sans antialiased min-h-dvh">
+      <body
+        className="font-sans antialiased min-h-dvh"
+        // Same reason as <html>: extensions (Tag Assistant Prod, Grammarly,
+        // LastPass, ColorZilla, etc.) often inject attributes onto <body>
+        // between SSR and hydration. We don't render dynamic SSR data here.
+        suppressHydrationWarning
+      >
         {children}
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
