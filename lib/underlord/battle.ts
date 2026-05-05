@@ -40,6 +40,16 @@ export type Obstacle = {
   kind: 'rock' | 'pillar' | 'tree' | 'altar' | 'crystal'
 }
 
+/** Boon-derived effects the engine consults during a battle. The UI
+ * builds this from the player's owned boons before calling initBattle.
+ * Defaults are no-ops (1.0 multipliers / 0 bonuses). */
+export type BattleBoonEffects = {
+  /** Multiplier on incoming damage applied to minions only. <1 = tankier. */
+  minionDmgTakenMult: number
+  /** % of round-start hpMax restored to living minions. 0 = off. */
+  hpRegenStartOfRound: number
+}
+
 export type BattleState = {
   cols: number
   rows: number
@@ -62,6 +72,10 @@ export type BattleState = {
   log: string[]
   /** Set when victory condition reached. */
   done: 'victory' | 'defeat' | null
+  /** Boon-derived passive effects. Engine reads these to apply lifestyle
+   * modifiers (damage taken, regen). Always present; defaults are no-ops
+   * so legacy callers don't have to think about it. */
+  boonEffects: BattleBoonEffects
 }
 
 export function initBattle(

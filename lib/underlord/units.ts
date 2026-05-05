@@ -500,18 +500,38 @@ export function makeStarterRoster(): Unit[] {
 /* ------------------------------------------------------------------ */
 
 import { statBuffsFor } from './perks'
+import { aggregateBoons } from './boons'
 
+/**
+ * Recompute per-unit stats from archetype baseline + perks + boons.
+ * The third arg is optional so older callers (perk-spend, migration)
+ * still compile; if you pass a boon list the multipliers stack on top
+ * of the perk additive buff.
+ */
 export function rebuildRosterStats(
   roster: Unit[],
   perks: Record<string, number>,
+  boons: string[] = [],
 ): Unit[] {
+  const bag = aggregateBoons(boons)
   return roster.map((u) => {
     if (u.faction !== 'minion' || u.isBarrier || u.isOverlord) return u
     const tpl = MINION_TEMPLATES[u.templateId]
     if (!tpl) return u
     const buff = statBuffsFor(u.templateId, perks)
-    const hpMax = tpl.hp + buff.hp
-    const atk = tpl.atk + buff.atk
+    // Boon multipliers apply AFTER perk additive buffs so a perk that
+    // grants +20 HP and a boon that grants +30% HP correctly compound
+    // to (base + 20) × 1.30, not base × 1.30 + 20.
+    const baseHp = tpl.hp + buff.hp
+    const baseAtk = tpl.atk + buff.atk
+    const isRanged = tpl.range >= 2
+    const isFlying = !!tpl.flying
+    const atkMult =
+      bag.minionAtkMult *
+      (isRanged ? 1 + bag.rangedAtkBonus : 1) *
+      (isFlying ? 1 + bag.flyingAtkBonus : 1)
+    const hpMax = Math.max(1, Math.round(baseHp * bag.minionHpMult))
+    const atk = Math.max(1, Math.round(baseAtk * atkMult))
     const move = tpl.move + buff.move
     const range = tpl.range + buff.range
     const ratio = u.hpMax > 0 ? u.hp / u.hpMax : 1

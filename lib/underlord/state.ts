@@ -26,6 +26,7 @@ import {
   SKILL_SLOTS,
   unlockedSkillIds,
 } from './overlord-skills'
+import { aggregateBoons, BOONS, rollBoonChoices } from './boons'
 
 const STORAGE_KEY = 'underlord-save-v5'
 const LEGACY_KEY_V4 = 'underlord-save-v4'
@@ -57,6 +58,9 @@ export type GameState = {
     /** Skill ids the Underlord just unlocked (auto-added to pool, NOT auto-
      * equipped — player decides via the Skill Map). */
     unlockedSkills: string[]
+    /** 3 randomly-rolled boon ids the player must choose from before
+     * leaving the loot screen. Only present after a victory. */
+    boonChoices: string[]
   } | null
 }
 
@@ -90,6 +94,8 @@ export function freshSave(name: string): SaveState {
     // Skill Map starts with the level-1 trio unlocked AND equipped.
     unlockedSkills: unlockedSkillIds(1),
     equippedSkills: DEFAULT_LOADOUT.slice(0, SKILL_SLOTS),
+    // No boons accumulated yet — every victory is a chance to grab one.
+    boons: [],
   }
 }
 
@@ -120,7 +126,11 @@ function migrateLegacy(parsed: { save?: Partial<SaveState> }): SaveState | null 
   const level = levelFromXP(s.xp ?? 0)
   // Rebuild any saved roster against the new (5x bigger) baseline templates.
   const incomingRoster = s.roster ?? makeStarterRoster()
-  const rebuilt = rebuildRosterStats(incomingRoster, s.perks ?? {})
+      const rebuilt = rebuildRosterStats(
+        incomingRoster,
+        s.perks ?? {},
+        ((s as Partial<SaveState>).boons ?? []).filter((id) => !!BOONS[id]),
+      )
   // Carry skill state forward if it's already there (v4→v5 partial saves);
   // otherwise grant every level-appropriate skill and the default loadout.
   const unlockedSkills =
@@ -156,6 +166,9 @@ function migrateLegacy(parsed: { save?: Partial<SaveState> }): SaveState | null 
     unlockedArchetypes: s.unlockedArchetypes ?? [],
     unlockedSkills,
     equippedSkills,
+    // Older saves carry no boons — that's fine, they'll start picking
+    // them on their next victory.
+    boons: ((s as Partial<SaveState>).boons ?? []).filter((id) => !!BOONS[id]),
   }
 }
 
@@ -248,6 +261,7 @@ export type Action =
   | { type: 'spend-perk'; perkId: PerkId }
   | { type: 'respec' }
   | { type: 'set-skill-loadout'; skillIds: string[] }
+  | { type: 'pick-boon'; boonId: string }
   | { type: 'reset' }
 
 function unlockNew(save: SaveState, ids: AchievementId[]): {
@@ -292,7 +306,7 @@ export function reduce(state: GameState, action: Action): GameState {
       if (state.save.perkPoints <= 0) return state
       const nextPerks = { ...state.save.perks, [action.perkId]: cur + 1 }
       // Recompute roster stats so the rank takes effect on existing minions.
-      const nextRoster = rebuildRosterStats(state.save.roster, nextPerks)
+      const nextRoster = rebuildRosterStats(state.save.roster, nextPerks, state.save.boons ?? [])
       // If squad cap shrank somehow (it can't — perks only grow), trim. If it
       // grew, leave the squad alone; player picks new slots themselves.
       const cap = squadCap(nextPerks)
@@ -311,7 +325,7 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'respec': {
       // Refund every spent point. Roster reverts to baseline stats.
       const refund = perksSpent(state.save.perks)
-      const nextRoster = rebuildRosterStats(state.save.roster, {})
+      const nextRoster = rebuildRosterStats(state.save.roster, {}, state.save.boons ?? [])
       const cap = squadCap({})
       return {
         ...state,
@@ -344,14 +358,20 @@ export function reduce(state: GameState, action: Action): GameState {
       save.critsLanded = save.critsLanded + result.critsLanded
       save.comboHigh = Math.max(save.comboHigh, result.comboHigh)
 
-      // XP: scaled by perk
+      // Boon-derived multipliers stack with perk-derived ones.
+      const boonBag = aggregateBoons(save.boons ?? [])
+
+      // XP: scaled by perk × boon
       const baseXp = xpForBattle({
         victory: result.victory,
         stage: region.stage,
         heroesKilled: result.killedHeroIds.length,
         comboHigh: result.comboHigh,
       })
-      const xpEarned = Math.floor(baseXp * xpMult(save.perks))
+      const xpEarned = Math.max(
+        0,
+        Math.floor(baseXp * xpMult(save.perks) * boonBag.xpMult),
+      )
 
       const oldLevel = levelFromXP(save.xp)
       save.xp = save.xp + xpEarned
@@ -373,7 +393,7 @@ export function reduce(state: GameState, action: Action): GameState {
       if (fresh.length > 0) {
         const newRecruits = fresh.map((arch) => recruitMinion(arch))
         save.roster = [
-          ...rebuildRosterStats(save.roster, save.perks),
+          ...rebuildRosterStats(save.roster, save.perks, save.boons ?? []),
           ...newRecruits,
         ]
         save.unlockedArchetypes = [...save.unlockedArchetypes, ...fresh]
@@ -392,8 +412,11 @@ export function reduce(state: GameState, action: Action): GameState {
         save.unlockedSkills = [...save.unlockedSkills, ...freshSkills]
       }
 
-      // Gold: scaled by perk
-      const goldFinal = Math.floor(goldEarned * goldMult(save.perks))
+      // Gold: scaled by perk × boon
+      const goldFinal = Math.max(
+        0,
+        Math.floor(goldEarned * goldMult(save.perks) * boonBag.goldMult),
+      )
 
       if (result.victory) {
         save.gold += goldFinal
@@ -459,6 +482,9 @@ export function reduce(state: GameState, action: Action): GameState {
           perkPointsGained,
           unlockedArchetypes: fresh,
           unlockedSkills: freshSkills,
+          // Roll three random unowned boons on victory. On defeat, no
+          // pick — the player goes back empty-handed.
+          boonChoices: result.victory ? rollBoonChoices(save.boons ?? [], 3) : [],
         },
       }
     }
@@ -498,6 +524,26 @@ export function reduce(state: GameState, action: Action): GameState {
       return {
         ...state,
         save: { ...state.save, equippedSkills: trimmed },
+      }
+    }
+    case 'pick-boon': {
+      // Validate: id must exist and must have been one of the offered
+      // choices. Then commit it to the save and clear choices so the UI
+      // can advance.
+      const result = state.lastResult
+      if (!result || !result.boonChoices.includes(action.boonId)) return state
+      if (!BOONS[action.boonId]) return state
+      const save: SaveState = {
+        ...state.save,
+        boons: [...(state.save.boons ?? []), action.boonId],
+      }
+      // Re-apply HP/ATK to the roster so the new boon's mults are visible
+      // in the war room immediately (parity with how perk-spend works).
+      save.roster = rebuildRosterStats(save.roster, save.perks, save.boons)
+      return {
+        ...state,
+        save,
+        lastResult: { ...result, boonChoices: [] },
       }
     }
     case 'reset':

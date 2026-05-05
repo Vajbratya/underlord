@@ -55,6 +55,7 @@ import {
   makeUnit,
 } from "@/lib/underlord/units"
 import { SPECIALS } from "@/lib/underlord/specials"
+import { aggregateBoons } from "@/lib/underlord/boons"
 import {
   OVERLORD_SKILLS,
   type SkillDef,
@@ -123,7 +124,12 @@ function buildBattle(
   region: Region,
   overlordLevel: number,
   overlordName: string,
+  boons: string[] = [],
 ): BattleState {
+  // Boon multipliers that apply at unit-creation time (Overlord stats,
+  // starting attack bonus, special CD reduction). Per-action effects
+  // (crit, lifesteal, dmg-taken, regen) are applied at the call sites.
+  const bag = aggregateBoons(boons)
   const layout = pickMapLayout(region)
   const cols = layout.cols
   const rows = layout.rows
@@ -173,7 +179,7 @@ function buildBattle(
     const q = 2 + colIdx * 3
     const desired = { q: q + offsetFor(row), r: row }
     const pos = place(desired)
-    return makeUnit(u.templateId, pos, {
+    const built = makeUnit(u.templateId, pos, {
       name: u.name,
       hp: u.hpMax,
       hpMax: u.hpMax,
@@ -183,6 +189,13 @@ function buildBattle(
       spd: u.spd,
       equipped: u.equipped,
     })
+    // Boon: Iniciativa Sombria stamps a one-shot attack multiplier on each
+    // minion. It's consumed on the very first attack via the existing
+    // `nextAttackBonus` channel (already cleared in attackUnit).
+    if (bag.startingAttackBonus > 0) {
+      built.nextAttackBonus = 1 + bag.startingAttackBonus
+    }
+    return built
   })
 
   // ---- Overlord ----
@@ -191,7 +204,24 @@ function buildBattle(
   const overlordRow = rows - 2
   const overlordCol = Math.floor(cols / 2) + offsetFor(overlordRow)
   const overlordPos = place({ q: overlordCol, r: overlordRow })
-  const overlord = makeOverlord(overlordLevel, overlordPos, overlordName)
+  const overlordBase = makeOverlord(overlordLevel, overlordPos, overlordName)
+  // Boon: Voz do Submundo / Pacto: Meteoro alter Overlord stats.
+  const overlordHpMax = Math.max(1, Math.round(overlordBase.hpMax * bag.overlordHpMult))
+  const overlordAtk = Math.max(1, Math.round(overlordBase.atk * bag.overlordAtkMult))
+  // Boon: Recarga Profana / Pacto: Meteoro shave starting CDs off all skills.
+  const skillCooldowns = { ...(overlordBase.skillCooldowns ?? {}) }
+  if (bag.specialCdReduce > 0) {
+    for (const k of Object.keys(skillCooldowns)) {
+      skillCooldowns[k] = Math.max(0, (skillCooldowns[k] ?? 0) - bag.specialCdReduce)
+    }
+  }
+  const overlord: Unit = {
+    ...overlordBase,
+    hpMax: overlordHpMax,
+    hp: overlordHpMax,
+    atk: overlordAtk,
+    skillCooldowns,
+  }
 
   // ---- Heroes + their entourages ----
   const heroUnits: Unit[] = []
@@ -263,6 +293,7 @@ export function BattleScreen({
   overlordLevel = 1,
   overlordName = "UNDERLORD",
   equippedSkills = [],
+  boons = [],
   onComplete,
 }: {
   squad: Unit[]
@@ -275,6 +306,8 @@ export function BattleScreen({
   overlordName?: string
   /** Skill ids the Underlord has equipped (Skill Map loadout). */
   equippedSkills?: string[]
+  /** Owned boon ids — drive crit/lifesteal/regen/dmg-taken at runtime. */
+  boons?: string[]
   onComplete: (result: {
     victory: boolean
     fallenIds: string[]
@@ -285,13 +318,18 @@ export function BattleScreen({
     firstBlood: boolean
   }) => void
 }) {
-  const critBonus = critChanceBonus(perks)
+  const boonBag = useMemo(() => aggregateBoons(boons), [boons])
+  // Crit chance, lifesteal and minion damage-taken modifiers fold the
+  // boon contribution on top of the perk contribution. Heroes never get
+  // these bonuses — applyDamageMod is only called on minion targets via
+  // collateral, and the engine already gates the crit by faction.
+  const critBonus = critChanceBonus(perks) + boonBag.critChanceBonus
   const comboBonusExtra = comboBonusPerStack(perks)
   const healBonus = healMultiplier(perks)
   const layout = useMemo(() => pickMapLayout(region), [region])
   const initialBattle = useMemo(
-    () => buildBattle(squad, region, overlordLevel, overlordName),
-    [squad, region, overlordLevel, overlordName],
+    () => buildBattle(squad, region, overlordLevel, overlordName, boons),
+    [squad, region, overlordLevel, overlordName, boons],
   )
   const [local, dispatch] = useReducer(reducer, {
     state: initialBattle,
@@ -896,6 +934,22 @@ export function BattleScreen({
       const comboBonus = 1 + combo * (0.15 + comboBonusExtra)
       const outcome = attackUnit(next, active.id, target.id, comboBonus, critBonus)
       next = outcome.state
+      // Boon: Sede de Sangue / Pacto: Berserker — heal the attacker for a
+      // fraction of damage dealt. Caps at hpMax. Only applies to minion
+      // attackers (heroes never get boons).
+      if (outcome.hit && active.faction === "minion" && boonBag.lifestealPct > 0) {
+        const healed = Math.max(1, Math.round(outcome.damage * boonBag.lifestealPct))
+        next = {
+          ...next,
+          units: next.units.map((u) =>
+            u.id === active.id && !u.dead
+              ? { ...u, hp: Math.min(u.hpMax, u.hp + healed) }
+              : u,
+          ),
+        }
+        const px = axialToPixel(active.pos)
+        pushPopup(`+${healed}`, "heal", px.x, px.y - 18)
+      }
       if (outcome.hit) {
         if (!firstBloodRef.current) firstBloodRef.current = true
         if (outcome.crit) critsLandedRef.current += 1

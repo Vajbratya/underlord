@@ -7,6 +7,7 @@ import {
   Flame,
   Gem,
   Hammer,
+  Lock,
   Skull,
   Sparkles,
   Trophy,
@@ -17,6 +18,11 @@ import { RARITY_LABEL, RARITY_TONE } from "@/lib/underlord/loot"
 import type { LootItem, MinionArchetype } from "@/lib/underlord/types"
 import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { OVERLORD_SKILLS } from "@/lib/underlord/overlord-skills"
+import {
+  BOONS,
+  RARITY_LABEL as BOON_RARITY_LABEL,
+  RARITY_TONE as BOON_RARITY_TONE,
+} from "@/lib/underlord/boons"
 import { rand, UNDERLORD_LINES, getHeroById } from "@/lib/elementum-flavor"
 import { useEffect, useMemo, useState } from "react"
 import { Atmosphere } from "./atmosphere"
@@ -35,6 +41,9 @@ export function LootScreen({
   regionDropsLoot = true,
   unlockedArchetypes = [],
   unlockedSkills = [],
+  boonChoices = [],
+  ownedBoons = [],
+  onPickBoon,
   onContinue,
 }: {
   victory: boolean
@@ -55,6 +64,13 @@ export function LootScreen({
   unlockedArchetypes?: string[]
   /** New Underlord active skills unlocked (added to pool, NOT auto-equipped). */
   unlockedSkills?: string[]
+  /** Three random boons offered after this victory. The continue button is
+   * gated until one is picked (or skipped on defeat). */
+  boonChoices?: string[]
+  /** Boon ids the player already owns — used only for the small footer hint. */
+  ownedBoons?: string[]
+  /** Commit a boon to the save. Cleared from `boonChoices` immediately. */
+  onPickBoon?: (boonId: string) => void
   onContinue: () => void
 }) {
   // Gold ticker animates count-up for satisfying victory pop
@@ -114,6 +130,16 @@ export function LootScreen({
               UNDERLORD: &ldquo;{headline}&rdquo;
             </p>
           </div>
+
+          {/* Boon picker — only shows on victory and only until the player
+              commits to one. Continue button is gated below until that
+              happens, so this is the moment of build identity each run. */}
+          {victory && boonChoices.length > 0 ? (
+            <BoonPickerSection
+              choices={boonChoices}
+              onPick={(id) => onPickBoon?.(id)}
+            />
+          ) : null}
 
           {/* Killed heroes */}
           {killedHeroIds.length ? (
@@ -398,14 +424,41 @@ export function LootScreen({
       </main>
 
       <div className="relative z-10 border-t border-border/60 bg-background/90 p-3 backdrop-blur sm:p-4">
-        <button
-          type="button"
-          onClick={onContinue}
-          className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-md border-2 border-primary bg-primary px-5 py-3.5 font-display text-sm font-black uppercase tracking-[0.22em] text-primary-foreground transition active:scale-[0.98] sm:px-6 sm:py-4 sm:text-base sm:tracking-[0.25em]"
-        >
-          DE VOLTA À SALA DE GUERRA
-          <ChevronRight className="size-5" />
-        </button>
+        {(() => {
+          // Gate the continue button while the player still has a boon to
+          // pick. Defeats and saves with no choices roll straight through.
+          const mustPickBoon = victory && boonChoices.length > 0
+          return (
+            <button
+              type="button"
+              onClick={onContinue}
+              disabled={mustPickBoon}
+              className={cn(
+                "mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-md border-2 px-5 py-3.5 font-display text-sm font-black uppercase tracking-[0.22em] transition active:scale-[0.98] sm:px-6 sm:py-4 sm:text-base sm:tracking-[0.25em]",
+                mustPickBoon
+                  ? "cursor-not-allowed border-border bg-muted/40 text-muted-foreground"
+                  : "border-primary bg-primary text-primary-foreground",
+              )}
+            >
+              {mustPickBoon ? (
+                <>
+                  <Lock className="size-4" />
+                  ESCOLHA UMA BÊNÇÃO PARA CONTINUAR
+                </>
+              ) : (
+                <>
+                  DE VOLTA À SALA DE GUERRA
+                  <ChevronRight className="size-5" />
+                </>
+              )}
+            </button>
+          )
+        })()}
+        {ownedBoons.length > 0 && !boonChoices.length ? (
+          <p className="mx-auto mt-2 max-w-md text-center font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            Bençãos ativas: {ownedBoons.length}
+          </p>
+        ) : null}
       </div>
     </div>
   )
@@ -465,4 +518,87 @@ function rarityColor(r: LootItem["rarity"], alpha = 1): string {
     gold: `oklch(0.78 0.14 78 / ${alpha})`,
   }
   return m[c]
+}
+
+/**
+ * Boon picker — three big tappable cards. The chosen boon commits to the
+ * save through the parent's reducer; once committed the section unmounts
+ * (parent passes empty `boonChoices`). Pacto cards get a destructive ring
+ * so the trade-off reads at a glance.
+ */
+function BoonPickerSection({
+  choices,
+  onPick,
+}: {
+  choices: string[]
+  onPick: (id: string) => void
+}) {
+  return (
+    <section className="mt-5 sm:mt-6">
+      <header className="text-center">
+        <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-gold">
+          BÊNÇÃO DO SUBMUNDO
+        </p>
+        <h2 className="mt-1 font-display text-lg font-black uppercase leading-none tracking-tight text-foreground sm:text-xl">
+          Escolha um caminho
+        </h2>
+        <p className="mx-auto mt-1 max-w-xs font-mono text-[10px] uppercase leading-relaxed tracking-[0.16em] text-muted-foreground">
+          Permanente. Stacka com tudo que já foi forjado.
+        </p>
+      </header>
+      <div className="mt-3 grid gap-2.5 sm:gap-3">
+        {choices.map((id) => {
+          const b = BOONS[id]
+          if (!b) return null
+          const isPacto = b.category === "pacto"
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onPick(id)}
+              className={cn(
+                "group flex flex-col gap-1.5 rounded-lg border-2 px-3.5 py-3 text-left transition",
+                "active:scale-[0.99] hover:border-foreground/60",
+                isPacto
+                  ? "border-destructive/55 bg-destructive/10"
+                  : "border-border bg-card/70",
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-display text-sm font-black uppercase leading-tight tracking-tight text-foreground sm:text-base">
+                  {b.name}
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em]",
+                    BOON_RARITY_TONE[b.rarity],
+                  )}
+                >
+                  {BOON_RARITY_LABEL[b.rarity]}
+                </span>
+              </div>
+              <p
+                className={cn(
+                  "font-mono text-[11px] uppercase leading-relaxed tracking-[0.06em]",
+                  isPacto ? "text-destructive" : "text-foreground/85",
+                )}
+              >
+                {b.summary}
+              </p>
+              {b.flavor ? (
+                <p className="text-[11px] italic leading-relaxed text-muted-foreground">
+                  &ldquo;{b.flavor}&rdquo;
+                </p>
+              ) : null}
+              {isPacto ? (
+                <span className="mt-0.5 inline-flex w-fit items-center gap-1 rounded border border-destructive/40 bg-destructive/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-destructive">
+                  PACTO · TRADE-OFF
+                </span>
+              ) : null}
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
 }

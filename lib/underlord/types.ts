@@ -245,4 +245,10 @@ export type SaveState = {
    * matters — slot 1, slot 2, slot 3 — so the in-battle button bar is
    * stable even after re-arranging the loadout. */
   equippedSkills: string[]
+
+  /* ---- Roguelite boons (Bençãos) ---- */
+  /** Permanent buffs the Underlord has accumulated. Each victory rolls
+   * 3 random unowned ids and the player commits to one. Stack
+   * multiplicatively (HP/ATK) and additively (crit, lifesteal). */
+  boons: string[]
 }

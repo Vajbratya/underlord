@@ -1,0 +1,386 @@
+/* ====================================================================
+ * Underlord Roguelite Boons
+ *
+ * Permanent buffs picked between battles. Each victory rolls 3 random
+ * unowned boons (rarity-weighted) and the player commits to one. They
+ * stack across the entire save, multiplicatively where it makes sense.
+ *
+ * Categories:
+ *   - VANTAGEM (positive): pure upgrades. Common/rare/epic rarities.
+ *   - PACTO (trade-off): big positive with a real downside. Always rare+.
+ *
+ * Effects are intentionally a flat record of optional numeric / boolean
+ * fields. The aggregator `aggregateBoons()` collapses an owned-id list
+ * into a single bag the engine reads at runtime.
+ * ================================================================== */
+
+export type BoonRarity = 'common' | 'rare' | 'epic' | 'mythic'
+export type BoonCategory = 'vantagem' | 'pacto'
+
+/** All numeric multipliers default to 1.0 when absent.
+ *  All bonuses default to 0 when absent. Booleans default to false.   */
+export type BoonEffect = {
+  /* ---- stat multipliers (combat) ---- */
+  minionHpMult?: number       // applied in rebuildRosterStats
+  minionAtkMult?: number
+  minionDmgTakenMult?: number // 0.85 = -15% incoming
+  rangedAtkBonus?: number     // additive on top of minionAtkMult, ranged only
+  flyingAtkBonus?: number     // additive on top of minionAtkMult, flying only
+  overlordHpMult?: number
+  overlordAtkMult?: number
+
+  /* ---- economy ---- */
+  goldMult?: number
+  xpMult?: number
+
+  /* ---- moment-to-moment combat ---- */
+  critChanceBonus?: number    // +0.10 on top of base 0.18
+  lifestealPct?: number        // 0.20 of damage dealt heals attacker
+  hpRegenStartOfRound?: number // 0.10 of hpMax restored at round start
+  startingAttackBonus?: number // first attack of round 1 gets x(1+bonus)
+  specialCdReduce?: number     // turns shaved off all special/skill cooldowns at battle start
+}
+
+export type Boon = {
+  id: string
+  name: string
+  /** 4-char chip displayed on the war-room collection. */
+  short: string
+  rarity: BoonRarity
+  category: BoonCategory
+  /** Single-line summary used on cards. */
+  summary: string
+  /** Optional flavor line. */
+  flavor?: string
+  effect: BoonEffect
+}
+
+/* ----- Catalog -----
+ *
+ * Numbers are tuned so a single boon feels meaningful (commons ~10-20%,
+ * rares ~25%, epics ~35-45%) and so multiple stacking boons compound
+ * into real builds without breaking mid-game pacing. Pactos always trade
+ * one stat for another; the upside is intentionally larger than its
+ * non-pacto counterpart in the same rarity tier.
+ */
+export const BOONS: Record<string, Boon> = {
+  /* ---------------- COMMON (4) ---------------- */
+  pele_de_pedra: {
+    id: 'pele_de_pedra',
+    name: 'Pele de Pedra',
+    short: 'PDR',
+    rarity: 'common',
+    category: 'vantagem',
+    summary: '+15% HP em todos os minions',
+    flavor: 'O sangue endurece nas veias.',
+    effect: { minionHpMult: 1.15 },
+  },
+  lamina_faminta: {
+    id: 'lamina_faminta',
+    name: 'Lâmina Faminta',
+    short: 'LMN',
+    rarity: 'common',
+    category: 'vantagem',
+    summary: '+12% ATK em todos os minions',
+    flavor: 'Cada lâmina pede sangue.',
+    effect: { minionAtkMult: 1.12 },
+  },
+  maos_gananciosas: {
+    id: 'maos_gananciosas',
+    name: 'Mãos Gananciosas',
+    short: 'OURO',
+    rarity: 'common',
+    category: 'vantagem',
+    summary: '+25% ouro de batalha',
+    effect: { goldMult: 1.25 },
+  },
+  sabedoria_profana: {
+    id: 'sabedoria_profana',
+    name: 'Sabedoria Profana',
+    short: 'XP',
+    rarity: 'common',
+    category: 'vantagem',
+    summary: '+25% XP de batalha',
+    effect: { xpMult: 1.25 },
+  },
+
+  /* ---------------- RARE (8) ---------------- */
+  coracao_de_trevas: {
+    id: 'coracao_de_trevas',
+    name: 'Coração de Trevas',
+    short: 'HP++',
+    rarity: 'rare',
+    category: 'vantagem',
+    summary: '+30% HP em todos os minions',
+    flavor: 'Algo escuro pulsa onde havia carne.',
+    effect: { minionHpMult: 1.3 },
+  },
+  furia_negra: {
+    id: 'furia_negra',
+    name: 'Fúria Negra',
+    short: 'ATK+',
+    rarity: 'rare',
+    category: 'vantagem',
+    summary: '+25% ATK em todos os minions',
+    effect: { minionAtkMult: 1.25 },
+  },
+  sede_de_sangue: {
+    id: 'sede_de_sangue',
+    name: 'Sede de Sangue',
+    short: 'VAMP',
+    rarity: 'rare',
+    category: 'vantagem',
+    summary: 'Vampirismo: cura 20% do dano causado',
+    flavor: 'O que mata, alimenta.',
+    effect: { lifestealPct: 0.2 },
+  },
+  critico_sombrio: {
+    id: 'critico_sombrio',
+    name: 'Crítico Sombrio',
+    short: 'CRIT',
+    rarity: 'rare',
+    category: 'vantagem',
+    summary: '+12% chance de crítico',
+    effect: { critChanceBonus: 0.12 },
+  },
+  couraca_negra: {
+    id: 'couraca_negra',
+    name: 'Couraça Negra',
+    short: 'DEF',
+    rarity: 'rare',
+    category: 'vantagem',
+    summary: '−15% dano recebido pelos minions',
+    effect: { minionDmgTakenMult: 0.85 },
+  },
+  voz_do_submundo: {
+    id: 'voz_do_submundo',
+    name: 'Voz do Submundo',
+    short: 'LORD',
+    rarity: 'rare',
+    category: 'vantagem',
+    summary: 'Underlord: +30% HP, +15% ATK',
+    flavor: 'A própria sombra responde quando ele chama.',
+    effect: { overlordHpMult: 1.3, overlordAtkMult: 1.15 },
+  },
+  cofre_maldito: {
+    id: 'cofre_maldito',
+    name: 'Cofre Maldito',
+    short: 'GOLD',
+    rarity: 'rare',
+    category: 'vantagem',
+    summary: '+50% ouro, +10% XP',
+    effect: { goldMult: 1.5, xpMult: 1.1 },
+  },
+  iniciativa_sombria: {
+    id: 'iniciativa_sombria',
+    name: 'Iniciativa Sombria',
+    short: 'ALPHA',
+    rarity: 'rare',
+    category: 'vantagem',
+    summary: 'Primeiro ataque de cada minion: +40% dano',
+    flavor: 'Atacar primeiro é meio caminho da matança.',
+    effect: { startingAttackBonus: 0.4 },
+  },
+
+  /* ---------------- EPIC (6) ---------------- */
+  mao_da_ruina: {
+    id: 'mao_da_ruina',
+    name: 'Mão da Ruína',
+    short: 'RUIN',
+    rarity: 'epic',
+    category: 'vantagem',
+    summary: '+45% ATK em todos os minions',
+    effect: { minionAtkMult: 1.45 },
+  },
+  egide_do_submundo: {
+    id: 'egide_do_submundo',
+    name: 'Égide do Submundo',
+    short: 'EGD',
+    rarity: 'epic',
+    category: 'vantagem',
+    summary: '−30% dano recebido pelos minions',
+    effect: { minionDmgTakenMult: 0.7 },
+  },
+  recarga_profana: {
+    id: 'recarga_profana',
+    name: 'Recarga Profana',
+    short: 'RCG',
+    rarity: 'epic',
+    category: 'vantagem',
+    summary: 'Skills do Underlord começam −1 turno de cooldown',
+    effect: { specialCdReduce: 1 },
+  },
+  sopro_vital: {
+    id: 'sopro_vital',
+    name: 'Sopro Vital',
+    short: 'REGN',
+    rarity: 'epic',
+    category: 'vantagem',
+    summary: 'Minions regeneram 10% HP no início de cada round',
+    flavor: 'A carne refaz onde a vontade insiste.',
+    effect: { hpRegenStartOfRound: 0.1 },
+  },
+  asas_negras: {
+    id: 'asas_negras',
+    name: 'Asas Negras',
+    short: 'WING',
+    rarity: 'epic',
+    category: 'vantagem',
+    summary: 'Voadores: +35% ATK adicional',
+    effect: { flyingAtkBonus: 0.35 },
+  },
+  mira_diabolica: {
+    id: 'mira_diabolica',
+    name: 'Mira Diabólica',
+    short: 'AIM',
+    rarity: 'epic',
+    category: 'vantagem',
+    summary: 'Minions à distância: +30% ATK adicional',
+    effect: { rangedAtkBonus: 0.3 },
+  },
+
+  /* ---------------- PACTOS (trade-offs, 4) ---------------- */
+  pacto_glasscanon: {
+    id: 'pacto_glasscanon',
+    name: 'Pacto: Glass Cannon',
+    short: 'GC',
+    rarity: 'rare',
+    category: 'pacto',
+    summary: '+50% ATK, mas −25% HP em todos os minions',
+    flavor: 'Quem fere primeiro não precisa de carne.',
+    effect: { minionAtkMult: 1.5, minionHpMult: 0.75 },
+  },
+  pacto_berserker: {
+    id: 'pacto_berserker',
+    name: 'Pacto: Berserker',
+    short: 'BSK',
+    rarity: 'epic',
+    category: 'pacto',
+    summary: 'Vampirismo +35%, mas +25% dano recebido',
+    flavor: 'Sangrar é o preço de devorar.',
+    effect: { lifestealPct: 0.35, minionDmgTakenMult: 1.25 },
+  },
+  pacto_relicario: {
+    id: 'pacto_relicario',
+    name: 'Pacto: Relicário',
+    short: 'REL',
+    rarity: 'rare',
+    category: 'pacto',
+    summary: '+80% ouro, mas −15% XP',
+    flavor: 'Ouro queima a alma do Underlord.',
+    effect: { goldMult: 1.8, xpMult: 0.85 },
+  },
+  pacto_meteoro: {
+    id: 'pacto_meteoro',
+    name: 'Pacto: Meteoro',
+    short: 'MET',
+    rarity: 'epic',
+    category: 'pacto',
+    summary: 'Skills −2 turnos de cooldown, Underlord −20% HP',
+    flavor: 'A magia consome quem a invoca.',
+    effect: { specialCdReduce: 2, overlordHpMult: 0.8 },
+  },
+}
+
+/** All boon ids in catalog order — useful for seeding. */
+export const ALL_BOON_IDS: string[] = Object.keys(BOONS)
+
+/** Roll-weight by rarity (higher = appears more often).
+ *  Tuned so commons dominate early but epics show up roughly 1 in 6. */
+const RARITY_WEIGHT: Record<BoonRarity, number> = {
+  common: 5,
+  rare: 3,
+  epic: 1.4,
+  mythic: 0.4,
+}
+
+/** Color tokens — kept here so UI doesn't have to know rarity logic. */
+export const RARITY_LABEL: Record<BoonRarity, string> = {
+  common: 'COMUM',
+  rare: 'RARO',
+  epic: 'ÉPICO',
+  mythic: 'MÍTICO',
+}
+export const RARITY_TONE: Record<BoonRarity, string> = {
+  common: 'border-muted-foreground/60 bg-muted/30 text-foreground',
+  rare: 'border-info/70 bg-info/15 text-info',
+  epic: 'border-accent/70 bg-accent/15 text-accent',
+  mythic: 'border-gold bg-gold/15 text-gold',
+}
+
+/** Roll N distinct boons the player doesn't own yet. Falls back to dupes
+ *  only when the entire owned set spans the catalog. */
+export function rollBoonChoices(
+  owned: string[],
+  count: number = 3,
+  rng: () => number = Math.random,
+): string[] {
+  const ownedSet = new Set(owned)
+  const pool = ALL_BOON_IDS.filter((id) => !ownedSet.has(id))
+  const source = pool.length >= count ? pool : ALL_BOON_IDS
+  const picks: string[] = []
+  const seen = new Set<string>()
+  // Weighted reservoir-style sampling.
+  const weights = source.map((id) => RARITY_WEIGHT[BOONS[id]!.rarity])
+  for (let i = 0; i < count && picks.length < source.length; i++) {
+    let total = 0
+    for (let k = 0; k < source.length; k++) {
+      if (seen.has(source[k]!)) continue
+      total += weights[k]!
+    }
+    if (total <= 0) break
+    let roll = rng() * total
+    for (let k = 0; k < source.length; k++) {
+      const id = source[k]!
+      if (seen.has(id)) continue
+      roll -= weights[k]!
+      if (roll <= 0) {
+        picks.push(id)
+        seen.add(id)
+        break
+      }
+    }
+  }
+  return picks
+}
+
+/** Aggregate the owned-id list into a flat effect bag. Multipliers
+ *  multiply, additive bonuses sum. Unknown ids are ignored gracefully. */
+export function aggregateBoons(owned: string[]): Required<BoonEffect> {
+  const bag: Required<BoonEffect> = {
+    minionHpMult: 1,
+    minionAtkMult: 1,
+    minionDmgTakenMult: 1,
+    rangedAtkBonus: 0,
+    flyingAtkBonus: 0,
+    overlordHpMult: 1,
+    overlordAtkMult: 1,
+    goldMult: 1,
+    xpMult: 1,
+    critChanceBonus: 0,
+    lifestealPct: 0,
+    hpRegenStartOfRound: 0,
+    startingAttackBonus: 0,
+    specialCdReduce: 0,
+  }
+  for (const id of owned) {
+    const b = BOONS[id]
+    if (!b) continue
+    const e = b.effect
+    if (e.minionHpMult !== undefined) bag.minionHpMult *= e.minionHpMult
+    if (e.minionAtkMult !== undefined) bag.minionAtkMult *= e.minionAtkMult
+    if (e.minionDmgTakenMult !== undefined) bag.minionDmgTakenMult *= e.minionDmgTakenMult
+    if (e.rangedAtkBonus !== undefined) bag.rangedAtkBonus += e.rangedAtkBonus
+    if (e.flyingAtkBonus !== undefined) bag.flyingAtkBonus += e.flyingAtkBonus
+    if (e.overlordHpMult !== undefined) bag.overlordHpMult *= e.overlordHpMult
+    if (e.overlordAtkMult !== undefined) bag.overlordAtkMult *= e.overlordAtkMult
+    if (e.goldMult !== undefined) bag.goldMult *= e.goldMult
+    if (e.xpMult !== undefined) bag.xpMult *= e.xpMult
+    if (e.critChanceBonus !== undefined) bag.critChanceBonus += e.critChanceBonus
+    if (e.lifestealPct !== undefined) bag.lifestealPct += e.lifestealPct
+    if (e.hpRegenStartOfRound !== undefined) bag.hpRegenStartOfRound += e.hpRegenStartOfRound
+    if (e.startingAttackBonus !== undefined) bag.startingAttackBonus += e.startingAttackBonus
+    if (e.specialCdReduce !== undefined) bag.specialCdReduce += e.specialCdReduce
+  }
+  return bag
+}
