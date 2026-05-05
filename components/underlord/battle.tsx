@@ -646,6 +646,25 @@ export function BattleScreen({
       dispatch({ type: "set", state: out.state })
       return
     }
+    // Pre-validate fallen-ally skills (ERGUER) — aborting before entering
+    // targeting mode prevents the dead-end where the player sees nothing
+    // tappable on the board with no idea why.
+    if (def.target === "fallen-ally") {
+      const anyInRange = state.units.some(
+        (u) =>
+          u.dead &&
+          u.faction === "minion" &&
+          !u.isBarrier &&
+          hexDistance(active.pos, u.pos) <= def.range,
+      )
+      const anyDead = state.units.some(
+        (u) => u.dead && u.faction === "minion" && !u.isBarrier,
+      )
+      if (!anyInRange) {
+        showHint(anyDead ? "nenhum caído ao alcance" : "ninguém caiu ainda")
+        return
+      }
+    }
     setSkillMode({ casterId: active.id, skillId })
     haptic.tap()
   }
@@ -692,6 +711,24 @@ export function BattleScreen({
       pushPopup("PROVOCAR", "crit", px.x, px.y)
       dispatch({ type: "set", state: out.state })
       return
+    }
+    // BLUE's RENASCER targets a fallen ally; abort early if none are in
+    // range so the player gets clear feedback instead of an empty grid.
+    if (def.target === "fallen-ally") {
+      const anyInRange = state.units.some(
+        (u) =>
+          u.dead &&
+          u.faction === "minion" &&
+          !u.isBarrier &&
+          hexDistance(active.pos, u.pos) <= def.range,
+      )
+      const anyDead = state.units.some(
+        (u) => u.dead && u.faction === "minion" && !u.isBarrier,
+      )
+      if (!anyInRange) {
+        showHint(anyDead ? "nenhum caído ao alcance" : "ninguém caiu ainda")
+        return
+      }
     }
     // BLUE / RED / GREEN / GREY → enter targeting mode
     setSpecialMode({
@@ -1225,30 +1262,28 @@ export function BattleScreen({
               })}
             </svg>
 
-            {/* Fallen-ally markers — render whenever a fallen-ally targeting
-                mode is active. Two sources can drive this:
-                  1. Minion blue special (Resurrect)        → specialHighlights
-                  2. Overlord skill (Erguer / Ressurreição) → skillHighlights
-                Without this, the player has nothing to click because dead
-                units are otherwise invisible (the unit map below skips
-                `u.dead`). Highlights are unioned so we don't duplicate or
-                drop tiles when both modes ever overlap. */}
+            {/* Fallen-ally markers — show ALL dead minions while any
+                fallen-ally targeting mode is active so the player can SEE
+                where the cadavers are. Two sources drive the mode:
+                  1. Minion blue special (RENASCER) → specialMode.archetype === "blue"
+                  2. Overlord skill (ERGUER)        → skillMode + def.target
+                In-range tombstones are gold + clickable (revive). Out-of-
+                range tombstones render dim with `not-allowed` cursor and
+                shout "fora de alcance" on tap so players never get a
+                silent empty board. */}
             {(() => {
-              const fallenKeys = new Set<string>()
-              if (specialMode?.archetype === "blue") {
-                for (const k of specialHighlights.fallenAlly) fallenKeys.add(k)
-              }
-              if (skillMode) {
-                for (const k of skillHighlights.fallenAlly) fallenKeys.add(k)
-              }
-              if (fallenKeys.size === 0) return null
+              const inFallenAllyMode =
+                specialMode?.archetype === "blue" ||
+                (skillMode &&
+                  OVERLORD_SKILLS[skillMode.skillId]?.target === "fallen-ally")
+              if (!inFallenAllyMode) return null
+              const inRange = new Set<string>()
+              for (const k of specialHighlights.fallenAlly) inRange.add(k)
+              for (const k of skillHighlights.fallenAlly) inRange.add(k)
               return state.units
                 .filter(
                   (u) =>
-                    u.dead &&
-                    u.faction === "minion" &&
-                    !u.isBarrier &&
-                    fallenKeys.has(axialKey(u.pos)),
+                    u.dead && u.faction === "minion" && !u.isBarrier,
                 )
                 .map((u) => {
                   const px = axialToPixel(u.pos)
@@ -1257,25 +1292,53 @@ export function BattleScreen({
                   const xPct = (cx / viewW) * 100
                   const yPct = (cy / viewH) * 100
                   const sizePct = ((HEX_SIZE * 1.2) / viewW) * 100
+                  const reachable = inRange.has(axialKey(u.pos))
                   return (
                     <button
                       key={`fallen-${u.id}`}
                       type="button"
-                      onClick={() => handleHexClick(u.pos)}
-                      className="absolute -translate-x-1/2 -translate-y-1/2 transition active:scale-95"
+                      onClick={() => {
+                        if (reachable) {
+                          handleHexClick(u.pos)
+                        } else {
+                          showHint("fora de alcance")
+                        }
+                      }}
+                      className={cn(
+                        "absolute -translate-x-1/2 -translate-y-1/2 transition active:scale-95",
+                        !reachable && "cursor-not-allowed",
+                      )}
                       style={{
                         left: `${xPct}%`,
                         top: `${yPct}%`,
                         width: `${sizePct}%`,
                         aspectRatio: "1",
                       }}
-                      aria-label={`Reviver ${u.name}`}
+                      aria-label={
+                        reachable
+                          ? `Reviver ${u.name}`
+                          : `${u.name} (fora de alcance)`
+                      }
                     >
                       <span
-                        className="active-ring absolute inset-0 grid place-items-center rounded-full border-2 border-dashed bg-card/70 backdrop-blur-sm"
-                        style={{ borderColor: "oklch(0.78 0.14 78)" }}
+                        className={cn(
+                          "absolute inset-0 grid place-items-center rounded-full border-2 border-dashed backdrop-blur-sm",
+                          reachable
+                            ? "active-ring bg-card/70"
+                            : "bg-card/40 opacity-60",
+                        )}
+                        style={{
+                          borderColor: reachable
+                            ? "oklch(0.78 0.14 78)"
+                            : "oklch(0.55 0.020 250 / 0.7)",
+                        }}
                       >
-                        <Skull className="size-5 text-gold" />
+                        <Skull
+                          className={cn(
+                            "size-5",
+                            reachable ? "text-gold" : "text-muted-foreground",
+                          )}
+                        />
                       </span>
                     </button>
                   )
