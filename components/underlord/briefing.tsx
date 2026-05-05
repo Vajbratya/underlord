@@ -1,12 +1,13 @@
 "use client"
 
 import Image from "next/image"
-import { ArrowLeft, Swords } from "lucide-react"
+import { ArrowLeft, Map as MapIcon, Swords } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Region, SaveState } from "@/lib/underlord/types"
 import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { getHeroById } from "@/lib/elementum-flavor"
 import { haptic } from "@/lib/underlord/haptics"
+import { TERRAIN_GLYPH, pickMapLayout } from "@/lib/underlord/maps"
 import { Atmosphere } from "./atmosphere"
 
 const TONE_TO_VAR: Record<string, string> = {
@@ -35,6 +36,15 @@ export function Briefing({
   const heroes = region.heroIds
     .map((id) => getHeroById(id))
     .filter((h): h is NonNullable<typeof h> => h !== null)
+
+  const layout = pickMapLayout(region)
+  const obstacleCounts = layout.obstacles.reduce<Record<string, number>>(
+    (acc, o) => {
+      acc[o.kind] = (acc[o.kind] ?? 0) + 1
+      return acc
+    },
+    {},
+  )
 
   return (
     <div className="relative flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe">
@@ -70,6 +80,60 @@ export function Briefing({
             {region.lore}
           </p>
         </div>
+
+        {/* Map / battlefield card */}
+        <section className="rounded border border-accent/40 bg-accent/5 px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded border border-accent/60 bg-accent/10 text-accent">
+              <MapIcon className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-accent">
+                  Campo de Batalha
+                </p>
+                <p className="font-mono text-[9px] tabular-nums text-muted-foreground">
+                  {layout.cols}×{layout.rows}
+                </p>
+              </div>
+              <p className="font-display text-sm font-black uppercase leading-tight text-foreground sm:text-base">
+                {layout.label}
+              </p>
+              <p className="mt-0.5 font-mono text-[10px] leading-snug tracking-wide text-foreground/80 sm:text-[11px]">
+                {layout.hint}
+              </p>
+              {Object.keys(obstacleCounts).length > 0 ||
+              layout.prelitFires.length > 0 ? (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {Object.entries(obstacleCounts).map(([kind, n]) => (
+                    <span
+                      key={kind}
+                      className="inline-flex items-center gap-1 rounded-sm border border-border bg-card/70 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground"
+                      title={kind}
+                    >
+                      <span
+                        aria-hidden
+                        className="text-foreground/85"
+                        style={{ fontSize: "11px", lineHeight: 1 }}
+                      >
+                        {TERRAIN_GLYPH[kind as keyof typeof TERRAIN_GLYPH]}
+                      </span>
+                      ×{n}
+                    </span>
+                  ))}
+                  {layout.prelitFires.length > 0 ? (
+                    <span className="inline-flex items-center gap-1 rounded-sm border border-destructive/60 bg-destructive/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-destructive">
+                      <span aria-hidden style={{ fontSize: "11px" }}>
+                        ✸
+                      </span>
+                      ×{layout.prelitFires.length} fogo
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
 
         {/* Defenders */}
         <section>

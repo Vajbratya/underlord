@@ -33,12 +33,22 @@ export type FireTile = {
   source: string
 }
 
+export type Obstacle = {
+  pos: Axial
+  /** Visual / tooltip kind — drives the glyph in the renderer. */
+  kind: 'rock' | 'pillar' | 'tree' | 'altar' | 'crystal'
+}
+
 export type BattleState = {
   cols: number
   rows: number
   units: Unit[]
   /** Active fire tiles. */
   fires: FireTile[]
+  /** Impassable terrain hexes. They block movement and special targeting,
+   * but ranged attacks pass over them (no LoS modeling — keeps tactics
+   * readable). Empty for the default open biome. */
+  obstacles: Obstacle[]
   /** Initiative order: ids in turn order. */
   order: string[]
   /** Index into order — whose turn it is. */
@@ -53,13 +63,20 @@ export type BattleState = {
   done: 'victory' | 'defeat' | null
 }
 
-export function initBattle(units: Unit[], cols: number, rows: number): BattleState {
+export function initBattle(
+  units: Unit[],
+  cols: number,
+  rows: number,
+  obstacles: Obstacle[] = [],
+  prelitFires: FireTile[] = [],
+): BattleState {
   const order = sortInitiative(units)
   return {
     cols,
     rows,
     units,
-    fires: [],
+    fires: prelitFires,
+    obstacles,
     order,
     turn: 0,
     round: 1,
@@ -96,6 +113,10 @@ export function blockedSet(s: BattleState, except?: string): Set<string> {
     if (u.dead) continue
     if (except && u.id === except) continue
     out.add(axialKey(u.pos))
+  }
+  // Static terrain — always blocks.
+  for (const o of s.obstacles ?? []) {
+    out.add(axialKey(o.pos))
   }
   return out
 }

@@ -61,8 +61,15 @@ import {
   critChanceBonus,
   healMultiplier,
 } from "@/lib/underlord/perks"
+import {
+  GROUND_TONES,
+  TERRAIN_GLYPH,
+  TERRAIN_LABEL,
+  pickMapLayout,
+} from "@/lib/underlord/maps"
 
 // Portrait-oriented grid: narrower than tall.
+/** Default fallback only — actual battle dims come from the biome layout. */
 const COLS = 6
 const ROWS = 9
 
@@ -91,28 +98,70 @@ function reducer(local: LocalState, action: LocalAction): LocalState {
   }
 }
 
-/** Build initial battle: minions at bottom 2 rows, heroes at top 2 rows.
+/** Build initial battle from the region's biome layout.
  *
  * Player side (front to back):
- *   - row ROWS-2: up to 3 minions on the front line.
- *   - row ROWS-3: extras (squad cap 4-5) flank slightly back.
- *   - row ROWS-1: the OVERLORD itself, dead-center, behind the wall.
+ *   - row rows-2: up to 3 minions on the front line.
+ *   - row rows-3: extras (squad cap 4-5) flank slightly back.
+ *   - row rows-1: the OVERLORD itself, dead-center, behind the wall.
  *
  * Enemy side (top, mirrored):
  *   - row 0: each named hero.
- *   - row 1: every hero's personal entourage spreads out behind them. */
+ *   - row 1: every hero's personal entourage spreads out behind them.
+ *
+ * Obstacles + pre-lit fires come from the layout. We slide any deployment
+ * that lands on an obstacle to the nearest free hex so the map shape is
+ * never able to crash a fight. */
 function buildBattle(
   squad: Unit[],
   region: Region,
   overlordLevel: number,
   overlordName: string,
 ): BattleState {
+  const layout = pickMapLayout(region)
+  const cols = layout.cols
+  const rows = layout.rows
+  const obstacleKeys = new Set(layout.obstacles.map((o) => `${o.pos.q},${o.pos.r}`))
+  const taken = new Set<string>(obstacleKeys)
+  const offsetFor = (r: number) => -Math.floor(r / 2)
+  const inBounds = (a: { q: number; r: number }) => {
+    if (a.r < 0 || a.r >= rows) return false
+    const off = offsetFor(a.r)
+    return a.q >= off && a.q < cols + off
+  }
+
+  /** Snap a desired position to the nearest legal hex on the same row,
+   *  spiraling outward in row+col before falling back to row above/below. */
+  function place(desired: { q: number; r: number }): { q: number; r: number } {
+    const k0 = `${desired.q},${desired.r}`
+    if (inBounds(desired) && !taken.has(k0)) {
+      taken.add(k0)
+      return desired
+    }
+    for (let radius = 1; radius < cols + rows; radius++) {
+      for (const dr of [0, -1, 1, -2, 2]) {
+        for (let sign = -1; sign <= 1; sign += 2) {
+          const cand = { q: desired.q + sign * radius, r: desired.r + dr }
+          const k = `${cand.q},${cand.r}`
+          if (inBounds(cand) && !taken.has(k)) {
+            taken.add(k)
+            return cand
+          }
+        }
+      }
+    }
+    taken.add(k0)
+    return desired
+  }
+
+  // ---- Player squad ----
   const placedSquad: Unit[] = squad.slice(0, 5).map((u, i) => {
-    const row = i < 3 ? ROWS - 2 : ROWS - 3
+    const row = i < 3 ? rows - 2 : rows - 3
     const colIdx = i < 3 ? i : i - 3
     const q = 1 + colIdx * 2
-    const offset = -Math.floor(row / 2)
-    return makeUnit(u.templateId, { q: q + offset, r: row }, {
+    const desired = { q: q + offsetFor(row), r: row }
+    const pos = place(desired)
+    return makeUnit(u.templateId, pos, {
       name: u.name,
       hp: u.hpMax,
       hpMax: u.hpMax,
@@ -124,52 +173,44 @@ function buildBattle(
     })
   })
 
-  // Overlord deploys dead-center on the back row.
-  const overlordRow = ROWS - 1
-  const overlordOffset = -Math.floor(overlordRow / 2)
-  const overlordCol = Math.floor(COLS / 2) + overlordOffset
-  const overlord = makeOverlord(
-    overlordLevel,
-    { q: overlordCol, r: overlordRow },
-    overlordName,
-  )
+  // ---- Overlord ----
+  const overlordRow = rows - 1
+  const overlordCol = Math.floor(cols / 2) + offsetFor(overlordRow)
+  const overlordPos = place({ q: overlordCol, r: overlordRow })
+  const overlord = makeOverlord(overlordLevel, overlordPos, overlordName)
 
-  // Heroes on row 0; their entourages spread on row 1 nearby.
+  // ---- Heroes + their entourages ----
   const heroUnits: Unit[] = []
   region.heroIds.forEach((heroId, i) => {
     const hero = getHeroById(heroId)
     const heroRow = 0
-    const heroOffset = -Math.floor(heroRow / 2)
-    // Distribute heroes evenly across the row
-    const slot = i / Math.max(1, region.heroIds.length - 1)
-    const heroCol = Math.round(
-      heroOffset + slot * (COLS - 1) || heroOffset + 1 + i * 2,
-    )
+    const heroOffset = offsetFor(heroRow)
+    const slot = region.heroIds.length === 1 ? 0.5 : i / (region.heroIds.length - 1)
+    const desiredCol = Math.round(heroOffset + slot * (cols - 1))
+    const heroPos = place({ q: desiredCol, r: heroRow })
+
     heroUnits.push(
       makeHero(
         heroId,
         hero?.name.split(",")[0] ?? heroId.toUpperCase(),
         "?",
-        { q: heroCol, r: heroRow },
+        heroPos,
         region.stage,
       ),
     )
-    // Entourage spawns one row back, fanned out around the hero column.
+
     const entRow = 1
-    const entOffset = -Math.floor(entRow / 2)
     const entourage = hero?.entourage ?? []
     entourage.forEach((arch, eIdx) => {
-      // Alternate left/right of the hero so they don't all stack on one side.
       const side = eIdx % 2 === 0 ? -1 : 1
       const stride = Math.ceil((eIdx + 1) / 2)
-      const candidateCol = heroCol + side * stride
-      const minCol = entOffset
-      const maxCol = COLS + entOffset - 1
-      const finalCol = Math.max(minCol, Math.min(maxCol, candidateCol))
+      const candidateCol = heroPos.q + side * stride
+      const desired = { q: candidateCol, r: entRow }
+      const pos = place(desired)
       heroUnits.push(
         makeHeroMinion(
           arch,
-          { q: finalCol, r: entRow },
+          pos,
           region.stage,
           hero?.name.split(",")[0]?.split(" ")[0] ?? "HERÓI",
         ),
@@ -177,21 +218,20 @@ function buildBattle(
     })
   })
 
-  // De-dupe accidental position collisions on the enemy back-row by sliding
-  // overlapping units one column at a time. Cheap, runs once per battle.
-  const seen = new Set<string>()
-  for (const u of heroUnits) {
-    let key = `${u.pos.q},${u.pos.r}`
-    let tries = 0
-    while (seen.has(key) && tries < 20) {
-      u.pos = { q: u.pos.q + (tries % 2 === 0 ? 1 : -1) * (Math.floor(tries / 2) + 1), r: u.pos.r }
-      key = `${u.pos.q},${u.pos.r}`
-      tries++
-    }
-    seen.add(key)
-  }
+  const prelitFires = layout.prelitFires.map((pos) => ({
+    pos,
+    ttl: 99, // ambient hazards stay all battle (gameplay-meaningful, not nuisance)
+    damage: 4,
+    source: 'biome',
+  }))
 
-  return initBattle([...placedSquad, overlord, ...heroUnits], COLS, ROWS)
+  return initBattle(
+    [...placedSquad, overlord, ...heroUnits],
+    cols,
+    rows,
+    layout.obstacles.map((o) => ({ pos: o.pos, kind: o.kind })),
+    prelitFires,
+  )
 }
 
 type Popup = {
@@ -231,6 +271,7 @@ export function BattleScreen({
   const critBonus = critChanceBonus(perks)
   const comboBonusExtra = comboBonusPerStack(perks)
   const healBonus = healMultiplier(perks)
+  const layout = useMemo(() => pickMapLayout(region), [region])
   const initialBattle = useMemo(
     () => buildBattle(squad, region, overlordLevel, overlordName),
     [squad, region, overlordLevel, overlordName],
@@ -258,8 +299,20 @@ export function BattleScreen({
   const lastTurnRef = useRef(state.turn)
   const lastRoundRef = useRef(state.round)
 
-  const inBounds = useMemo(() => makeBoundsChecker(COLS, ROWS), [])
-  const tiles = useMemo(() => makeRectMap(COLS, ROWS), [])
+  const inBounds = useMemo(
+    () => makeBoundsChecker(state.cols, state.rows),
+    [state.cols, state.rows],
+  )
+  const tiles = useMemo(
+    () => makeRectMap(state.cols, state.rows),
+    [state.cols, state.rows],
+  )
+  const obstacleByKey = useMemo(() => {
+    const m = new Map<string, (typeof state.obstacles)[number]>()
+    for (const o of state.obstacles ?? []) m.set(`${o.pos.q},${o.pos.r}`, o)
+    return m
+  }, [state.obstacles])
+  const ground = GROUND_TONES[layout.ground]
   const active = activeUnit(state)
   const isMinionTurn = active?.faction === "minion" && !state.done
   const isHeroTurn = active?.faction === "hero" && !state.done
@@ -776,8 +829,12 @@ export function BattleScreen({
             >
               <defs>
                 <radialGradient id="hexFill" cx="50%" cy="40%" r="55%">
-                  <stop offset="0%" stopColor="oklch(0.20 0.014 22 / 0.5)" />
-                  <stop offset="100%" stopColor="oklch(0.10 0.012 22 / 0.55)" />
+                  <stop offset="0%" stopColor={ground.fillStart} />
+                  <stop offset="100%" stopColor={ground.fillEnd} />
+                </radialGradient>
+                <radialGradient id="hexFillObstacle" cx="50%" cy="40%" r="55%">
+                  <stop offset="0%" stopColor="oklch(0.32 0.018 250 / 0.85)" />
+                  <stop offset="100%" stopColor="oklch(0.18 0.014 250 / 0.95)" />
                 </radialGradient>
                 <radialGradient id="hexFillMove" cx="50%" cy="40%" r="55%">
                   <stop offset="0%" stopColor="oklch(0.72 0.17 60 / 0.40)" />
@@ -804,6 +861,7 @@ export function BattleScreen({
               {pixelTiles.map((t) => {
                 const k = axialKey(t)
                 const fire = state.fires.find((f) => axialEqual(f.pos, t))
+                const obstacle = obstacleByKey.get(k)
                 const inMove = !specialMode && highlights.move.has(k)
                 const inAttack = !specialMode && highlights.attack.has(k)
                 const inHeal = !specialMode && highlights.heal.has(k)
@@ -814,57 +872,84 @@ export function BattleScreen({
                 const cx = t.x + offsetX
                 const cy = t.y + offsetY
                 const points = hexPoints(cx, cy, HEX_SIZE - 1.5)
-                const fillId = inSpecialHex || inSpecialFallen
-                  ? "url(#hexFillSpecial)"
-                  : fire
-                    ? "url(#hexFillFire)"
-                    : inHeal
-                      ? "url(#hexFillHeal)"
-                      : inAttack
-                        ? "url(#hexFillAttack)"
-                        : inMove
-                          ? "url(#hexFillMove)"
-                          : "url(#hexFill)"
-                const stroke = inSpecialHex || inSpecialFallen
-                  ? "oklch(0.78 0.14 78 / 0.95)"
-                  : fire
-                    ? "oklch(0.78 0.18 50 / 0.95)"
-                    : inHeal
-                      ? "oklch(0.78 0.14 78 / 0.85)"
-                      : inAttack
-                        ? "oklch(0.55 0.21 22 / 0.85)"
-                        : inMove
-                          ? "oklch(0.72 0.17 60 / 0.75)"
-                          : "oklch(0.30 0.012 30 / 0.55)"
+                const fillId = obstacle
+                  ? "url(#hexFillObstacle)"
+                  : inSpecialHex || inSpecialFallen
+                    ? "url(#hexFillSpecial)"
+                    : fire
+                      ? "url(#hexFillFire)"
+                      : inHeal
+                        ? "url(#hexFillHeal)"
+                        : inAttack
+                          ? "url(#hexFillAttack)"
+                          : inMove
+                            ? "url(#hexFillMove)"
+                            : "url(#hexFill)"
+                const stroke = obstacle
+                  ? "oklch(0.50 0.020 250 / 0.9)"
+                  : inSpecialHex || inSpecialFallen
+                    ? "oklch(0.78 0.14 78 / 0.95)"
+                    : fire
+                      ? "oklch(0.78 0.18 50 / 0.95)"
+                      : inHeal
+                        ? "oklch(0.78 0.14 78 / 0.85)"
+                        : inAttack
+                          ? "oklch(0.55 0.21 22 / 0.85)"
+                          : inMove
+                            ? "oklch(0.72 0.17 60 / 0.75)"
+                            : ground.stroke
                 const highlighted =
                   inMove || inAttack || inHeal || inSpecialHex || inSpecialFallen || !!fire
                 return (
-                  <polygon
-                    key={k}
-                    points={points}
-                    fill={fillId}
-                    stroke={stroke}
-                    strokeWidth={highlighted ? 1.8 : 0.7}
-                    className={cn(
-                      "transition-colors",
-                      fire && "ready-pulse",
-                    )}
-                    onClick={() => handleHexClick(t)}
-                    style={{
-                      cursor: "pointer",
-                      filter: fire
-                        ? "drop-shadow(0 0 10px oklch(0.78 0.18 50 / 0.7))"
-                        : inSpecialHex || inSpecialFallen
-                          ? "drop-shadow(0 0 8px oklch(0.78 0.14 78 / 0.7))"
-                          : inHeal
-                            ? "drop-shadow(0 0 6px oklch(0.78 0.14 78 / 0.6))"
-                            : inAttack
-                              ? "drop-shadow(0 0 6px oklch(0.55 0.21 22 / 0.6))"
-                              : inMove
-                                ? "drop-shadow(0 0 6px oklch(0.72 0.17 60 / 0.5))"
-                                : undefined,
-                    }}
-                  />
+                  <g key={k}>
+                    <polygon
+                      points={points}
+                      fill={fillId}
+                      stroke={stroke}
+                      strokeWidth={obstacle ? 1.4 : highlighted ? 1.8 : 0.7}
+                      className={cn(
+                        "transition-colors",
+                        fire && "ready-pulse",
+                      )}
+                      onClick={() => obstacle ? undefined : handleHexClick(t)}
+                      style={{
+                        cursor: obstacle ? "not-allowed" : "pointer",
+                        filter: fire
+                          ? "drop-shadow(0 0 10px oklch(0.78 0.18 50 / 0.7))"
+                          : inSpecialHex || inSpecialFallen
+                            ? "drop-shadow(0 0 8px oklch(0.78 0.14 78 / 0.7))"
+                            : inHeal
+                              ? "drop-shadow(0 0 6px oklch(0.78 0.14 78 / 0.6))"
+                              : inAttack
+                                ? "drop-shadow(0 0 6px oklch(0.55 0.21 22 / 0.6))"
+                                : inMove
+                                  ? "drop-shadow(0 0 6px oklch(0.72 0.17 60 / 0.5))"
+                                  : undefined,
+                      }}
+                    >
+                      {obstacle ? (
+                        <title>{TERRAIN_LABEL[obstacle.kind]}</title>
+                      ) : null}
+                    </polygon>
+                    {/* Terrain glyph painted on top of obstacle hexes */}
+                    {obstacle ? (
+                      <text
+                        x={cx}
+                        y={cy + HEX_SIZE * 0.18}
+                        textAnchor="middle"
+                        pointerEvents="none"
+                        style={{
+                          fontSize: HEX_SIZE * 0.72,
+                          fontWeight: 900,
+                          fill: "oklch(0.78 0.04 78 / 0.85)",
+                          filter:
+                            "drop-shadow(0 0 4px oklch(0 0 0 / 0.7))",
+                        }}
+                      >
+                        {TERRAIN_GLYPH[obstacle.kind]}
+                      </text>
+                    ) : null}
+                  </g>
                 )
               })}
             </svg>
