@@ -13,6 +13,7 @@ import {
   Map,
   Shield,
   Skull,
+  Sparkles,
   Swords,
   Users,
   Wand2,
@@ -59,6 +60,7 @@ export function WarRoom({
   onOpenSquad,
   onOpenForge,
   onOpenSkillMap,
+  onOpenBoons,
   streakBonus,
 }: {
   save: SaveState
@@ -66,6 +68,7 @@ export function WarRoom({
   onOpenSquad: () => void
   onOpenForge: () => void
   onOpenSkillMap: () => void
+  onOpenBoons: () => void
   streakBonus?: number | null
 }) {
   const cap = squadCap(save.perks)
@@ -150,6 +153,33 @@ export function WarRoom({
             <span className="shrink-0 font-mono text-[9px] tabular-nums text-muted-foreground">
               {xp.intoLevel}/{xp.needed}
             </span>
+            <button
+              type="button"
+              onClick={() => {
+                haptic.select()
+                onOpenBoons()
+              }}
+              aria-label="Bençãos"
+              title={
+                (save.boons?.length ?? 0) > 0
+                  ? `Bençãos · ${save.boons.length} acumulada${save.boons.length === 1 ? "" : "s"}`
+                  : "Bençãos — vença batalhas para coletar"
+              }
+              className={cn(
+                "relative flex h-7 shrink-0 items-center gap-1 rounded-sm border px-2 font-mono text-[9px] font-black uppercase tracking-[0.18em] transition active:scale-95",
+                (save.boons?.length ?? 0) > 0
+                  ? "border-gold/70 bg-gold/10 text-gold"
+                  : "border-border bg-card/70 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Sparkles className="size-3" />
+              <span className="hidden sm:inline">BENÇÃOS</span>
+              {(save.boons?.length ?? 0) > 0 ? (
+                <span className="rounded bg-gold text-background px-1 font-display text-[10px] leading-none tabular-nums">
+                  {save.boons.length}
+                </span>
+              ) : null}
+            </button>
             <button
               type="button"
               onClick={() => {

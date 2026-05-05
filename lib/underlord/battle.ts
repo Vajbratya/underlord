@@ -84,6 +84,10 @@ export function initBattle(
   rows: number,
   obstacles: Obstacle[] = [],
   prelitFires: FireTile[] = [],
+  boonEffects: BattleBoonEffects = {
+    minionDmgTakenMult: 1,
+    hpRegenStartOfRound: 0,
+  },
 ): BattleState {
   const order = sortInitiative(units)
   return {
@@ -98,6 +102,7 @@ export function initBattle(
     selectedId: null,
     log: ['As paredes da torre suspiram. O combate começou.'],
     done: null,
+    boonEffects,
   }
 }
 
@@ -212,9 +217,18 @@ function emptyOutcome(s: BattleState, attName: string, tgtName: string, kind: Un
   }
 }
 
-/** Apply incoming-damage modifier from `damageTakenMod` if set. */
-function applyDamageMod(target: Unit, raw: number): number {
-  const mod = target.damageTakenMod ?? 1
+/** Apply incoming-damage modifier from `damageTakenMod` (curse, doom, aegis)
+ * AND the persistent minion damage-taken multiplier from active boons.
+ * Boon effect only applies to minions — heroes never benefit. */
+function applyDamageMod(s: BattleState, target: Unit, raw: number): number {
+  let mod = target.damageTakenMod ?? 1
+  if (
+    target.faction === 'minion' &&
+    !target.isBarrier &&
+    !target.isOverlord
+  ) {
+    mod *= s.boonEffects?.minionDmgTakenMult ?? 1
+  }
   return Math.max(1, Math.round(raw * mod))
 }
 
@@ -260,7 +274,7 @@ export function attackUnit(
     bonusMult *
     kindMult *
     sombraBonus
-  const dmg = applyDamageMod(tgt, baseDmg)
+  const dmg = applyDamageMod(s, tgt, baseDmg)
 
   const newHp = Math.max(0, tgt.hp - dmg)
   const killed = newHp === 0
@@ -273,7 +287,7 @@ export function attackUnit(
       if (u.dead || u.id === tgt.id) continue
       if (u.faction !== tgt.faction || u.isBarrier) continue
       if (hexDistance(u.pos, tgt.pos) <= 1) {
-        const d = applyDamageMod(u, splashDmg)
+        const d = applyDamageMod(s, u, splashDmg)
         collateral.push({ unitId: u.id, damage: d, killed: false, pos: u.pos })
       }
     }
@@ -288,7 +302,7 @@ export function attackUnit(
           axialEqual(u.pos, n),
       )
       if (adj) {
-        const d = applyDamageMod(adj, splashDmg)
+        const d = applyDamageMod(s, adj, splashDmg)
         collateral.push({ unitId: adj.id, damage: d, killed: false, pos: adj.pos })
         break
       }
@@ -303,7 +317,7 @@ export function attackUnit(
         (u) => !u.dead && u.faction === tgt.faction && !u.isBarrier && axialEqual(u.pos, beyond),
       )
       if (beyondTarget) {
-        const d = applyDamageMod(beyondTarget, splashDmg)
+        const d = applyDamageMod(s, beyondTarget, splashDmg)
         collateral.push({
           unitId: beyondTarget.id,
           damage: d,
@@ -318,7 +332,7 @@ export function attackUnit(
       if (u.dead || u.id === tgt.id) continue
       if (u.faction !== tgt.faction || u.isBarrier) continue
       if (hexDistance(u.pos, tgt.pos) <= 2) {
-        const d = applyDamageMod(u, splashDmg)
+        const d = applyDamageMod(s, u, splashDmg)
         collateral.push({ unitId: u.id, damage: d, killed: false, pos: u.pos })
       }
     }
@@ -844,7 +858,7 @@ export function castOverlordSkill(
       if (!enemy || enemy.dead || enemy.faction !== 'hero') return fail(s, 'alvo inválido')
       if (hexDistance(u.pos, enemy.pos) > skill.range) return fail(s, 'fora de alcance')
       const raw = Math.round(u.atk * skill.atkMult)
-      const dmg = applyDamageMod(enemy, raw)
+      const dmg = applyDamageMod(s, enemy, raw)
       const newHp = Math.max(0, enemy.hp - dmg)
       const killed = newHp === 0
       const next = s.units.map((x) => {
@@ -870,12 +884,12 @@ export function castOverlordSkill(
         if (x.dead || x.faction !== 'hero') return x
         const d = hexDistance(x.pos, target)
         if (d === 0) {
-          const dmg = applyDamageMod(x, baseRaw)
+          const dmg = applyDamageMod(s, x, baseRaw)
           const newHp = Math.max(0, x.hp - dmg)
           return { ...x, hp: newHp, dead: newHp === 0 }
         }
         if (d <= skill.aoeRadius) {
-          const dmg = applyDamageMod(x, splashRaw)
+          const dmg = applyDamageMod(s, x, splashRaw)
           const newHp = Math.max(0, x.hp - dmg)
           return { ...x, hp: newHp, dead: newHp === 0 }
         }
@@ -906,7 +920,7 @@ function applyStartOfTurnEffects(s: BattleState): BattleState {
   if (!cur || cur.dead || cur.isBarrier) return s
   const fire = s.fires.find((f) => axialEqual(f.pos, cur.pos))
   if (!fire) return s
-  const dmg = applyDamageMod(cur, fire.damage)
+  const dmg = applyDamageMod(s, cur, fire.damage)
   const newHp = Math.max(0, cur.hp - dmg)
   const killed = newHp === 0
   const nextUnits = s.units.map((u) =>
@@ -936,6 +950,7 @@ export function endTurn(s: BattleState): BattleState {
   for (let i = 0; i < (s.order.length + 1) * 2; i++) {
     if (next >= nextOrder.length) {
       // New round — reset flags, decrement cooldowns, decay fires, clear 1-round buffs
+      const regenPct = s.boonEffects?.hpRegenStartOfRound ?? 0
       units = units.map((u) => {
         // Decrement Overlord skill cooldowns by 1 each round.
         let skillCooldowns = u.skillCooldowns
@@ -946,8 +961,21 @@ export function endTurn(s: BattleState): BattleState {
           }
           skillCooldowns = next
         }
+        // Boon: Sopro Vital — every minion regens % of hpMax at round start.
+        // Skip dead, barriers, heroes. Caps at hpMax.
+        let hp = u.hp
+        if (
+          regenPct > 0 &&
+          !u.dead &&
+          !u.isBarrier &&
+          u.faction === 'minion'
+        ) {
+          const heal = Math.max(1, Math.round(u.hpMax * regenPct))
+          hp = Math.min(u.hpMax, u.hp + heal)
+        }
         return {
           ...u,
+          hp,
           acted: false,
           moved: false,
           specialCd: Math.max(0, u.specialCd - 1),

@@ -10,6 +10,7 @@ import { LootScreen } from "@/components/underlord/loot-screen"
 import { SquadPicker } from "@/components/underlord/squad-picker"
 import { Forge } from "@/components/underlord/forge"
 import { SkillMap } from "@/components/underlord/skill-map"
+import { BoonsPanel } from "@/components/underlord/boons-panel"
 import {
   AchievementToaster,
   fireAchievement,
@@ -38,6 +39,7 @@ export function UnderlordGame() {
   const [showSquadPicker, setShowSquadPicker] = useState(false)
   const [showForge, setShowForge] = useState(false)
   const [showSkillMap, setShowSkillMap] = useState(false)
+  const [showBoons, setShowBoons] = useState(false)
   const [streakBonusToShow, setStreakBonusToShow] = useState<number | null>(null)
   const dailyCheckedToday = useRef<string>("")
 
@@ -142,6 +144,7 @@ export function UnderlordGame() {
           onOpenSquad={() => setShowSquadPicker(true)}
           onOpenForge={() => setShowForge(true)}
           onOpenSkillMap={() => setShowSkillMap(true)}
+          onOpenBoons={() => setShowBoons(true)}
           streakBonus={streakBonusToShow}
         />
         {showSquadPicker ? (
@@ -166,6 +169,12 @@ export function UnderlordGame() {
               dispatch({ type: "set-skill-loadout", skillIds })
             }
             onClose={() => setShowSkillMap(false)}
+          />
+        ) : null}
+        {showBoons ? (
+          <BoonsPanel
+            ownedBoons={state.save.boons ?? []}
+            onClose={() => setShowBoons(false)}
           />
         ) : null}
         <AchievementToaster />

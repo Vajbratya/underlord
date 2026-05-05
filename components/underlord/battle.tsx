@@ -275,6 +275,13 @@ function buildBattle(
     rows,
     layout.obstacles.map((o) => ({ pos: o.pos, kind: o.kind })),
     prelitFires,
+    {
+      // Boon: Couraça Negra (and Pacto: Berserker inverse) — multiplier on
+      // incoming damage for minions only.
+      minionDmgTakenMult: bag.minionDmgTakenMult,
+      // Boon: Sopro Vital — start-of-round regen as % of hpMax.
+      hpRegenStartOfRound: bag.hpRegenStartOfRound,
+    },
   )
 }
 
