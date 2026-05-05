@@ -4,7 +4,12 @@
  */
 
 import type { LootItem, Phase, Region, RegionStatus, SaveState, Unit } from './types'
-import { makeStarterRoster, rebuildRosterStats } from './units'
+import {
+  makeStarterRoster,
+  newlyUnlockedAt,
+  rebuildRosterStats,
+  recruitMinion,
+} from './units'
 import { REGIONS } from './regions'
 import {
   ACHIEVEMENTS,
@@ -15,7 +20,8 @@ import {
 } from './meta'
 import { goldMult, PERKS, type PerkId, perksSpent, squadCap, xpMult } from './perks'
 
-const STORAGE_KEY = 'underlord-save-v3'
+const STORAGE_KEY = 'underlord-save-v4'
+const LEGACY_KEY_V3 = 'underlord-save-v3'
 const LEGACY_KEY_V2 = 'underlord-save-v2'
 
 export type GameState = {
@@ -38,19 +44,21 @@ export type GameState = {
     levelsGained: number
     /** Perk points granted by those level-ups. */
     perkPointsGained: number
+    /** Minion archetypes recruited automatically from level-up unlocks. */
+    unlockedArchetypes: string[]
   } | null
 }
 
 export function freshSave(name: string): SaveState {
   const roster = makeStarterRoster()
   return {
-    version: 3,
+    version: 4,
     underlordName: name,
     roster,
     squad: roster.slice(0, 3).map((u) => u.id),
     regions: makeFreshRegionMap(),
     inventory: [],
-    gold: 50,
+    gold: 250,
     taint: 0,
     heroesKilled: [],
     battlesWon: 0,
@@ -65,6 +73,9 @@ export function freshSave(name: string): SaveState {
     perkPoints: 0,
     highestLevel: 1,
     perks: {},
+    // The original five archetypes are always available; bone/harpy/etc.
+    // unlock through Underlord level milestones.
+    unlockedArchetypes: [],
   }
 }
 
@@ -85,16 +96,23 @@ export function freshGame(): GameState {
   }
 }
 
-/** Migrate a v2 save into v3 shape. */
-function migrateV2(parsed: { save?: Partial<SaveState> }): SaveState | null {
+/** Migrate any older save into v4 shape. v4 introduces:
+ *   - 5 new minion archetypes with unlock tiers (we don't grant them
+ *     retroactively — players have to level up again to recruit them)
+ *   - HUGE stat numbers (5x). The roster gets rebuilt from current
+ *     templates to inherit the new baseline; HP-percent is preserved. */
+function migrateLegacy(parsed: { save?: Partial<SaveState> }): SaveState | null {
   const s = parsed.save
   if (!s) return null
   const level = levelFromXP(s.xp ?? 0)
+  // Rebuild any saved roster against the new (5x bigger) baseline templates.
+  const incomingRoster = s.roster ?? makeStarterRoster()
+  const rebuilt = rebuildRosterStats(incomingRoster, s.perks ?? {})
   return {
-    version: 3,
+    version: 4,
     underlordName: s.underlordName ?? 'Underlord',
-    roster: s.roster ?? makeStarterRoster(),
-    squad: s.squad ?? [],
+    roster: rebuilt,
+    squad: s.squad ?? rebuilt.slice(0, 3).map((u) => u.id),
     regions: s.regions ?? makeFreshRegionMap(),
     inventory: s.inventory ?? [],
     gold: s.gold ?? 50,
@@ -109,10 +127,12 @@ function migrateV2(parsed: { save?: Partial<SaveState> }): SaveState | null {
     critsLanded: s.critsLanded ?? 0,
     battlesSinceRare: s.battlesSinceRare ?? 0,
     achievements: s.achievements ?? [],
-    // Grant retroactive perk points so existing players don't lose progress.
-    perkPoints: Math.max(0, level - 1),
-    highestLevel: level,
-    perks: {},
+    perkPoints: s.perkPoints ?? Math.max(0, level - 1),
+    highestLevel: s.highestLevel ?? level,
+    perks: s.perks ?? {},
+    // Players who were already past the unlock thresholds get the new
+    // archetypes added to their unlocked list and one of each in the roster.
+    unlockedArchetypes: [],
   }
 }
 
@@ -122,9 +142,7 @@ export function loadGame(): GameState | null {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<GameState>
-      if (!parsed.save || parsed.save.version !== 3) {
-        // Same key but bad version — try the migration path below.
-      } else {
+      if (parsed.save && parsed.save.version === 4) {
         return {
           phase: 'warroom',
           save: parsed.save as SaveState,
@@ -133,13 +151,13 @@ export function loadGame(): GameState | null {
         }
       }
     }
-    // Try v2 migration
-    const legacy = window.localStorage.getItem(LEGACY_KEY_V2)
-    if (legacy) {
+    // Migrate from older versions if present.
+    for (const key of [LEGACY_KEY_V3, LEGACY_KEY_V2]) {
+      const legacy = window.localStorage.getItem(key)
+      if (!legacy) continue
       const parsed = JSON.parse(legacy) as { save?: Partial<SaveState> }
-      const migrated = migrateV2(parsed)
+      const migrated = migrateLegacy(parsed)
       if (migrated) {
-        // Persist migrated under v3 key
         window.localStorage.setItem(
           STORAGE_KEY,
           JSON.stringify({ save: migrated }),
@@ -171,6 +189,7 @@ export function wipeSave(): void {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.removeItem(STORAGE_KEY)
+    window.localStorage.removeItem(LEGACY_KEY_V3)
     window.localStorage.removeItem(LEGACY_KEY_V2)
     window.localStorage.removeItem('underlord-save-v1')
   } catch {
@@ -323,6 +342,18 @@ export function reduce(state: GameState, action: Action): GameState {
         save.highestLevel = newLevel
       }
 
+      // Auto-recruit any new minion archetypes whose unlock tier the player
+      // just crossed. Each unlock grants ONE unit of that archetype.
+      const fresh = newlyUnlockedAt(newLevel, save.unlockedArchetypes)
+      if (fresh.length > 0) {
+        const newRecruits = fresh.map((arch) => recruitMinion(arch))
+        save.roster = [
+          ...rebuildRosterStats(save.roster, save.perks),
+          ...newRecruits,
+        ]
+        save.unlockedArchetypes = [...save.unlockedArchetypes, ...fresh]
+      }
+
       // Gold: scaled by perk
       const goldFinal = Math.floor(goldEarned * goldMult(save.perks))
 
@@ -388,6 +419,7 @@ export function reduce(state: GameState, action: Action): GameState {
           unlockedAchievements: unlocked,
           levelsGained,
           perkPointsGained,
+          unlockedArchetypes: fresh,
         },
       }
     }

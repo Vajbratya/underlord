@@ -81,7 +81,7 @@ export function tickStreak(save: SaveState): {
   const yesterday = yesterdayKey()
   const continued = save.lastPlayedDay === yesterday
   const newStreak = continued ? save.dailyStreak + 1 : 1
-  const bonus = 25 + Math.min(newStreak * 10, 200)
+  const bonus = 125 + Math.min(newStreak * 50, 1000)
   return {
     streak: newStreak,
     lastDay: today,
@@ -118,73 +118,73 @@ export const ACHIEVEMENTS: Record<AchievementId, AchievementDef> = {
     id: 'first_blood',
     title: 'PRIMEIRO SANGUE',
     desc: 'Acertou seu primeiro ataque. Bem-vindo de volta.',
-    reward: 25,
+    reward: 125,
   },
   first_kill: {
     id: 'first_kill',
     title: 'PRIMEIRO CADÁVER',
     desc: 'Matou um herói. Não vai ser o último.',
-    reward: 50,
+    reward: 250,
   },
   combo_3: {
     id: 'combo_3',
     title: 'TRIPLO',
     desc: 'Combo x3 num único turno.',
-    reward: 40,
+    reward: 200,
   },
   combo_5: {
     id: 'combo_5',
     title: 'QUÍNTUPLO',
     desc: 'Combo x5. Os heróis estão em fila.',
-    reward: 100,
+    reward: 500,
   },
   hero_slayer_1: {
     id: 'hero_slayer_1',
     title: 'ABATEDOR',
     desc: 'Caçou seu primeiro herói. Adicionado à galeria.',
-    reward: 50,
+    reward: 250,
   },
   hero_slayer_5: {
     id: 'hero_slayer_5',
     title: 'CAÇADOR DE INFLUENCERS',
     desc: '5 heróis abatidos.',
-    reward: 150,
+    reward: 750,
   },
   hero_slayer_all: {
     id: 'hero_slayer_all',
     title: 'O REINO É SEU',
     desc: 'Todos os 14 heróis caíram.',
-    reward: 1000,
+    reward: 5000,
   },
   flawless: {
     id: 'flawless',
     title: 'IMPECÁVEL',
     desc: 'Vitória sem perder um único minion.',
-    reward: 80,
+    reward: 400,
   },
   streak_3: {
     id: 'streak_3',
     title: 'TRÊS DIAS',
     desc: '3 dias seguidos de violência. Saudável.',
-    reward: 75,
+    reward: 375,
   },
   streak_7: {
     id: 'streak_7',
     title: 'UMA SEMANA',
     desc: '7 dias. Você esqueceu o que é um fim de semana.',
-    reward: 250,
+    reward: 1250,
   },
   first_relic: {
     id: 'first_relic',
     title: 'RELÍQUIA',
     desc: 'Equipou seu primeiro item de raridade Relíquia.',
-    reward: 100,
+    reward: 500,
   },
   tainted: {
     id: 'tainted',
     title: 'CORROMPIDO',
     desc: 'Acumulou Taint 5+. Os minions começaram a falar dormindo.',
-    reward: 60,
+    reward: 300,
   },
 }
 

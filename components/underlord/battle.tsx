@@ -32,6 +32,7 @@ import {
   aiTakeTurn,
   attackUnit,
   blockedSet,
+  blockedSetFor,
   endTurn,
   healUnit,
   initBattle,
@@ -432,7 +433,8 @@ export function BattleScreen({
     if (!isMinionTurn || !active) return empty
     if (state.selectedId !== active.id) return empty
 
-    const occ = blockedSet(state, active.id)
+    // Flying units phase over impassable terrain; everyone else is grounded.
+    const occ = blockedSetFor(state, active)
     const moveSet = new Set<string>()
     if (!active.moved) {
       const moves = reachable(active.pos, active.move, inBounds, occ)
@@ -495,6 +497,8 @@ export function BattleScreen({
   function activateSpecial() {
     if (!isMinionTurn || !active) return
     if (active.faction !== "minion" || active.isBarrier) return
+    // Only the original five archetypes have active specials.
+    if (!MINION_TEMPLATES[active.templateId]?.hasActiveSpecial) return
     const def = SPECIALS[active.templateId]
     if (active.specialCd > 0) {
       showHint(`recarregando ${active.specialCd}r`)
@@ -629,8 +633,8 @@ export function BattleScreen({
         showHint("já agiu")
         return
       }
-      // Pre-move if needed to reach
-      const occ = blockedSet(state, active.id)
+      // Pre-move if needed to reach (flying ignores terrain).
+      const occ = blockedSetFor(state, active)
       const reach = active.moved
         ? [active.pos]
         : [active.pos, ...reachable(active.pos, active.move, inBounds, occ)]
@@ -669,7 +673,7 @@ export function BattleScreen({
         showHint("já agiu — encerre o turno")
         return
       }
-      const occ = blockedSet(state, active.id)
+      const occ = blockedSetFor(state, active)
       const reach = active.moved
         ? [active.pos]
         : [active.pos, ...reachable(active.pos, active.move, inBounds, occ)]
@@ -1329,12 +1333,15 @@ export function BattleScreen({
                   Volta
                 </button>
               ) : null}
-              {/* SPECIAL button — only roster minions (not the Overlord, not a barrier) */}
+              {/* SPECIAL button — only roster minions whose archetype actually
+                  has an active special. New archetypes (bone/harpy/gorger/
+                  wraith/lich) are defined by their attack kind only. */}
               {isMinionTurn &&
               active &&
               active.faction === "minion" &&
               !active.isBarrier &&
-              !active.isOverlord ? (
+              !active.isOverlord &&
+              MINION_TEMPLATES[active.templateId]?.hasActiveSpecial ? (
                 <SpecialButton
                   unit={active}
                   active={!!specialMode}

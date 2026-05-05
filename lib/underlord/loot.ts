@@ -1,6 +1,10 @@
 /**
  * Loot drop tables. Hand-rolled named items, not procedural affix slop.
  * Each item carries a Taint cost — power has a price.
+ *
+ * Stat bonuses are LARGE — they live in the same numeric universe as the
+ * rest of the game (HP in hundreds, ATK in tens). A relic weapon should
+ * feel like a real spike, not a +1 trinket.
  */
 
 import type { LootItem, LootRarity } from './types'
@@ -12,7 +16,7 @@ export const LOOT_POOL: LootItem[] = [
     name: 'PICARETA ENFERRUJADA',
     rarity: 'common',
     slot: 'weapon',
-    atkBonus: 1,
+    atkBonus: 5,
     taint: 0,
     flavor: 'Era de algum minerador. Agora é seu problema.',
   },
@@ -21,7 +25,7 @@ export const LOOT_POOL: LootItem[] = [
     name: 'CAPACETE DE PANELA',
     rarity: 'common',
     slot: 'helm',
-    hpBonus: 4,
+    hpBonus: 20,
     taint: 0,
     flavor: 'Cheira a sopa antiga. Funciona.',
   },
@@ -41,7 +45,7 @@ export const LOOT_POOL: LootItem[] = [
     name: 'CUTELO DO AÇOUGUEIRO',
     rarity: 'uncommon',
     slot: 'weapon',
-    atkBonus: 3,
+    atkBonus: 15,
     taint: 0.2,
     flavor: 'O açougueiro reclamou. Por menos de cinco segundos.',
   },
@@ -50,7 +54,7 @@ export const LOOT_POOL: LootItem[] = [
     name: 'CIRCLET DE FERRO',
     rarity: 'uncommon',
     slot: 'helm',
-    hpBonus: 8,
+    hpBonus: 40,
     taint: 0.2,
     flavor: 'Aperta um pouco. Mantém a cabeça no lugar — literalmente.',
   },
@@ -71,7 +75,7 @@ export const LOOT_POOL: LootItem[] = [
     name: 'MACHADO QUE GRITA',
     rarity: 'cursed',
     slot: 'weapon',
-    atkBonus: 6,
+    atkBonus: 30,
     taint: 0.8,
     flavor: 'Não para de gritar. O que ele grita... é seu nome verdadeiro.',
   },
@@ -80,8 +84,8 @@ export const LOOT_POOL: LootItem[] = [
     name: 'COROA DE OSSO MENOR',
     rarity: 'cursed',
     slot: 'helm',
-    hpBonus: 12,
-    atkBonus: 1,
+    hpBonus: 60,
+    atkBonus: 5,
     taint: 0.9,
     flavor: 'O ex-dono também era ambicioso. Veja onde acabou.',
   },
@@ -91,7 +95,7 @@ export const LOOT_POOL: LootItem[] = [
     rarity: 'cursed',
     slot: 'trinket',
     rangeBonus: 1,
-    atkBonus: 2,
+    atkBonus: 10,
     taint: 1.0,
     flavor: 'Vê três segundos no futuro. Geralmente, três segundos ruins.',
   },
@@ -102,7 +106,7 @@ export const LOOT_POOL: LootItem[] = [
     name: 'LÂMINA DO ROMPIMENTO',
     rarity: 'relic',
     slot: 'weapon',
-    atkBonus: 10,
+    atkBonus: 50,
     taint: 1.4,
     flavor: 'Cortou uma profecia em duas. A profecia ainda não percebeu.',
   },
@@ -111,7 +115,7 @@ export const LOOT_POOL: LootItem[] = [
     name: 'MANTO DO PACTO',
     rarity: 'relic',
     slot: 'helm',
-    hpBonus: 18,
+    hpBonus: 90,
     spdBonus: 1,
     taint: 1.6,
     flavor: 'Os outros seis Underlords usaram. Você é o primeiro a sair vivo dele.',
@@ -121,7 +125,7 @@ export const LOOT_POOL: LootItem[] = [
     name: 'SIGILO DAS CINZAS',
     rarity: 'relic',
     slot: 'trinket',
-    atkBonus: 4,
+    atkBonus: 20,
     rangeBonus: 1,
     moveBonus: 1,
     taint: 2.0,

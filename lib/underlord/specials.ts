@@ -89,8 +89,8 @@ export const SPECIALS: Record<MinionArchetype, SpecialDef> = {
     range: 3,
     target: 'free-hex',
     text:
-      'Levanta uma barreira de pedra (8 HP) em um hex livre em alc 3. Bloqueia movimento.',
+      'Levanta uma barreira de pedra (40 HP) em um hex livre em alc 3. Bloqueia movimento.',
   },
 }
 
-export const BARRIER_HP = 8
+export const BARRIER_HP = 40

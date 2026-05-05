@@ -14,7 +14,17 @@ export type Axial = { q: number; r: number }
 
 export type Faction = 'minion' | 'hero'
 
-export type MinionArchetype = 'brown' | 'red' | 'green' | 'blue' | 'grey'
+export type MinionArchetype =
+  | 'brown'
+  | 'red'
+  | 'green'
+  | 'blue'
+  | 'grey'
+  | 'bone'
+  | 'harpy'
+  | 'gorger'
+  | 'wraith'
+  | 'lich'
 
 /**
  * Each archetype has a single distinguishing attack rule:
@@ -24,8 +34,20 @@ export type MinionArchetype = 'brown' | 'red' | 'green' | 'blue' | 'grey'
  *  - execute  : single target, +50% damage if target HP < 40% (green assassin).
  *  - heal     : alternate action — restore 30% hpMax to ally (blue support).
  *  - pierce   : target full + tile beyond in attacker→target line 50% (grey siege).
+ *  - curse    : ranged hex — full damage AND target's incoming damage +50% next round (bone).
+ *  - siphon   : melee — full damage AND attacker heals 30% of damage dealt (gorger).
+ *  - volley   : long-range AOE — target + every enemy within 2 hexes 50% (lich).
  */
-export type AttackKind = 'basic' | 'cleave' | 'splash' | 'execute' | 'heal' | 'pierce'
+export type AttackKind =
+  | 'basic'
+  | 'cleave'
+  | 'splash'
+  | 'execute'
+  | 'heal'
+  | 'pierce'
+  | 'curse'
+  | 'siphon'
+  | 'volley'
 
 export type UnitTemplate = {
   archetype: MinionArchetype
@@ -45,6 +67,16 @@ export type UnitTemplate = {
   abilityTag: string
   /** Long-form description of the special. */
   abilityText: string
+  /** Underlord level required to unlock recruiting this archetype.
+   * Tier 0 = available from start (the original five). Tier ≥ 4 = progression. */
+  unlockTier: number
+  /** True for units that ignore impassable terrain when moving (harpy, wraith,
+   * bone — everything that floats or phases through walls). */
+  flying?: boolean
+  /** True for archetypes that have an active special targetable from the
+   * battle UI (the original five). New archetypes are defined by their
+   * attack kind alone — no special button needed. */
+  hasActiveSpecial: boolean
 }
 
 export type Unit = {
@@ -86,6 +118,8 @@ export type Unit = {
   isBarrier?: boolean
   /** True for the player's Underlord avatar — if it dies, battle is lost. */
   isOverlord?: boolean
+  /** True for flying units — they ignore terrain obstacles when pathing. */
+  flying?: boolean
 }
 
 /* ---------- Loot ---------- */
@@ -190,4 +224,9 @@ export type SaveState = {
   highestLevel: number
   /** Map of perk id → invested rank. */
   perks: Record<string, number>
+
+  /* ---- Recruitment (progressive minion roster) ---- */
+  /** Archetype ids the Underlord has unlocked through level milestones.
+   * The original five (brown, red, green, blue, grey) are always present. */
+  unlockedArchetypes: string[]
 }

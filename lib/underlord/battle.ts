@@ -114,9 +114,29 @@ export function blockedSet(s: BattleState, except?: string): Set<string> {
     if (except && u.id === except) continue
     out.add(axialKey(u.pos))
   }
-  // Static terrain — always blocks.
+  // Static terrain — always blocks (non-flying perspective).
   for (const o of s.obstacles ?? []) {
     out.add(axialKey(o.pos))
+  }
+  return out
+}
+
+/** Like {@link blockedSet} but skips obstacles for flying units. Other
+ * units' positions still block (you can't share a hex with anyone). */
+export function blockedSetFor(
+  s: BattleState,
+  unit: Unit,
+): Set<string> {
+  const out = new Set<string>()
+  for (const u of s.units) {
+    if (u.dead) continue
+    if (u.id === unit.id) continue
+    out.add(axialKey(u.pos))
+  }
+  if (!unit.flying) {
+    for (const o of s.obstacles ?? []) {
+      out.add(axialKey(o.pos))
+    }
   }
   return out
 }
@@ -131,7 +151,8 @@ export function moveUnit(
   if (!u || u.dead || u.moved) return s
   const dist = hexDistance(u.pos, dest)
   if (dist === 0 || dist > u.move) return s
-  const occupied = blockedSet(s, u.id)
+  // Flying units phase over impassable terrain — only other units block them.
+  const occupied = blockedSetFor(s, u)
   if (occupied.has(axialKey(dest))) return s
   const nextUnits = s.units.map((x) =>
     x.id === unitId ? { ...x, pos: dest, moved: true } : x,
@@ -276,14 +297,40 @@ export function attackUnit(
         })
       }
     }
+  } else if (att.attackKind === 'volley') {
+    // Lich tempest — every enemy within 2 hexes of the target eats 50%.
+    for (const u of s.units) {
+      if (u.dead || u.id === tgt.id) continue
+      if (u.faction !== tgt.faction || u.isBarrier) continue
+      if (hexDistance(u.pos, tgt.pos) <= 2) {
+        const d = applyDamageMod(u, splashDmg)
+        collateral.push({ unitId: u.id, damage: d, killed: false, pos: u.pos })
+      }
+    }
   }
+  // Curse + siphon don't generate collateral; their effects ride on the
+  // primary hit and the post-attack mutation pass below.
+
+  // Curse: target takes +50% damage for the next round (cleared at round end).
+  const curseMod =
+    att.attackKind === 'curse' && !killed ? 1.5 : null
+  // Siphon: attacker heals 30% of damage actually dealt to the target.
+  const siphonHeal =
+    att.attackKind === 'siphon' ? Math.max(1, Math.round(dmg * 0.3)) : 0
 
   let nextUnits = s.units.map((u) => {
-    if (u.id === tgt.id) return { ...u, hp: newHp, dead: killed }
+    if (u.id === tgt.id) {
+      const after: Unit = { ...u, hp: newHp, dead: killed }
+      if (curseMod !== null) after.damageTakenMod = curseMod
+      return after
+    }
     if (u.id === att.id) {
-      // Consume one-shot bonus
+      // Consume one-shot bonus + apply siphon self-heal.
       const cleared: Unit = { ...u, acted: true }
       if (cleared.nextAttackBonus) cleared.nextAttackBonus = undefined
+      if (siphonHeal > 0) {
+        cleared.hp = Math.min(cleared.hpMax, cleared.hp + siphonHeal)
+      }
       return cleared
     }
     return u
@@ -306,11 +353,17 @@ export function attackUnit(
         ? ' CLIVA'
         : att.attackKind === 'pierce'
           ? ' PERFURA'
-          : executed
-            ? ' EXECUTA'
-            : sombraBonus > 1
-              ? ' SOMBRA'
-              : ''
+          : att.attackKind === 'volley'
+            ? ' TEMPESTADE'
+            : att.attackKind === 'curse'
+              ? ' MALDIÇÃO'
+              : att.attackKind === 'siphon'
+                ? ` SIFÃO +${siphonHeal}`
+                : executed
+                  ? ' EXECUTA'
+                  : sombraBonus > 1
+                    ? ' SOMBRA'
+                    : ''
   const log = [
     ...s.log,
     `${att.name} → ${tgt.name}: -${dmg}${crit ? ' CRIT' : ''}${tag}${
@@ -735,7 +788,8 @@ function reachableHexes(s: BattleState, unit: Unit): Axial[] {
   const out: Axial[] = []
   const seen = new Set<string>()
   seen.add(axialKey(unit.pos))
-  const occupied = blockedSet(s, unit.id)
+  // Flying enemies (harpy/wraith/bone entourage) ignore obstacles too.
+  const occupied = blockedSetFor(s, unit)
   const offsetFor = (r: number) => -Math.floor(r / 2)
   const inBounds = (a: Axial) => {
     if (a.r < 0 || a.r >= s.rows) return false

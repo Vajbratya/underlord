@@ -55,7 +55,7 @@ export const PERKS: Record<PerkId, PerkDef> = {
     maxRank: 3,
     tierLevel: 1,
     branch: 'minion',
-    effect: '+6 HP base do BROWN por rank',
+    effect: '+30 HP base do BROWN por rank',
   },
   furia_red: {
     id: 'furia_red',
@@ -65,7 +65,7 @@ export const PERKS: Record<PerkId, PerkDef> = {
     maxRank: 3,
     tierLevel: 2,
     branch: 'minion',
-    effect: '+2 ATK base do RED por rank',
+    effect: '+10 ATK base do RED por rank',
   },
   agilidade_green: {
     id: 'agilidade_green',
@@ -248,10 +248,10 @@ export function statBuffsFor(
 ): { hp: number; atk: number; move: number; range: number } {
   const out = { hp: 0, atk: 0, move: 0, range: 0 }
   if (archetype === 'brown') {
-    out.hp += rankOf(perks, 'vigor_brown') * 6
+    out.hp += rankOf(perks, 'vigor_brown') * 30
   }
   if (archetype === 'red') {
-    out.atk += rankOf(perks, 'furia_red') * 2
+    out.atk += rankOf(perks, 'furia_red') * 10
   }
   if (archetype === 'green') {
     out.move += rankOf(perks, 'agilidade_green') * 1
