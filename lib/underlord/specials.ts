@@ -30,7 +30,10 @@ export type SpecialDef = {
   text: string
 }
 
-export const SPECIALS: Record<MinionArchetype, SpecialDef> = {
+/** Only the original five archetypes have active specials. New archetypes
+ * (bone, harpy, gorger, wraith, lich) express their identity through their
+ * attack kind alone — no separate ability button. */
+export const SPECIALS: Partial<Record<MinionArchetype, SpecialDef>> = {
   brown: {
     id: 'brown',
     name: 'PROVOCAR',

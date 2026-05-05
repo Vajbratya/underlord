@@ -250,6 +250,7 @@ export function UnderlordGame() {
           flawless={result.flawless}
           loot={result.loot}
           regionDropsLoot={lootRegion?.dropsLoot ?? false}
+          unlockedArchetypes={result.unlockedArchetypes}
           fallenNames={fallenNames}
           killedHeroIds={result.killedHeroIds}
           onContinue={() => {

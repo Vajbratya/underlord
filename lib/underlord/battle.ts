@@ -461,6 +461,7 @@ function preflight(s: BattleState, casterId: string): { unit: Unit | null; reaso
   if (u.faction !== 'minion') return { unit: null, reason: 'só minions usam habilidades' }
   if (u.specialCd > 0) return { unit: null, reason: `recarregando ${u.specialCd}r` }
   const def = SPECIALS[u.templateId]
+  if (!def) return { unit: null, reason: 'sem habilidade especial' }
   if (def.uses === 1 && u.specialSpent) return { unit: null, reason: 'já usou nesta batalha' }
   if (def.cost === 'action' && u.acted) return { unit: null, reason: 'já agiu' }
   if (def.cost === 'move' && u.moved) return { unit: null, reason: 'já se moveu' }
@@ -472,7 +473,7 @@ export function castTaunt(s: BattleState, casterId: string): SpecialOutcome {
   const { unit, reason } = preflight(s, casterId)
   if (!unit) return fail(s, reason ?? 'inválido')
   if (unit.templateId !== 'brown') return fail(s, 'errado')
-  const def = SPECIALS.brown
+  const def = SPECIALS.brown!
   const tauntRange = 2
   const taunted = s.units
     .filter(
@@ -516,7 +517,7 @@ export function castInferno(s: BattleState, casterId: string, target: Axial): Sp
   const { unit, reason } = preflight(s, casterId)
   if (!unit) return fail(s, reason ?? 'inválido')
   if (unit.templateId !== 'red') return fail(s, 'errado')
-  const def = SPECIALS.red
+  const def = SPECIALS.red!
   if (hexDistance(unit.pos, target) > def.range) return fail(s, 'fora de alcance')
   // Tile must be empty
   const occ = blockedSet(s)
@@ -547,7 +548,7 @@ export function castShadow(s: BattleState, casterId: string, target: Axial): Spe
   const { unit, reason } = preflight(s, casterId)
   if (!unit) return fail(s, reason ?? 'inválido')
   if (unit.templateId !== 'green') return fail(s, 'errado')
-  const def = SPECIALS.green
+  const def = SPECIALS.green!
   if (hexDistance(unit.pos, target) > def.range) return fail(s, 'fora de alcance')
   const occ = blockedSet(s, unit.id)
   if (occ.has(axialKey(target))) return fail(s, 'hex ocupado')
@@ -577,7 +578,7 @@ export function castResurrect(s: BattleState, casterId: string, allyId: string):
   const { unit, reason } = preflight(s, casterId)
   if (!unit) return fail(s, reason ?? 'inválido')
   if (unit.templateId !== 'blue') return fail(s, 'errado')
-  const def = SPECIALS.blue
+  const def = SPECIALS.blue!
   const ally = s.units.find((u) => u.id === allyId)
   if (!ally || !ally.dead || ally.isBarrier || ally.faction !== 'minion') {
     return fail(s, 'alvo inválido')
@@ -631,7 +632,7 @@ export function castBarrier(s: BattleState, casterId: string, target: Axial): Sp
   const { unit, reason } = preflight(s, casterId)
   if (!unit) return fail(s, reason ?? 'inválido')
   if (unit.templateId !== 'grey') return fail(s, 'errado')
-  const def = SPECIALS.grey
+  const def = SPECIALS.grey!
   if (hexDistance(unit.pos, target) > def.range) return fail(s, 'fora de alcance')
   const occ = blockedSet(s)
   if (occ.has(axialKey(target))) return fail(s, 'hex ocupado')
@@ -962,7 +963,11 @@ export function aiTakeTurn(s: BattleState, heroId: string, smart: boolean = true
           if (tgt.templateId === 'blue') score += 120 // kill the healer
           if (tgt.templateId === 'red') score += 60 // deny AOE
           if (tgt.hp < tgt.hpMax * 0.5) score += 40 // focus fire wounded
-          if (tgt.specialCd === 0 && SPECIALS[tgt.templateId].uses !== 1) {
+          if (
+            tgt.specialCd === 0 &&
+            SPECIALS[tgt.templateId] &&
+            SPECIALS[tgt.templateId]!.uses !== 1
+          ) {
             score += 25 // catch them BEFORE they fire their special
           }
 

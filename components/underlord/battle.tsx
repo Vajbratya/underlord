@@ -476,6 +476,7 @@ export function BattleScreen({
     }
     if (!specialMode || !active || active.id !== specialMode.casterId) return out
     const def = SPECIALS[specialMode.archetype]
+    if (!def) return out
     const occ = blockedSet(state)
     if (def.target === "free-hex") {
       for (const t of tiles) {
@@ -500,6 +501,7 @@ export function BattleScreen({
     // Only the original five archetypes have active specials.
     if (!MINION_TEMPLATES[active.templateId]?.hasActiveSpecial) return
     const def = SPECIALS[active.templateId]
+    if (!def) return
     if (active.specialCd > 0) {
       showHint(`recarregando ${active.specialCd}r`)
       return
@@ -1283,13 +1285,13 @@ export function BattleScreen({
       {/* Footer — action panel */}
       <footer className="relative z-20 border-t border-border/60 bg-background/90 backdrop-blur">
         {/* Targeting banner shows above the footer when picking a special target */}
-        {specialMode && active && active.faction === "minion" ? (
+        {specialMode && active && active.faction === "minion" && SPECIALS[active.templateId] ? (
           <div className="border-b border-gold/40 bg-gold/10 px-3 py-1.5">
             <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-2">
               <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-gold">
                 <Wand2 className="-mt-0.5 mr-1 inline size-3" />
-                {SPECIALS[active.templateId].name} — escolha um{" "}
-                {SPECIALS[active.templateId].target === "fallen-ally"
+                {SPECIALS[active.templateId]!.name} — escolha um{" "}
+                {SPECIALS[active.templateId]!.target === "fallen-ally"
                   ? "aliado caído"
                   : "hex livre"}
               </p>
@@ -1491,6 +1493,9 @@ function SpecialButton({
   onClick: () => void
 }) {
   const def = SPECIALS[unit.templateId]
+  // SpecialButton is only rendered for archetypes whose template flags
+  // hasActiveSpecial — but typing-wise SPECIALS is partial, so handle null.
+  if (!def) return null
   const onCd = unit.specialCd > 0
   const spent = def.uses === 1 && unit.specialSpent
   const cantAfford =

@@ -14,7 +14,8 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RARITY_LABEL, RARITY_TONE } from "@/lib/underlord/loot"
-import type { LootItem } from "@/lib/underlord/types"
+import type { LootItem, MinionArchetype } from "@/lib/underlord/types"
+import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { rand, UNDERLORD_LINES, getHeroById } from "@/lib/elementum-flavor"
 import { useEffect, useMemo, useState } from "react"
 import { Atmosphere } from "./atmosphere"
@@ -31,6 +32,7 @@ export function LootScreen({
   comboMax = 0,
   flawless = false,
   regionDropsLoot = true,
+  unlockedArchetypes = [],
   onContinue,
 }: {
   victory: boolean
@@ -47,6 +49,8 @@ export function LootScreen({
   /** Whether the cleared region drops equipment at all. Non-loot regions
    * still grant gold + XP but never drop items. */
   regionDropsLoot?: boolean
+  /** New minion archetypes unlocked from level-up milestones. */
+  unlockedArchetypes?: string[]
   onContinue: () => void
 }) {
   // Gold ticker animates count-up for satisfying victory pop
@@ -217,6 +221,56 @@ export function LootScreen({
                       {perkPointsGained === 1 ? "" : "s"} de Forja
                     </p>
                   ) : null}
+                </div>
+              ) : null}
+
+              {unlockedArchetypes.length > 0 ? (
+                <div className="slam-in mt-3 rounded-lg border-2 border-gold bg-gold/10 px-3 py-3 sm:px-4 sm:py-4">
+                  <div className="flex items-center justify-center gap-2">
+                    <Sparkles className="size-4 text-gold" />
+                    <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-gold">
+                      Recrutamento Desbloqueado
+                    </p>
+                    <Sparkles className="size-4 text-gold" />
+                  </div>
+                  <ul className="mt-3 space-y-2">
+                    {unlockedArchetypes.map((id) => {
+                      const tpl = MINION_TEMPLATES[id as MinionArchetype]
+                      if (!tpl) return null
+                      return (
+                        <li
+                          key={id}
+                          className="flex items-start gap-2.5 rounded border border-gold/50 bg-background/50 p-2.5"
+                        >
+                          <span className="grid size-12 shrink-0 place-items-center rounded border border-gold/70 bg-gold/15 font-display text-2xl font-black text-gold">
+                            {tpl.glyph}
+                          </span>
+                          <div className="min-w-0 flex-1 text-left">
+                            <p className="font-display text-sm font-black uppercase leading-tight text-foreground sm:text-base">
+                              {tpl.name}{" "}
+                              <span className="font-mono text-[9px] tracking-[0.2em] text-gold">
+                                · {tpl.abilityTag}
+                              </span>
+                            </p>
+                            <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                              {tpl.role}
+                            </p>
+                            <p className="mt-1 font-mono text-[10px] leading-snug tracking-wider text-foreground/85 sm:text-[11px]">
+                              HP {tpl.hp} · ATK {tpl.atk} · MOV {tpl.move} · ALC{" "}
+                              {tpl.range} · SPD {tpl.spd}
+                              {tpl.flying ? " · VOA" : ""}
+                            </p>
+                            <p className="mt-1 text-[11px] leading-relaxed text-foreground/75">
+                              {tpl.abilityText}
+                            </p>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <p className="mt-2 text-center font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
+                    Já no seu Roster · Pronto pra escalar
+                  </p>
                 </div>
               ) : null}
 
