@@ -1225,44 +1225,62 @@ export function BattleScreen({
               })}
             </svg>
 
-            {/* Fallen-ally markers (only in blue's special targeting mode) */}
-            {specialMode?.archetype === "blue"
-              ? state.units
-                  .filter(
-                    (u) =>
-                      u.dead && u.faction === "minion" && !u.isBarrier &&
-                      specialHighlights.fallenAlly.has(axialKey(u.pos)),
-                  )
-                  .map((u) => {
-                    const px = axialToPixel(u.pos)
-                    const cx = px.x + offsetX
-                    const cy = px.y + offsetY
-                    const xPct = (cx / viewW) * 100
-                    const yPct = (cy / viewH) * 100
-                    const sizePct = ((HEX_SIZE * 1.2) / viewW) * 100
-                    return (
-                      <button
-                        key={`fallen-${u.id}`}
-                        type="button"
-                        onClick={() => handleHexClick(u.pos)}
-                        className="absolute -translate-x-1/2 -translate-y-1/2 transition active:scale-95"
-                        style={{
-                          left: `${xPct}%`,
-                          top: `${yPct}%`,
-                          width: `${sizePct}%`,
-                          aspectRatio: "1",
-                        }}
-                        aria-label={`Reviver ${u.name}`}
+            {/* Fallen-ally markers — render whenever a fallen-ally targeting
+                mode is active. Two sources can drive this:
+                  1. Minion blue special (Resurrect)        → specialHighlights
+                  2. Overlord skill (Erguer / Ressurreição) → skillHighlights
+                Without this, the player has nothing to click because dead
+                units are otherwise invisible (the unit map below skips
+                `u.dead`). Highlights are unioned so we don't duplicate or
+                drop tiles when both modes ever overlap. */}
+            {(() => {
+              const fallenKeys = new Set<string>()
+              if (specialMode?.archetype === "blue") {
+                for (const k of specialHighlights.fallenAlly) fallenKeys.add(k)
+              }
+              if (skillMode) {
+                for (const k of skillHighlights.fallenAlly) fallenKeys.add(k)
+              }
+              if (fallenKeys.size === 0) return null
+              return state.units
+                .filter(
+                  (u) =>
+                    u.dead &&
+                    u.faction === "minion" &&
+                    !u.isBarrier &&
+                    fallenKeys.has(axialKey(u.pos)),
+                )
+                .map((u) => {
+                  const px = axialToPixel(u.pos)
+                  const cx = px.x + offsetX
+                  const cy = px.y + offsetY
+                  const xPct = (cx / viewW) * 100
+                  const yPct = (cy / viewH) * 100
+                  const sizePct = ((HEX_SIZE * 1.2) / viewW) * 100
+                  return (
+                    <button
+                      key={`fallen-${u.id}`}
+                      type="button"
+                      onClick={() => handleHexClick(u.pos)}
+                      className="absolute -translate-x-1/2 -translate-y-1/2 transition active:scale-95"
+                      style={{
+                        left: `${xPct}%`,
+                        top: `${yPct}%`,
+                        width: `${sizePct}%`,
+                        aspectRatio: "1",
+                      }}
+                      aria-label={`Reviver ${u.name}`}
+                    >
+                      <span
+                        className="active-ring absolute inset-0 grid place-items-center rounded-full border-2 border-dashed bg-card/70 backdrop-blur-sm"
+                        style={{ borderColor: "oklch(0.78 0.14 78)" }}
                       >
-                        <span className="active-ring absolute inset-0 grid place-items-center rounded-full border-2 border-dashed bg-card/70 backdrop-blur-sm"
-                          style={{ borderColor: "oklch(0.78 0.14 78)" }}
-                        >
-                          <Skull className="size-5 text-gold" />
-                        </span>
-                      </button>
-                    )
-                  })
-              : null}
+                        <Skull className="size-5 text-gold" />
+                      </span>
+                    </button>
+                  )
+                })
+            })()}
 
             {state.units.map((u) => {
               if (u.dead) return null
