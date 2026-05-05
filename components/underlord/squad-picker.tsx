@@ -7,6 +7,7 @@ import type { SaveState, Unit } from "@/lib/underlord/types"
 import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { LOOT_POOL } from "@/lib/underlord/loot"
 import { squadCap } from "@/lib/underlord/perks"
+import { xpProgress } from "@/lib/underlord/meta"
 import { haptic } from "@/lib/underlord/haptics"
 
 const TONE_TO_VAR: Record<string, string> = {
@@ -26,7 +27,9 @@ export function SquadPicker({
   onSetSquad: (ids: string[]) => void
   onClose: () => void
 }) {
-  const cap = squadCap(save.perks)
+  // Cap = 3 + (level-1)*2 + EXÉRCITO ranks. So roster size grows with the
+  // Underlord's level — +2 slots every time he levels up.
+  const cap = squadCap(save.perks, xpProgress(save.xp).level)
 
   function toggle(unit: Unit) {
     const has = save.squad.includes(unit.id)

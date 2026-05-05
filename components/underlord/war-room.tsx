@@ -71,8 +71,10 @@ export function WarRoom({
   onOpenBoons: () => void
   streakBonus?: number | null
 }) {
-  const cap = squadCap(save.perks)
   const xp = xpProgress(save.xp)
+  // Cap scales with Underlord level (+2 minions per level past 1) on top
+  // of the EXÉRCITO perk ranks.
+  const cap = squadCap(save.perks, xp.level)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = REGIONS.find((r) => r.id === selectedId) ?? null
   // Glow the SKILLS button when the player has unlocked skills they

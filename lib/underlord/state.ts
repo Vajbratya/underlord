@@ -291,8 +291,9 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'select-region':
       return { ...state, pendingRegionId: action.regionId, phase: 'briefing' }
     case 'set-squad': {
-      // Cap squad size at the perk-derived max. Silently drop overflow.
-      const cap = squadCap(state.save.perks)
+      // Cap squad size at the level + perk-derived max. Silently drop overflow.
+      const lvl = levelFromXP(state.save.xp)
+      const cap = squadCap(state.save.perks, lvl)
       const trimmed = action.squadIds.slice(0, cap)
       return { ...state, save: { ...state.save, squad: trimmed } }
     }
@@ -309,7 +310,7 @@ export function reduce(state: GameState, action: Action): GameState {
       const nextRoster = rebuildRosterStats(state.save.roster, nextPerks, state.save.boons ?? [])
       // If squad cap shrank somehow (it can't — perks only grow), trim. If it
       // grew, leave the squad alone; player picks new slots themselves.
-      const cap = squadCap(nextPerks)
+      const cap = squadCap(nextPerks, lvl)
       const trimmedSquad = state.save.squad.slice(0, cap)
       return {
         ...state,
@@ -326,7 +327,9 @@ export function reduce(state: GameState, action: Action): GameState {
       // Refund every spent point. Roster reverts to baseline stats.
       const refund = perksSpent(state.save.perks)
       const nextRoster = rebuildRosterStats(state.save.roster, {}, state.save.boons ?? [])
-      const cap = squadCap({})
+      // Respec only refunds perks — level is unchanged, so cap still scales
+      // with level; only the perk component is wiped.
+      const cap = squadCap({}, levelFromXP(state.save.xp))
       return {
         ...state,
         save: {

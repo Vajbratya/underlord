@@ -167,18 +167,19 @@ function buildBattle(
   }
 
   // ---- Player squad ----
-  // Deploy a couple rows above the bottom edge so units are unambiguously
-  // inside the grid (avoids visual ambiguity at the bottom margin and
-  // gives the front line room to retreat).
-  const frontRow = rows - 3
-  const backRow = rows - 4
-  const placedSquad: Unit[] = squad.slice(0, 5).map((u, i) => {
-    const row = i < 3 ? frontRow : backRow
-    const colIdx = i < 3 ? i : i - 3
-    // Spread three across the front row evenly using the row's offset basis.
-    const q = 2 + colIdx * 3
-    const desired = { q: q + offsetFor(row), r: row }
-    const pos = place(desired)
+  // Squad size is variable (3 to SQUAD_CAP_LIMIT). Distribute units across
+  // back rows starting at rows-3, packing ~PER_ROW per line and cascading
+  // upward as needed. The Overlord owns rows-2 alone, so deployment never
+  // collides with him. `place()` handles obstacle/edge collisions.
+  const PER_ROW = Math.min(5, Math.max(3, cols - 4))
+  const placedSquad: Unit[] = squad.map((u, i) => {
+    const rowIdx = Math.floor(i / PER_ROW) // 0 = front, 1 = back, 2+ = deeper
+    const colIdx = i % PER_ROW
+    const row = rows - 3 - rowIdx
+    // Center the line: even spacing of 2 columns, anchored mid-board.
+    const startQ = Math.max(1, Math.floor((cols - PER_ROW * 2) / 2))
+    const q = startQ + colIdx * 2 + offsetFor(row)
+    const pos = place({ q, r: row })
     const built = makeUnit(u.templateId, pos, {
       name: u.name,
       hp: u.hpMax,

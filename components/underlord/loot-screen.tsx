@@ -11,6 +11,7 @@ import {
   Skull,
   Sparkles,
   Trophy,
+  Users,
   Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -251,6 +252,11 @@ export function LootScreen({
                       {perkPointsGained === 1 ? "" : "s"} de Forja
                     </p>
                   ) : null}
+                  {/* Each level grants +2 squad slots — call it out so the
+                      player remembers to recruit & re-stack. */}
+                  <p className="mt-1.5 inline-flex items-center gap-1 rounded-sm border border-accent/60 bg-accent/15 px-2 py-1 font-mono text-[10px] font-black uppercase tracking-[0.22em] text-accent">
+                    <Users className="size-3" />+{levelsGained * 2} vagas no exército
+                  </p>
                 </div>
               ) : null}
 

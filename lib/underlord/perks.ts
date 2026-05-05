@@ -177,9 +177,28 @@ export function perksSpent(perks: Record<string, number> | undefined): number {
   return total
 }
 
-/** Squad cap derived from EXÉRCITO. */
-export function squadCap(perks: Record<string, number> | undefined): number {
-  return 3 + rankOf(perks, 'exercito')
+/** Hard cap on squad size — keeps the board playable even at very high
+ * levels. The biggest standard layout (~13 cols) still has room for
+ * heroes + obstacles after this many minions are placed. */
+export const SQUAD_CAP_LIMIT = 15
+
+/**
+ * Squad cap derived from level + EXÉRCITO perk.
+ *
+ * - Base: 3 (trio inicial).
+ * - Level: each Underlord level past 1 grants +2 minion slots, so the
+ *   roster scales as a roguelite expects (lvl 1 → 3, lvl 2 → 5, lvl 3 → 7…).
+ * - Perk: each rank in EXÉRCITO adds +1.
+ *
+ * Capped at SQUAD_CAP_LIMIT to keep deploys from outgrowing the board.
+ */
+export function squadCap(
+  perks: Record<string, number> | undefined,
+  level = 1,
+): number {
+  const lvl = Math.max(1, Math.floor(level))
+  const total = 3 + (lvl - 1) * 2 + rankOf(perks, 'exercito')
+  return Math.min(SQUAD_CAP_LIMIT, total)
 }
 
 /** Crit chance multiplier — added to base 0.18. */
