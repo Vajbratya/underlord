@@ -161,10 +161,16 @@ function buildBattle(
   }
 
   // ---- Player squad ----
+  // Deploy a couple rows above the bottom edge so units are unambiguously
+  // inside the grid (avoids visual ambiguity at the bottom margin and
+  // gives the front line room to retreat).
+  const frontRow = rows - 3
+  const backRow = rows - 4
   const placedSquad: Unit[] = squad.slice(0, 5).map((u, i) => {
-    const row = i < 3 ? rows - 2 : rows - 3
+    const row = i < 3 ? frontRow : backRow
     const colIdx = i < 3 ? i : i - 3
-    const q = 1 + colIdx * 2
+    // Spread three across the front row evenly using the row's offset basis.
+    const q = 2 + colIdx * 3
     const desired = { q: q + offsetFor(row), r: row }
     const pos = place(desired)
     return makeUnit(u.templateId, pos, {
@@ -180,7 +186,9 @@ function buildBattle(
   })
 
   // ---- Overlord ----
-  const overlordRow = rows - 1
+  // Deploy the Overlord behind the squad but still inside the board (rows-2,
+  // which is one above the very last row). Keeps him safely on a tile.
+  const overlordRow = rows - 2
   const overlordCol = Math.floor(cols / 2) + offsetFor(overlordRow)
   const overlordPos = place({ q: overlordCol, r: overlordRow })
   const overlord = makeOverlord(overlordLevel, overlordPos, overlordName)
@@ -654,6 +662,9 @@ export function BattleScreen({
 
   function handleHexClick(a: Axial) {
     if (!isMinionTurn || !active) return
+    // Hard guard: never let any code path act on a hex outside the board,
+    // regardless of how the click reached us.
+    if (!inBounds(a)) return
     const target = unitAt(state, a)
 
     // -------- Overlord skill targeting --------
