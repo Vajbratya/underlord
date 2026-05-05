@@ -43,6 +43,7 @@ import {
   castResurrect,
   castShadow,
   castTaunt,
+  castOverlordSkill,
 } from "@/lib/underlord/battle"
 import type { BattleState } from "@/lib/underlord/battle"
 import type { Axial, Region, Unit } from "@/lib/underlord/types"
@@ -54,6 +55,10 @@ import {
   makeUnit,
 } from "@/lib/underlord/units"
 import { SPECIALS } from "@/lib/underlord/specials"
+import {
+  OVERLORD_SKILLS,
+  type SkillDef,
+} from "@/lib/underlord/overlord-skills"
 import { rand, getHeroById, UNDERLORD_LINES } from "@/lib/elementum-flavor"
 import { Atmosphere } from "./atmosphere"
 import { haptic } from "@/lib/underlord/haptics"
@@ -249,6 +254,7 @@ export function BattleScreen({
   perks,
   overlordLevel = 1,
   overlordName = "UNDERLORD",
+  equippedSkills = [],
   onComplete,
 }: {
   squad: Unit[]
@@ -259,6 +265,8 @@ export function BattleScreen({
   overlordLevel?: number
   /** Underlord display name — shown on the Overlord unit. */
   overlordName?: string
+  /** Skill ids the Underlord has equipped (Skill Map loadout). */
+  equippedSkills?: string[]
   onComplete: (result: {
     victory: boolean
     fallenIds: string[]
@@ -293,6 +301,13 @@ export function BattleScreen({
     casterId: string
     archetype: "red" | "green" | "blue" | "grey"
   }>(null)
+  /** Overlord skill targeting mode. When set, the next hex tap fires the skill. */
+  const [skillMode, setSkillMode] = useState<null | {
+    casterId: string
+    skillId: string
+  }>(null)
+  /** Long-press / hover description popover for the skill bar. */
+  const [skillInfo, setSkillInfo] = useState<string | null>(null)
   const popupCounter = useRef(0)
   const comboHighRef = useRef(0)
   const critsLandedRef = useRef(0)
@@ -330,11 +345,13 @@ export function BattleScreen({
   const offsetX = -minX + padding
   const offsetY = -minY + padding
 
-  // Reset combo and clear special-mode when active unit changes
+  // Reset combo and clear special / skill targeting when active unit changes
   useEffect(() => {
     if (state.turn !== lastTurnRef.current || state.round !== lastRoundRef.current) {
       setCombo(0)
       setSpecialMode(null)
+      setSkillMode(null)
+      setSkillInfo(null)
       lastTurnRef.current = state.turn
       lastRoundRef.current = state.round
     }
@@ -495,6 +512,95 @@ export function BattleScreen({
     return out
   }, [specialMode, active, state, tiles])
 
+  /** Overlord-skill targeting highlights: free hexes, enemies, allies, fallen. */
+  const skillHighlights = useMemo(() => {
+    const out = {
+      freeHex: new Set<string>(),
+      enemy: new Set<string>(),
+      ally: new Set<string>(),
+      fallenAlly: new Set<string>(),
+      kind: null as null | "free-hex" | "enemy" | "ally" | "fallen-ally",
+    }
+    if (!skillMode || !active || active.id !== skillMode.casterId) return out
+    const def = OVERLORD_SKILLS[skillMode.skillId]
+    if (!def) return out
+    out.kind = def.target as typeof out.kind
+    const occ = blockedSet(state)
+    if (def.target === "free-hex") {
+      for (const t of tiles) {
+        if (hexDistance(active.pos, t) > def.range) continue
+        if (axialEqual(t, active.pos)) continue
+        if (occ.has(axialKey(t))) continue
+        out.freeHex.add(axialKey(t))
+      }
+    } else if (def.target === "enemy") {
+      for (const u of state.units) {
+        if (u.dead || u.faction !== "hero") continue
+        if (hexDistance(active.pos, u.pos) > def.range) continue
+        out.enemy.add(axialKey(u.pos))
+      }
+    } else if (def.target === "ally") {
+      for (const u of state.units) {
+        if (u.dead || u.faction !== "minion" || u.isBarrier || u.id === active.id) continue
+        if (hexDistance(active.pos, u.pos) > def.range) continue
+        out.ally.add(axialKey(u.pos))
+      }
+    } else if (def.target === "fallen-ally") {
+      for (const u of state.units) {
+        if (!u.dead || u.faction !== "minion" || u.isBarrier) continue
+        if (hexDistance(active.pos, u.pos) > def.range) continue
+        out.fallenAlly.add(axialKey(u.pos))
+      }
+    }
+    return out
+  }, [skillMode, active, state, tiles])
+
+  /** True iff it's the Overlord's turn (he's a minion-faction unit). */
+  const isOverlordTurn =
+    isMinionTurn && active != null && active.isOverlord === true
+
+  /** Activate an Overlord skill: self-target fires immediately, others enter
+   * targeting mode where the next valid hex tap consumes the cast. */
+  function activateOverlordSkill(skillId: string) {
+    if (!isOverlordTurn || !active) return
+    const def = OVERLORD_SKILLS[skillId]
+    if (!def) return
+    if (active.acted) {
+      showHint("já agiu — encerre o turno")
+      return
+    }
+    if ((active.skillCooldowns?.[skillId] ?? 0) > 0) {
+      showHint(`recarregando ${active.skillCooldowns![skillId]}r`)
+      return
+    }
+    if (def.uses === 1 && active.skillSpent?.[skillId]) {
+      showHint("já usou nesta batalha")
+      return
+    }
+    if (def.target === "self") {
+      // Fire immediately.
+      dispatch({ type: "snapshot", state })
+      const out = castOverlordSkill(state, active.id, skillId, null, null)
+      if (!out.ok) {
+        showHint(out.reason)
+        return
+      }
+      haptic.kill()
+      triggerShake(1)
+      const px = axialToPixel(active.pos)
+      pushPopup(def.short, "crit", px.x, px.y)
+      dispatch({ type: "set", state: out.state })
+      return
+    }
+    setSkillMode({ casterId: active.id, skillId })
+    haptic.tap()
+  }
+
+  function cancelSkillMode() {
+    setSkillMode(null)
+    haptic.tap()
+  }
+
   function activateSpecial() {
     if (!isMinionTurn || !active) return
     if (active.faction !== "minion" || active.isBarrier) return
@@ -549,6 +655,85 @@ export function BattleScreen({
   function handleHexClick(a: Axial) {
     if (!isMinionTurn || !active) return
     const target = unitAt(state, a)
+
+    // -------- Overlord skill targeting --------
+    if (skillMode && active.id === skillMode.casterId) {
+      const def = OVERLORD_SKILLS[skillMode.skillId]
+      if (!def) {
+        setSkillMode(null)
+        return
+      }
+      let unitId: string | null = null
+      let hexTarget: Axial | null = null
+      if (def.target === "enemy") {
+        if (!target || target.faction !== "hero" || target.dead) {
+          showHint("escolha um inimigo")
+          return
+        }
+        if (hexDistance(active.pos, target.pos) > def.range) {
+          showHint("fora de alcance")
+          return
+        }
+        unitId = target.id
+      } else if (def.target === "ally") {
+        if (
+          !target ||
+          target.faction !== "minion" ||
+          target.dead ||
+          target.isBarrier ||
+          target.id === active.id
+        ) {
+          showHint("escolha um aliado")
+          return
+        }
+        if (hexDistance(active.pos, target.pos) > def.range) {
+          showHint("fora de alcance")
+          return
+        }
+        unitId = target.id
+      } else if (def.target === "fallen-ally") {
+        const fallen = state.units.find(
+          (u) =>
+            u.dead &&
+            u.faction === "minion" &&
+            !u.isBarrier &&
+            axialEqual(u.pos, a),
+        )
+        if (!fallen) {
+          showHint("escolha um aliado caído")
+          return
+        }
+        if (hexDistance(active.pos, fallen.pos) > def.range) {
+          showHint("fora de alcance")
+          return
+        }
+        unitId = fallen.id
+      } else if (def.target === "free-hex") {
+        if (target && !target.dead) {
+          showHint("hex precisa estar livre")
+          return
+        }
+        if (hexDistance(active.pos, a) > def.range) {
+          showHint("fora de alcance")
+          return
+        }
+        hexTarget = a
+      }
+      const out = castOverlordSkill(state, active.id, skillMode.skillId, hexTarget, unitId)
+      if (!out.ok) {
+        showHint(out.reason || "alvo inválido")
+        return
+      }
+      dispatch({ type: "snapshot", state })
+      haptic.select()
+      triggerShake(def.kind === "aoe-damage" || def.kind === "smite-enemy" ? 2 : 1)
+      const fxPos = out.fxAt ?? hexTarget ?? (target?.pos ?? active.pos)
+      const px = axialToPixel(fxPos)
+      pushPopup(def.short, "crit", px.x, px.y)
+      setSkillMode(null)
+      dispatch({ type: "set", state: out.state })
+      return
+    }
 
     // -------- Special-targeting mode --------
     if (specialMode && active.id === specialMode.casterId) {
@@ -868,19 +1053,26 @@ export function BattleScreen({
                 const k = axialKey(t)
                 const fire = state.fires.find((f) => axialEqual(f.pos, t))
                 const obstacle = obstacleByKey.get(k)
-                const inMove = !specialMode && highlights.move.has(k)
-                const inAttack = !specialMode && highlights.attack.has(k)
-                const inHeal = !specialMode && highlights.heal.has(k)
+                const inAnyTargetingMode = !!specialMode || !!skillMode
+                const inMove = !inAnyTargetingMode && highlights.move.has(k)
+                const inAttack = !inAnyTargetingMode && highlights.attack.has(k)
+                const inHeal = !inAnyTargetingMode && highlights.heal.has(k)
                 const inSpecialHex =
                   !!specialMode && specialHighlights.freeHex.has(k)
                 const inSpecialFallen =
                   !!specialMode && specialHighlights.fallenAlly.has(k)
+                const inSkillHex =
+                  !!skillMode &&
+                  (skillHighlights.freeHex.has(k) ||
+                    skillHighlights.enemy.has(k) ||
+                    skillHighlights.ally.has(k) ||
+                    skillHighlights.fallenAlly.has(k))
                 const cx = t.x + offsetX
                 const cy = t.y + offsetY
                 const points = hexPoints(cx, cy, HEX_SIZE - 1.5)
                 const fillId = obstacle
                   ? "url(#hexFillObstacle)"
-                  : inSpecialHex || inSpecialFallen
+                  : inSpecialHex || inSpecialFallen || inSkillHex
                     ? "url(#hexFillSpecial)"
                     : fire
                       ? "url(#hexFillFire)"
@@ -1306,6 +1498,84 @@ export function BattleScreen({
             </div>
           </div>
         ) : null}
+        {/* Overlord skill targeting banner — describes WHAT and WHO the
+            current active skill targets so the player isn't guessing. */}
+        {skillMode && active && OVERLORD_SKILLS[skillMode.skillId] ? (
+          <div className="border-b border-accent/50 bg-accent/10 px-3 py-1.5">
+            <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-2">
+              <p className="min-w-0 truncate font-mono text-[9px] uppercase tracking-[0.28em] text-accent">
+                <Wand2 className="-mt-0.5 mr-1 inline size-3" />
+                {OVERLORD_SKILLS[skillMode.skillId].name} — {targetHint(OVERLORD_SKILLS[skillMode.skillId])}
+              </p>
+              <button
+                type="button"
+                onClick={cancelSkillMode}
+                className="flex h-6 shrink-0 items-center gap-1 rounded border border-border/80 bg-secondary/60 px-2 font-mono text-[8px] font-black uppercase tracking-[0.2em] text-foreground transition active:scale-95"
+              >
+                <XIcon className="size-3" />
+                cancelar
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {/* Description popover — long-press / hover on a skill button
+            opens this panel so the player can read what the ability does
+            BEFORE committing the action. */}
+        {skillInfo && OVERLORD_SKILLS[skillInfo] ? (
+          <div className="border-b border-border/60 bg-card/95 px-3 py-2">
+            <div className="mx-auto flex w-full max-w-2xl items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-[12px] font-black uppercase tracking-[0.18em] text-accent">
+                  {OVERLORD_SKILLS[skillInfo].name}
+                </p>
+                <p className="mt-1 text-[11px] leading-snug text-foreground/85">
+                  {OVERLORD_SKILLS[skillInfo].text}
+                </p>
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                  ALC {OVERLORD_SKILLS[skillInfo].range || "—"} · CD{" "}
+                  {OVERLORD_SKILLS[skillInfo].cooldown}r
+                  {OVERLORD_SKILLS[skillInfo].uses === 1 ? " · 1×" : ""}
+                  {OVERLORD_SKILLS[skillInfo].aoeRadius > 0
+                    ? ` · AOE ${OVERLORD_SKILLS[skillInfo].aoeRadius}`
+                    : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSkillInfo(null)}
+                className="flex h-6 shrink-0 items-center gap-1 rounded border border-border/80 bg-secondary/60 px-2 font-mono text-[8px] font-black uppercase tracking-[0.2em] text-foreground transition active:scale-95"
+              >
+                <XIcon className="size-3" />
+                fechar
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {/* Overlord skill bar — only when the Underlord himself is active. */}
+        {isOverlordTurn && active && equippedSkills.length > 0 ? (
+          <div className="border-b border-border/60 bg-background/85 px-2.5 py-1.5">
+            <div className="mx-auto flex w-full max-w-2xl items-center justify-center gap-2">
+              {equippedSkills.map((sid) => {
+                const def = OVERLORD_SKILLS[sid]
+                if (!def) return null
+                return (
+                  <SkillBarButton
+                    key={sid}
+                    skill={def}
+                    unit={active}
+                    armed={skillMode?.skillId === sid}
+                    onActivate={() =>
+                      skillMode?.skillId === sid
+                        ? cancelSkillMode()
+                        : activateOverlordSkill(sid)
+                    }
+                    onInfo={() => setSkillInfo(skillInfo === sid ? null : sid)}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
         <div className="mx-auto w-full max-w-2xl px-2.5 pt-2 pb-2.5">
           {/* Top row: active card + ability tag */}
           <div className="flex items-center gap-2.5">
@@ -1545,6 +1815,112 @@ function SpecialButton({
         </span>
       ) : null}
     </button>
+  )
+}
+
+/** Short hint string explaining what to click when targeting a skill. */
+function targetHint(skill: SkillDef): string {
+  switch (skill.target) {
+    case "enemy":
+      return `escolha um inimigo (alc ${skill.range})`
+    case "ally":
+      return `escolha um aliado (alc ${skill.range})`
+    case "fallen-ally":
+      return `escolha um aliado caído (alc ${skill.range})`
+    case "free-hex":
+      return skill.aoeRadius > 0
+        ? `escolha um hex livre — AOE raio ${skill.aoeRadius}`
+        : `escolha um hex livre (alc ${skill.range})`
+    default:
+      return ""
+  }
+}
+
+function SkillBarButton({
+  skill,
+  unit,
+  armed,
+  onActivate,
+  onInfo,
+}: {
+  skill: SkillDef
+  unit: Unit
+  /** True when this skill is currently in targeting mode. */
+  armed: boolean
+  /** Press: activate (or cancel if already armed). */
+  onActivate: () => void
+  /** Long-press / right-click on the button: show description popover. */
+  onInfo: () => void
+}) {
+  const cd = unit.skillCooldowns?.[skill.id] ?? 0
+  const onCd = cd > 0
+  const spent = skill.uses === 1 && !!unit.skillSpent?.[skill.id]
+  const acted = !!unit.acted
+  const disabled = onCd || spent || acted
+  // Long-press detection so a player can read the description without
+  // committing to firing the skill.
+  const longRef = useRef<number | null>(null)
+  const longFiredRef = useRef(false)
+  function startPress() {
+    longFiredRef.current = false
+    if (longRef.current) window.clearTimeout(longRef.current)
+    longRef.current = window.setTimeout(() => {
+      longRef.current = null
+      longFiredRef.current = true
+      onInfo()
+    }, 360)
+  }
+  function endPress(fire: boolean) {
+    if (longRef.current) {
+      window.clearTimeout(longRef.current)
+      longRef.current = null
+    }
+    if (fire && !longFiredRef.current) onActivate()
+  }
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <button
+        type="button"
+        onPointerDown={startPress}
+        onPointerUp={() => endPress(true)}
+        onPointerLeave={() => endPress(false)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          onInfo()
+        }}
+        aria-label={`${skill.name} — ${skill.text}`}
+        title={skill.text}
+        className={cn(
+          "relative flex h-11 min-w-[3.25rem] items-center justify-center gap-1 rounded-md border-2 px-2 font-display text-[10px] font-black uppercase tracking-[0.16em] transition active:scale-95",
+          armed
+            ? "border-accent bg-accent text-background ready-pulse"
+            : disabled
+              ? "cursor-not-allowed border-border bg-secondary/60 text-muted-foreground"
+              : "border-accent/70 bg-card text-accent hover:bg-accent/10",
+        )}
+        style={{
+          boxShadow:
+            armed || !disabled
+              ? "inset 0 1px 0 oklch(1 0 0 / 0.18), 0 3px 10px oklch(0.7 0.18 282 / 0.2)"
+              : undefined,
+        }}
+      >
+        <Wand2 className="size-3" />
+        <span>{skill.short}</span>
+        {onCd ? (
+          <span className="grid size-4 place-items-center rounded-full border border-foreground/30 bg-background/70 font-mono text-[8px] tabular-nums text-foreground">
+            {cd}
+          </span>
+        ) : spent ? (
+          <span className="font-mono text-[8px] tracking-[0.18em] text-foreground/60">
+            ×
+          </span>
+        ) : null}
+      </button>
+      <span className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">
+        {onCd ? `CD ${cd}r` : spent ? "USADA" : `CD ${skill.cooldown}r`}
+      </span>
+    </div>
   )
 }
 

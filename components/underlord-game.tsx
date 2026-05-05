@@ -210,6 +210,7 @@ export function UnderlordGame() {
           perks={state.save.perks}
           overlordLevel={overlordLevel}
           overlordName={state.save.underlordName}
+          equippedSkills={state.save.equippedSkills}
           onComplete={(result) => {
             const goldEarned = result.victory ? region.goldReward : 0
             const forceRare = shouldForceRare(state.save) && result.victory
@@ -263,6 +264,7 @@ export function UnderlordGame() {
           loot={result.loot}
           regionDropsLoot={lootRegion?.dropsLoot ?? false}
           unlockedArchetypes={result.unlockedArchetypes}
+          unlockedSkills={result.unlockedSkills}
           fallenNames={fallenNames}
           killedHeroIds={result.killedHeroIds}
           onContinue={() => {

@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 import { RARITY_LABEL, RARITY_TONE } from "@/lib/underlord/loot"
 import type { LootItem, MinionArchetype } from "@/lib/underlord/types"
 import { MINION_TEMPLATES } from "@/lib/underlord/units"
+import { OVERLORD_SKILLS } from "@/lib/underlord/overlord-skills"
 import { rand, UNDERLORD_LINES, getHeroById } from "@/lib/elementum-flavor"
 import { useEffect, useMemo, useState } from "react"
 import { Atmosphere } from "./atmosphere"
@@ -33,6 +34,7 @@ export function LootScreen({
   flawless = false,
   regionDropsLoot = true,
   unlockedArchetypes = [],
+  unlockedSkills = [],
   onContinue,
 }: {
   victory: boolean
@@ -51,6 +53,8 @@ export function LootScreen({
   regionDropsLoot?: boolean
   /** New minion archetypes unlocked from level-up milestones. */
   unlockedArchetypes?: string[]
+  /** New Underlord active skills unlocked (added to pool, NOT auto-equipped). */
+  unlockedSkills?: string[]
   onContinue: () => void
 }) {
   // Gold ticker animates count-up for satisfying victory pop
@@ -270,6 +274,50 @@ export function LootScreen({
                   </ul>
                   <p className="mt-2 text-center font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
                     Já no seu Roster · Pronto pra escalar
+                  </p>
+                </div>
+              ) : null}
+
+              {unlockedSkills.length > 0 ? (
+                <div className="slam-in mt-3 rounded-lg border-2 border-accent bg-accent/10 px-3 py-3 sm:px-4 sm:py-4">
+                  <div className="flex items-center justify-center gap-2">
+                    <Sparkles className="size-4 text-accent" />
+                    <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">
+                      Habilidade do Underlord
+                    </p>
+                    <Sparkles className="size-4 text-accent" />
+                  </div>
+                  <ul className="mt-3 space-y-2">
+                    {unlockedSkills.map((id) => {
+                      const sk = OVERLORD_SKILLS[id]
+                      if (!sk) return null
+                      return (
+                        <li
+                          key={id}
+                          className="flex items-start gap-2.5 rounded border border-accent/50 bg-background/50 p-2.5"
+                        >
+                          <span className="grid size-12 shrink-0 place-items-center rounded border border-accent/70 bg-accent/15 font-display text-[11px] font-black uppercase tracking-[0.16em] text-accent">
+                            {sk.short}
+                          </span>
+                          <div className="min-w-0 flex-1 text-left">
+                            <p className="font-display text-sm font-black uppercase leading-tight text-foreground sm:text-base">
+                              {sk.name}
+                            </p>
+                            <p className="mt-1 text-[11px] leading-snug text-foreground/85">
+                              {sk.text}
+                            </p>
+                            <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                              ALC {sk.range || "—"} · CD {sk.cooldown}r
+                              {sk.uses === 1 ? " · 1×" : ""}
+                              {sk.aoeRadius > 0 ? ` · AOE ${sk.aoeRadius}` : ""}
+                            </p>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <p className="mt-2 text-center font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
+                    Visite o Skill Map pra equipar
                   </p>
                 </div>
               ) : null}
