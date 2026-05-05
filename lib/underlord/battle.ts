@@ -20,6 +20,7 @@
 import { axialEqual, axialKey, hexDistance, neighbors } from './hex'
 import type { Axial, Unit } from './types'
 import { SPECIALS } from './specials'
+import { OVERLORD_SKILLS } from './overlord-skills'
 import { makeBarrier } from './units'
 
 /** Fire effect on a tile. Damages anyone standing on it at start of turn. */
@@ -657,6 +658,228 @@ export function castBarrier(s: BattleState, casterId: string, target: Axial): Sp
   }
 }
 
+/* ---------------- Overlord active skills ---------------- */
+
+/**
+ * Apply an Overlord active skill. Drives the in-battle skill bar.
+ *
+ * Mirrors the SpecialOutcome shape so the UI can keep using the same
+ * animation hooks. Targeting is interpreted by skill kind:
+ *  - 'self' / 'shield-self' / 'rally-allies' — `target` ignored.
+ *  - 'enemy' / 'doom-enemy' / 'smite-enemy' — `target` is enemy unit pos.
+ *  - 'free-hex' — empty in-bounds hex within range (AOE / teleport).
+ *  - 'fallen-ally' — dead minion id (passed in `targetUnitId`).
+ *
+ * Resource cost: every skill consumes the Overlord's ACTION (acted=true).
+ * Success bumps the per-skill cooldown to skill.cooldown rounds; one-shot
+ * skills additionally flag skillSpent[id]=true.
+ */
+export function castOverlordSkill(
+  s: BattleState,
+  casterId: string,
+  skillId: string,
+  target: Axial | null,
+  targetUnitId: string | null,
+): SpecialOutcome {
+  const u = s.units.find((x) => x.id === casterId)
+  if (!u || u.dead) return fail(s, 'unidade inválida')
+  if (!u.isOverlord) return fail(s, 'só o Underlord')
+  const skill = OVERLORD_SKILLS[skillId]
+  if (!skill) return fail(s, 'habilidade desconhecida')
+  if (u.acted) return fail(s, 'já agiu')
+  if ((u.skillCooldowns?.[skillId] ?? 0) > 0) {
+    return fail(s, `recarregando ${u.skillCooldowns![skillId]}r`)
+  }
+  if (skill.uses === 1 && u.skillSpent?.[skillId]) {
+    return fail(s, 'já usou nesta batalha')
+  }
+
+  // Helper: stamp caster acted + skill cooldown / spent flag.
+  function consume(unit: Unit): Unit {
+    return {
+      ...unit,
+      acted: true,
+      skillCooldowns: {
+        ...(unit.skillCooldowns ?? {}),
+        [skillId]: skill.cooldown,
+      },
+      skillSpent:
+        skill.uses === 1
+          ? { ...(unit.skillSpent ?? {}), [skillId]: true }
+          : unit.skillSpent,
+    }
+  }
+
+  switch (skill.kind) {
+    case 'shield-self': {
+      const next = s.units.map((x) =>
+        x.id === u.id ? { ...consume(x), damageTakenMod: 0.5 } : x,
+      )
+      const log = [...s.log, `${u.name} ergue a ÉGIDE.`].slice(-6)
+      return { state: { ...s, units: next, log }, ok: true, reason: 'Égide.', fxAt: u.pos, fxKind: 'taunt' }
+    }
+
+    case 'rally-allies': {
+      const next = s.units.map((x) => {
+        if (x.id === u.id) return consume(x)
+        if (
+          x.faction === 'minion' &&
+          !x.dead &&
+          !x.isBarrier &&
+          !x.isOverlord &&
+          hexDistance(x.pos, u.pos) <= skill.aoeRadius
+        ) {
+          return { ...x, nextAttackBonus: 1.6 }
+        }
+        return x
+      })
+      const log = [...s.log, `${u.name} ruge: VOZ DE COMANDO.`].slice(-6)
+      return { state: { ...s, units: next, log }, ok: true, reason: 'Rally.', fxAt: u.pos, fxKind: 'taunt' }
+    }
+
+    case 'teleport-self': {
+      if (!target) return fail(s, 'sem alvo')
+      if (hexDistance(u.pos, target) > skill.range) return fail(s, 'fora de alcance')
+      if (!inBoardBounds(s, target)) return fail(s, 'fora do mapa')
+      const occ = blockedSet(s)
+      if (occ.has(axialKey(target))) return fail(s, 'hex ocupado')
+      const next = s.units.map((x) =>
+        x.id === u.id ? { ...consume(x), pos: target } : x,
+      )
+      const log = [...s.log, `${u.name} abre um PORTAL.`].slice(-6)
+      return { state: { ...s, units: next, log }, ok: true, reason: 'Portal.', fxAt: target, fxKind: 'shadow' }
+    }
+
+    case 'heal-ally': {
+      if (!targetUnitId) return fail(s, 'sem alvo')
+      const ally = s.units.find((x) => x.id === targetUnitId)
+      if (!ally || ally.dead || ally.isBarrier) return fail(s, 'alvo inválido')
+      if (ally.faction !== 'minion' || ally.id === u.id) {
+        return fail(s, 'alvo precisa ser aliado')
+      }
+      if (hexDistance(u.pos, ally.pos) > skill.range) return fail(s, 'fora de alcance')
+      const heal = Math.round(ally.hpMax * 0.6)
+      const newHp = Math.min(ally.hpMax, ally.hp + heal)
+      const next = s.units.map((x) => {
+        if (x.id === u.id) return consume(x)
+        if (x.id === ally.id) return { ...x, hp: newHp }
+        return x
+      })
+      const log = [
+        ...s.log,
+        `${u.name} cura ${ally.name}: +${newHp - ally.hp} HP.`,
+      ].slice(-6)
+      return { state: { ...s, units: next, log }, ok: true, reason: 'Cura.', fxAt: ally.pos, fxKind: 'revive' }
+    }
+
+    case 'revive-ally': {
+      if (!targetUnitId) return fail(s, 'sem alvo')
+      const dead = s.units.find((x) => x.id === targetUnitId)
+      if (!dead || !dead.dead || dead.isBarrier) return fail(s, 'alvo inválido')
+      if (dead.faction !== 'minion') return fail(s, 'só aliados')
+      if (hexDistance(u.pos, dead.pos) > skill.range) return fail(s, 'fora de alcance')
+      // Find a free adjacent tile to spawn (or its original tile if free).
+      const occ = blockedSet(s)
+      const candidates = [dead.pos, ...neighbors(dead.pos)]
+      const spawn = candidates.find(
+        (p) => !occ.has(axialKey(p)) && inBoardBounds(s, p),
+      )
+      if (!spawn) return fail(s, 'sem espaço para erguer')
+      const restoredHp = Math.round(dead.hpMax * 0.75)
+      const next = s.units.map((x) => {
+        if (x.id === u.id) return consume(x)
+        if (x.id === dead.id) {
+          return {
+            ...x,
+            dead: false,
+            hp: restoredHp,
+            pos: spawn,
+            acted: true,
+            moved: true,
+          }
+        }
+        return x
+      })
+      const log = [...s.log, `${u.name} ERGUE ${dead.name} dos mortos.`].slice(-6)
+      return {
+        state: { ...s, units: next, log, order: sortInitiative(next) },
+        ok: true,
+        reason: 'Erguer.',
+        fxAt: spawn,
+        fxKind: 'revive',
+      }
+    }
+
+    case 'doom-enemy': {
+      if (!targetUnitId) return fail(s, 'sem alvo')
+      const enemy = s.units.find((x) => x.id === targetUnitId)
+      if (!enemy || enemy.dead || enemy.faction !== 'hero') return fail(s, 'alvo inválido')
+      if (hexDistance(u.pos, enemy.pos) > skill.range) return fail(s, 'fora de alcance')
+      const next = s.units.map((x) => {
+        if (x.id === u.id) return consume(x)
+        if (x.id === enemy.id) return { ...x, damageTakenMod: 2 }
+        return x
+      })
+      const log = [...s.log, `${u.name} CONDENA ${enemy.name}.`].slice(-6)
+      return { state: { ...s, units: next, log }, ok: true, reason: 'Condenar.', fxAt: enemy.pos, fxKind: 'shadow' }
+    }
+
+    case 'smite-enemy': {
+      if (!targetUnitId) return fail(s, 'sem alvo')
+      const enemy = s.units.find((x) => x.id === targetUnitId)
+      if (!enemy || enemy.dead || enemy.faction !== 'hero') return fail(s, 'alvo inválido')
+      if (hexDistance(u.pos, enemy.pos) > skill.range) return fail(s, 'fora de alcance')
+      const raw = Math.round(u.atk * skill.atkMult)
+      const dmg = applyDamageMod(enemy, raw)
+      const newHp = Math.max(0, enemy.hp - dmg)
+      const killed = newHp === 0
+      const next = s.units.map((x) => {
+        if (x.id === u.id) return consume(x)
+        if (x.id === enemy.id) return { ...x, hp: newHp, dead: killed }
+        return x
+      })
+      const log = [
+        ...s.log,
+        `${u.name} dispara ${skill.name}: ${enemy.name} -${dmg}${killed ? ' (abatido)' : ''}.`,
+      ].slice(-6)
+      return { state: { ...s, units: next, log }, ok: true, reason: skill.short, fxAt: enemy.pos, fxKind: 'fire' }
+    }
+
+    case 'aoe-damage': {
+      if (!target) return fail(s, 'sem alvo')
+      if (hexDistance(u.pos, target) > skill.range) return fail(s, 'fora de alcance')
+      if (!inBoardBounds(s, target)) return fail(s, 'fora do mapa')
+      const baseRaw = Math.round(u.atk * skill.atkMult)
+      const splashRaw = Math.round(baseRaw * 0.5)
+      const next = s.units.map((x) => {
+        if (x.id === u.id) return consume(x)
+        if (x.dead || x.faction !== 'hero') return x
+        const d = hexDistance(x.pos, target)
+        if (d === 0) {
+          const dmg = applyDamageMod(x, baseRaw)
+          const newHp = Math.max(0, x.hp - dmg)
+          return { ...x, hp: newHp, dead: newHp === 0 }
+        }
+        if (d <= skill.aoeRadius) {
+          const dmg = applyDamageMod(x, splashRaw)
+          const newHp = Math.max(0, x.hp - dmg)
+          return { ...x, hp: newHp, dead: newHp === 0 }
+        }
+        return x
+      })
+      const log = [...s.log, `${u.name} invoca ${skill.name}!`].slice(-6)
+      return { state: { ...s, units: next, log }, ok: true, reason: skill.short, fxAt: target, fxKind: 'fire' }
+    }
+  }
+}
+
+/** True when the (q,r) hex is inside the board (handles offset rows). */
+function inBoardBounds(s: BattleState, p: Axial): boolean {
+  if (p.r < 0 || p.r >= s.rows) return false
+  const offset = -Math.floor(p.r / 2)
+  return p.q >= offset && p.q < s.cols + offset
+}
+
 /* ---------------- Turn / round bookkeeping ---------------- */
 
 /**
@@ -699,14 +922,26 @@ export function endTurn(s: BattleState): BattleState {
   for (let i = 0; i < (s.order.length + 1) * 2; i++) {
     if (next >= nextOrder.length) {
       // New round — reset flags, decrement cooldowns, decay fires, clear 1-round buffs
-      units = units.map((u) => ({
-        ...u,
-        acted: false,
-        moved: false,
-        specialCd: Math.max(0, u.specialCd - 1),
-        damageTakenMod: undefined,
-        tauntedBy: undefined,
-      }))
+      units = units.map((u) => {
+        // Decrement Overlord skill cooldowns by 1 each round.
+        let skillCooldowns = u.skillCooldowns
+        if (skillCooldowns) {
+          const next: Record<string, number> = {}
+          for (const [k, v] of Object.entries(skillCooldowns)) {
+            next[k] = Math.max(0, v - 1)
+          }
+          skillCooldowns = next
+        }
+        return {
+          ...u,
+          acted: false,
+          moved: false,
+          specialCd: Math.max(0, u.specialCd - 1),
+          damageTakenMod: undefined,
+          tauntedBy: undefined,
+          skillCooldowns,
+        }
+      })
       fires = fires
         .map((f) => ({ ...f, ttl: f.ttl - 1 }))
         .filter((f) => f.ttl > 0)

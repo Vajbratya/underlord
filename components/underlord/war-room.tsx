@@ -15,6 +15,7 @@ import {
   Skull,
   Swords,
   Users,
+  Wand2,
   X,
   Zap,
 } from "lucide-react"
@@ -57,18 +58,26 @@ export function WarRoom({
   onPickRegion,
   onOpenSquad,
   onOpenForge,
+  onOpenSkillMap,
   streakBonus,
 }: {
   save: SaveState
   onPickRegion: (regionId: string) => void
   onOpenSquad: () => void
   onOpenForge: () => void
+  onOpenSkillMap: () => void
   streakBonus?: number | null
 }) {
   const cap = squadCap(save.perks)
   const xp = xpProgress(save.xp)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = REGIONS.find((r) => r.id === selectedId) ?? null
+  // Glow the SKILLS button when the player has unlocked skills they
+  // haven't equipped yet — it's the "new toy" signal.
+  const equippedSet = new Set(save.equippedSkills ?? [])
+  const hasUnequippedNew = (save.unlockedSkills ?? []).some(
+    (id) => !equippedSet.has(id),
+  )
 
   const cleared = useMemo(
     () => REGIONS.filter((r) => save.regions[r.id] === "cleared").length,
@@ -141,6 +150,29 @@ export function WarRoom({
             <span className="shrink-0 font-mono text-[9px] tabular-nums text-muted-foreground">
               {xp.intoLevel}/{xp.needed}
             </span>
+            <button
+              type="button"
+              onClick={() => {
+                haptic.select()
+                onOpenSkillMap()
+              }}
+              aria-label="Skill Map"
+              title="Skill Map — habilidades ativas do Underlord"
+              className={cn(
+                "relative flex h-7 shrink-0 items-center gap-1 rounded-sm border px-2 font-mono text-[9px] font-black uppercase tracking-[0.18em] transition active:scale-95",
+                hasUnequippedNew
+                  ? "border-accent bg-accent/15 text-accent ready-pulse"
+                  : "border-border bg-card/70 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Wand2 className="size-3" />
+              <span className="hidden sm:inline">SKILLS</span>
+              {hasUnequippedNew ? (
+                <span className="rounded bg-accent text-background px-1 font-display text-[10px] leading-none tabular-nums">
+                  !
+                </span>
+              ) : null}
+            </button>
             <button
               type="button"
               onClick={() => {

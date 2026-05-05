@@ -9,6 +9,7 @@ import { BattleScreen } from "@/components/underlord/battle"
 import { LootScreen } from "@/components/underlord/loot-screen"
 import { SquadPicker } from "@/components/underlord/squad-picker"
 import { Forge } from "@/components/underlord/forge"
+import { SkillMap } from "@/components/underlord/skill-map"
 import {
   AchievementToaster,
   fireAchievement,
@@ -36,6 +37,7 @@ export function UnderlordGame() {
   const [hasSave, setHasSave] = useState(false)
   const [showSquadPicker, setShowSquadPicker] = useState(false)
   const [showForge, setShowForge] = useState(false)
+  const [showSkillMap, setShowSkillMap] = useState(false)
   const [streakBonusToShow, setStreakBonusToShow] = useState<number | null>(null)
   const dailyCheckedToday = useRef<string>("")
 
@@ -139,6 +141,7 @@ export function UnderlordGame() {
           onPickRegion={(rid) => dispatch({ type: "select-region", regionId: rid })}
           onOpenSquad={() => setShowSquadPicker(true)}
           onOpenForge={() => setShowForge(true)}
+          onOpenSkillMap={() => setShowSkillMap(true)}
           streakBonus={streakBonusToShow}
         />
         {showSquadPicker ? (
@@ -154,6 +157,15 @@ export function UnderlordGame() {
             onSpend={(perkId) => dispatch({ type: "spend-perk", perkId })}
             onRespec={() => dispatch({ type: "respec" })}
             onClose={() => setShowForge(false)}
+          />
+        ) : null}
+        {showSkillMap ? (
+          <SkillMap
+            save={state.save}
+            onSetLoadout={(skillIds) =>
+              dispatch({ type: "set-skill-loadout", skillIds })
+            }
+            onClose={() => setShowSkillMap(false)}
           />
         ) : null}
         <AchievementToaster />

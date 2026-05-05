@@ -120,6 +120,12 @@ export type Unit = {
   isOverlord?: boolean
   /** True for flying units — they ignore terrain obstacles when pathing. */
   flying?: boolean
+
+  /* ---------- Overlord skill state ---------- */
+  /** Per-skill cooldown countdown (rounds) — only the Overlord uses this. */
+  skillCooldowns?: Record<string, number>
+  /** Per-skill once-per-battle spent flag — only the Overlord uses this. */
+  skillSpent?: Record<string, boolean>
 }
 
 /* ---------- Loot ---------- */
@@ -229,4 +235,14 @@ export type SaveState = {
   /** Archetype ids the Underlord has unlocked through level milestones.
    * The original five (brown, red, green, blue, grey) are always present. */
   unlockedArchetypes: string[]
+
+  /* ---- Underlord skill loadout (alterable in the war room) ---- */
+  /** Skill ids the Underlord has unlocked through level milestones. The
+   * starter trio (bolt, command, aegis) is granted at level 1 and is
+   * always present. */
+  unlockedSkills: string[]
+  /** Currently equipped skills (length capped at SKILL_SLOTS). Order
+   * matters — slot 1, slot 2, slot 3 — so the in-battle button bar is
+   * stable even after re-arranging the loadout. */
+  equippedSkills: string[]
 }

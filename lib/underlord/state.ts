@@ -19,8 +19,16 @@ import {
   xpForBattle,
 } from './meta'
 import { goldMult, PERKS, type PerkId, perksSpent, squadCap, xpMult } from './perks'
+import {
+  DEFAULT_LOADOUT,
+  newlyUnlockedSkills,
+  OVERLORD_SKILLS,
+  SKILL_SLOTS,
+  unlockedSkillIds,
+} from './overlord-skills'
 
-const STORAGE_KEY = 'underlord-save-v4'
+const STORAGE_KEY = 'underlord-save-v5'
+const LEGACY_KEY_V4 = 'underlord-save-v4'
 const LEGACY_KEY_V3 = 'underlord-save-v3'
 const LEGACY_KEY_V2 = 'underlord-save-v2'
 
@@ -46,13 +54,16 @@ export type GameState = {
     perkPointsGained: number
     /** Minion archetypes recruited automatically from level-up unlocks. */
     unlockedArchetypes: string[]
+    /** Skill ids the Underlord just unlocked (auto-added to pool, NOT auto-
+     * equipped — player decides via the Skill Map). */
+    unlockedSkills: string[]
   } | null
 }
 
 export function freshSave(name: string): SaveState {
   const roster = makeStarterRoster()
   return {
-    version: 4,
+    version: 5,
     underlordName: name,
     roster,
     squad: roster.slice(0, 3).map((u) => u.id),
@@ -76,6 +87,9 @@ export function freshSave(name: string): SaveState {
     // The original five archetypes are always available; bone/harpy/etc.
     // unlock through Underlord level milestones.
     unlockedArchetypes: [],
+    // Skill Map starts with the level-1 trio unlocked AND equipped.
+    unlockedSkills: unlockedSkillIds(1),
+    equippedSkills: DEFAULT_LOADOUT.slice(0, SKILL_SLOTS),
   }
 }
 
@@ -96,11 +110,10 @@ export function freshGame(): GameState {
   }
 }
 
-/** Migrate any older save into v4 shape. v4 introduces:
- *   - 5 new minion archetypes with unlock tiers (we don't grant them
- *     retroactively — players have to level up again to recruit them)
- *   - HUGE stat numbers (5x). The roster gets rebuilt from current
- *     templates to inherit the new baseline; HP-percent is preserved. */
+/** Migrate any older save into v5 shape. v5 introduces the Underlord Skill
+ * Map: an alterable loadout of active abilities. Pre-v5 saves never had
+ * skills; we retroactively grant every skill whose unlockLevel ≤ current
+ * level so a returning player isn't punished for already being level 7. */
 function migrateLegacy(parsed: { save?: Partial<SaveState> }): SaveState | null {
   const s = parsed.save
   if (!s) return null
@@ -108,8 +121,18 @@ function migrateLegacy(parsed: { save?: Partial<SaveState> }): SaveState | null 
   // Rebuild any saved roster against the new (5x bigger) baseline templates.
   const incomingRoster = s.roster ?? makeStarterRoster()
   const rebuilt = rebuildRosterStats(incomingRoster, s.perks ?? {})
+  // Carry skill state forward if it's already there (v4→v5 partial saves);
+  // otherwise grant every level-appropriate skill and the default loadout.
+  const unlockedSkills =
+    (s as Partial<SaveState>).unlockedSkills && (s as SaveState).unlockedSkills.length > 0
+      ? (s as SaveState).unlockedSkills
+      : unlockedSkillIds(level)
+  const equippedSkills =
+    (s as Partial<SaveState>).equippedSkills && (s as SaveState).equippedSkills.length > 0
+      ? (s as SaveState).equippedSkills
+      : DEFAULT_LOADOUT.slice(0, SKILL_SLOTS)
   return {
-    version: 4,
+    version: 5,
     underlordName: s.underlordName ?? 'Underlord',
     roster: rebuilt,
     squad: s.squad ?? rebuilt.slice(0, 3).map((u) => u.id),
@@ -130,9 +153,9 @@ function migrateLegacy(parsed: { save?: Partial<SaveState> }): SaveState | null 
     perkPoints: s.perkPoints ?? Math.max(0, level - 1),
     highestLevel: s.highestLevel ?? level,
     perks: s.perks ?? {},
-    // Players who were already past the unlock thresholds get the new
-    // archetypes added to their unlocked list and one of each in the roster.
-    unlockedArchetypes: [],
+    unlockedArchetypes: s.unlockedArchetypes ?? [],
+    unlockedSkills,
+    equippedSkills,
   }
 }
 
@@ -142,7 +165,7 @@ export function loadGame(): GameState | null {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<GameState>
-      if (parsed.save && parsed.save.version === 4) {
+      if (parsed.save && parsed.save.version === 5) {
         return {
           phase: 'warroom',
           save: parsed.save as SaveState,
@@ -152,7 +175,7 @@ export function loadGame(): GameState | null {
       }
     }
     // Migrate from older versions if present.
-    for (const key of [LEGACY_KEY_V3, LEGACY_KEY_V2]) {
+    for (const key of [LEGACY_KEY_V4, LEGACY_KEY_V3, LEGACY_KEY_V2]) {
       const legacy = window.localStorage.getItem(key)
       if (!legacy) continue
       const parsed = JSON.parse(legacy) as { save?: Partial<SaveState> }
@@ -189,6 +212,7 @@ export function wipeSave(): void {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.removeItem(STORAGE_KEY)
+    window.localStorage.removeItem(LEGACY_KEY_V4)
     window.localStorage.removeItem(LEGACY_KEY_V3)
     window.localStorage.removeItem(LEGACY_KEY_V2)
     window.localStorage.removeItem('underlord-save-v1')
@@ -223,6 +247,7 @@ export type Action =
   | { type: 'daily-checkin'; bonus: number; streak: number; today: string }
   | { type: 'spend-perk'; perkId: PerkId }
   | { type: 'respec' }
+  | { type: 'set-skill-loadout'; skillIds: string[] }
   | { type: 'reset' }
 
 function unlockNew(save: SaveState, ids: AchievementId[]): {
@@ -354,6 +379,19 @@ export function reduce(state: GameState, action: Action): GameState {
         save.unlockedArchetypes = [...save.unlockedArchetypes, ...fresh]
       }
 
+      // Auto-unlock any new Underlord skills whose unlockLevel the player
+      // just crossed. Skills land in the POOL — not the loadout — so the
+      // player has to visit the Skill Map to actually equip them.
+      const freshSkills: string[] = []
+      for (let lv = oldLevel + 1; lv <= newLevel; lv++) {
+        for (const sid of newlyUnlockedSkills(lv)) {
+          if (!save.unlockedSkills.includes(sid)) freshSkills.push(sid)
+        }
+      }
+      if (freshSkills.length > 0) {
+        save.unlockedSkills = [...save.unlockedSkills, ...freshSkills]
+      }
+
       // Gold: scaled by perk
       const goldFinal = Math.floor(goldEarned * goldMult(save.perks))
 
@@ -420,6 +458,7 @@ export function reduce(state: GameState, action: Action): GameState {
           levelsGained,
           perkPointsGained,
           unlockedArchetypes: fresh,
+          unlockedSkills: freshSkills,
         },
       }
     }
@@ -443,6 +482,23 @@ export function reduce(state: GameState, action: Action): GameState {
       )
       save.inventory = inventory
       return { ...state, save }
+    }
+    case 'set-skill-loadout': {
+      // Sanitize: keep only ids that are unlocked + actually exist + dedupe,
+      // then cap at SKILL_SLOTS. Order is preserved (slot 1 → slot 3).
+      const have = new Set(state.save.unlockedSkills)
+      const seen = new Set<string>()
+      const trimmed: string[] = []
+      for (const id of action.skillIds) {
+        if (!have.has(id) || !OVERLORD_SKILLS[id] || seen.has(id)) continue
+        seen.add(id)
+        trimmed.push(id)
+        if (trimmed.length >= SKILL_SLOTS) break
+      }
+      return {
+        ...state,
+        save: { ...state.save, equippedSkills: trimmed },
+      }
     }
     case 'reset':
       return freshGame()
