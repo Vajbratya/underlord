@@ -239,6 +239,15 @@ export type Region = {
   lore: string
   goldReward: number
   heroIds: string[]
+  /** v8 — optional elite tier overlay. Heroes listed here spawn as
+   * miniboss/boss with stat multipliers, HUD badge, and a `passiveId`
+   * the engine reads from `lib/underlord/elite-passives.ts`. Heroes not
+   * listed spawn as regular heroes. Save-safe: missing field = no elite. */
+  eliteHeroes?: { id: string; kind: EliteKind; passiveId: ElitePassiveId }[]
+  /** v8 — optional id into `SIGNATURE_MAPS` (lib/underlord/maps.ts). When
+   * set, the region uses the bespoke XCOM-style hand-crafted map instead
+   * of cycling through the biome pool. Falls back gracefully if unknown. */
+  mapId?: string
   /** Only loot-bearing regions drop equipment on victory. The others give
    * gold + XP only, so a true item haul becomes a campaign milestone. */
   dropsLoot: boolean

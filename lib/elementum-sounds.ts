@@ -1,6 +1,41 @@
 // Lightweight Web Audio sound generator. No external assets.
 // Hardened: every parameter is validated to be finite & in-range.
 // Any failure inside a sound is swallowed so audio never crashes the app.
+//
+// v8 — soundcn layer: high-impact moments (damage, bomb, victory, defeat,
+// boss intro, ultimate, shop buy, stage clear, combo, click) now also fire
+// a real CC0 sample on top of the synthesized tone. The tone stays as a
+// fallback for SSR / no-AudioContext environments — and to keep the older
+// arcade flavor blended into the new richer feedback. All soundcn calls
+// fail silently and never block the engine.
+//
+// All assets are tree-shakeable inline base64 modules — no network fetch.
+
+import { playSound } from './sound-engine'
+import { clickSoftSound } from './click-soft'
+import { coinCollectSound } from './coin-collect'
+import { comboSound } from './combo'
+import { comboBreakerSound } from './combo-breaker'
+import { deathmatchSound } from './deathmatch'
+import { explosionCrunch002Sound } from './explosion-crunch-002'
+import { flawlessVictorySound } from './flawless-victory'
+import { iQuestCompleteSound } from './i-quest-complete'
+import { impactMetalHeavy001Sound } from './impact-metal-heavy-001'
+import { impactMetalLight002Sound } from './impact-metal-light-002'
+import { jinglesHit04Sound } from './jingles-hit-04'
+import { jinglesHit12Sound } from './jingles-hit-12'
+import { mDeathImpactLargeStoneASound } from './m-death-impact-large-stone-a'
+import type { SoundAsset } from './sound-types'
+
+/** Fire-and-forget soundcn sample. Returns immediately; the play call is
+ * async but we don't await it — audio errors must never propagate. */
+function sample(asset: SoundAsset, volume = 0.6, playbackRate = 1) {
+  try {
+    void playSound(asset.dataUri, { volume, playbackRate }).catch(() => {})
+  } catch {
+    // swallow — no AudioContext, locked autoplay, etc.
+  }
+}
 
 let ctx: AudioContext | null = null
 
@@ -129,6 +164,7 @@ export const sfx = {
     }
   },
   click: wrap(() => {
+    sample(clickSoftSound, 0.5)
     tone({ freq: 520, duration: 0.06, type: 'square', volume: 0.1 })
   }),
   tap: wrap(() => {
@@ -155,8 +191,25 @@ export const sfx = {
     tone({ freq: 440, duration: 0.1, type: 'triangle', volume: 0.12, delay: 0.12 })
   }),
   damage: wrap(() => {
+    // Light metal hit on top of the tone — gives every minor strike weight.
+    sample(impactMetalLight002Sound, 0.55)
     noise(0.12, 0.18)
     tone({ freq: 180, duration: 0.12, type: 'square', volume: 0.14, sweepTo: 60 })
+  }),
+  /** Heavy melee — used by the engine for crits & boss strikes. */
+  heavyHit: wrap(() => {
+    sample(impactMetalHeavy001Sound, 0.7)
+    tone({ freq: 140, duration: 0.16, type: 'square', volume: 0.16, sweepTo: 50 })
+  }),
+  /** Lighter ranged hit — used by the engine for arrow/bolt impacts. */
+  rangedHit: wrap(() => {
+    sample(jinglesHit04Sound, 0.5)
+    tone({ freq: 1200, duration: 0.05, type: 'triangle', volume: 0.1 })
+  }),
+  /** Magic / curse impact — used for splash and curse archetypes. */
+  magicHit: wrap(() => {
+    sample(jinglesHit12Sound, 0.55)
+    tone({ freq: 880, duration: 0.1, type: 'sine', volume: 0.12, sweepTo: 660 })
   }),
   powerup: wrap(() => {
     tone({ freq: 880, duration: 0.08, type: 'triangle', volume: 0.14 })
@@ -168,6 +221,8 @@ export const sfx = {
     tone({ freq: 1760, duration: 0.18, type: 'sine', volume: 0.16, delay: 0.1 })
   }),
   bomb: wrap(() => {
+    // Real explosion sample + the original lo-fi rumble = wide spectrum boom.
+    sample(explosionCrunch002Sound, 0.75)
     noise(0.4, 0.22)
     tone({ freq: 120, duration: 0.4, type: 'sawtooth', volume: 0.2, sweepTo: 30 })
   }),
@@ -177,17 +232,23 @@ export const sfx = {
     tone({ freq: 784, duration: 0.18, type: 'sine', volume: 0.14, delay: 0.16 })
   }),
   victory: wrap(() => {
+    // Mortal-Kombat-style "FLAWLESS VICTORY" + the chiptune fanfare.
+    sample(flawlessVictorySound, 0.7)
     ;[523, 659, 784, 1047].forEach((f, i) =>
       tone({ freq: f, duration: 0.18, type: 'square', volume: 0.16, delay: i * 0.12 }),
     )
   }),
   defeat: wrap(() => {
+    // "DEATHMATCH" / round-loss sample + descending tone tail.
+    sample(deathmatchSound, 0.65)
     ;[392, 330, 277, 220].forEach((f, i) =>
       tone({ freq: f, duration: 0.22, type: 'sawtooth', volume: 0.18, delay: i * 0.16 }),
     )
   }),
   combo: wrap((tierIn?: number) => {
     const tier = Math.max(0, Math.min(10, safeFinite(tierIn, 0)))
+    // Tier 3+ is "combo breaker" territory — sample shifts.
+    sample(tier >= 3 ? comboBreakerSound : comboSound, 0.6, 1 + tier * 0.04)
     const base = 600 + tier * 80
     ;[0, 1, 2, 3].forEach((i) => {
       tone({
@@ -208,27 +269,45 @@ export const sfx = {
     )
   }),
   ultimate: wrap(() => {
+    // Ultimate fires the explosion sample (crunchy boom) + combo-breaker
+    // for the "broken" feeling, layered with the existing rising sweep.
+    sample(explosionCrunch002Sound, 0.85)
+    sample(comboBreakerSound, 0.55, 0.9)
     noise(0.5, 0.2, 0, 200)
     tone({ freq: 90, duration: 0.5, type: 'sawtooth', volume: 0.22, sweepTo: 1200 })
     tone({ freq: 220, duration: 0.5, type: 'square', volume: 0.18, delay: 0.05, sweepTo: 1800 })
   }),
   stageClear: wrap(() => {
+    // Quest-complete jingle — stronger than victory tone alone.
+    sample(iQuestCompleteSound, 0.7)
     ;[523, 659, 784, 1047, 1319].forEach((f, i) =>
       tone({ freq: f, duration: 0.14, type: 'square', volume: 0.16, delay: i * 0.08 }),
     )
   }),
   shopOpen: wrap(() => {
+    sample(clickSoftSound, 0.6)
     tone({ freq: 700, duration: 0.1, type: 'triangle', volume: 0.12 })
     tone({ freq: 1100, duration: 0.14, type: 'triangle', volume: 0.12, delay: 0.08 })
   }),
   shopBuy: wrap(() => {
+    // Real coin pickup sample — far better than the synthesized chime.
+    sample(coinCollectSound, 0.7)
     tone({ freq: 880, duration: 0.08, type: 'square', volume: 0.14 })
     tone({ freq: 1320, duration: 0.12, type: 'square', volume: 0.14, delay: 0.06 })
   }),
   bossIntro: wrap(() => {
+    // Colossal stone-impact sample under the deep sub rumble = arena
+    // earthquake. Played slower to drag out the dread.
+    sample(mDeathImpactLargeStoneASound, 0.85, 0.85)
     tone({ freq: 60, duration: 0.6, type: 'sawtooth', volume: 0.22 })
     tone({ freq: 110, duration: 0.6, type: 'sawtooth', volume: 0.18, delay: 0.05 })
     noise(0.6, 0.16, 0.1, 100)
+  }),
+  /** Triggered when a boss uses its last-stand passive (1 HP save). */
+  bossLastStand: wrap(() => {
+    sample(comboBreakerSound, 0.7)
+    tone({ freq: 880, duration: 0.2, type: 'sawtooth', volume: 0.2, sweepTo: 220 })
+    tone({ freq: 60, duration: 0.4, type: 'sawtooth', volume: 0.16, delay: 0.1 })
   }),
   tick: wrap(() => {
     tone({ freq: 1200, duration: 0.03, type: 'square', volume: 0.06 })
