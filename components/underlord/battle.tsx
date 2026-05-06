@@ -64,6 +64,11 @@ import { rand, getHeroById, UNDERLORD_LINES } from "@/lib/elementum-flavor"
 import { Atmosphere } from "./atmosphere"
 import { haptic } from "@/lib/underlord/haptics"
 import {
+  flashFor,
+  playAttackVoice,
+  type FlashSpec,
+} from "@/lib/underlord/sfx-archetype"
+import {
   comboBonusPerStack,
   critChanceBonus,
   healMultiplier,
@@ -345,6 +350,14 @@ export function BattleScreen({
   })
   const state = local.state
   const [popups, setPopups] = useState<Popup[]>([])
+  /** Per-archetype attack flashes painted on the target hex(es). Each one
+   * is a short-lived SVG circle that fades out via CSS animation. The
+   * battle keeps a list and removes entries on `setTimeout` so the layer
+   * stays self-cleaning even if a unit attacks rapid-fire. */
+  const [flashes, setFlashes] = useState<
+    Array<{ id: string; x: number; y: number; spec: FlashSpec }>
+  >([])
+  const flashCounter = useRef(0)
   const [shake, setShake] = useState<0 | 1 | 2 | 3>(0)
   const [taunt, setTaunt] = useState<{ from: string; text: string } | null>(null)
   const [combo, setCombo] = useState(0)
@@ -423,6 +436,12 @@ export function BattleScreen({
       const beforeUnits = state.units
       // Tactical AI from stage 2 onward; stage 1 stays gentle for tutorial.
       const next = aiTakeTurn(state, active.id, region.stage >= 2)
+      // Voice + flash signature for the hero attacker. Plays once per AI
+      // turn, before the damage popups loop, so the audio leads the visual.
+      playAttackVoice(active.templateId, {
+        isOverlord: active.isOverlord,
+        faction: active.faction,
+      })
       // Visualize damage
       for (const u of next.units) {
         const before = beforeUnits.find((b) => b.id === u.id)
@@ -430,6 +449,17 @@ export function BattleScreen({
           const px = axialToPixel(u.pos)
           const dmg = before.hp - u.hp
           pushPopup(`-${dmg}`, "bad", px.x, px.y)
+          // Flash the target hex with the attacker's archetype color so
+          // the player can read "what just hit me" without scanning the
+          // turn order.
+          pushFlash(
+            px.x,
+            px.y,
+            flashFor(active.templateId, {
+              isOverlord: active.isOverlord,
+              faction: active.faction,
+            }),
+          )
           triggerShake(dmg >= 12 ? 3 : dmg >= 6 ? 2 : 1)
           haptic.hit()
         }
@@ -469,6 +499,21 @@ export function BattleScreen({
     const id = `p${popupCounter.current}`
     setPopups((p) => [...p, { id, x, y, text, tone }])
     window.setTimeout(() => setPopups((p) => p.filter((x) => x.id !== id)), 1100)
+  }
+
+  /**
+   * Spawn a per-archetype attack flash at a board pixel coordinate.
+   * Auto-cleans after `spec.ms`, with a small grace window so the CSS
+   * fade-out finishes before the SVG node is unmounted.
+   */
+  function pushFlash(x: number, y: number, spec: FlashSpec) {
+    flashCounter.current += 1
+    const id = `f${flashCounter.current}`
+    setFlashes((f) => [...f, { id, x, y, spec }])
+    window.setTimeout(
+      () => setFlashes((f) => f.filter((it) => it.id !== id)),
+      spec.ms + 60,
+    )
   }
 
   function triggerShake(intensity: 1 | 2 | 3) {
@@ -999,6 +1044,14 @@ export function BattleScreen({
         if (!firstBloodRef.current) firstBloodRef.current = true
         if (outcome.crit) critsLandedRef.current += 1
         haptic.hit()
+        // Per-archetype voice + flash. Fires once for the primary target,
+        // and again (smaller) for each splash hex below — keeps cleave/
+        // splash/volley feeling chunky without spamming sound.
+        const voiceCtx = {
+          isOverlord: active.isOverlord,
+          faction: active.faction,
+        }
+        playAttackVoice(active.templateId, voiceCtx)
         // Primary popup
         const px = axialToPixel(target.pos)
         const text = outcome.executed
@@ -1007,12 +1060,25 @@ export function BattleScreen({
             ? `-${outcome.damage}!`
             : `-${outcome.damage}`
         pushPopup(text, outcome.crit || outcome.executed ? "crit" : "good", px.x, px.y)
+        const primarySpec = flashFor(active.templateId, voiceCtx)
+        // Crits and executes paint the flash slightly bigger to sell the
+        // moment — same color, fatter ring/burst.
+        const primaryScale =
+          outcome.crit || outcome.executed
+            ? primarySpec.scale * 1.25
+            : primarySpec.scale
+        pushFlash(px.x, px.y, { ...primarySpec, scale: primaryScale })
         triggerShake(outcome.damage >= 14 ? 3 : outcome.damage >= 7 ? 2 : 1)
         bumpCombo(outcome.killed)
-        // Splash popups
+        // Splash popups + smaller flashes on each splash tile.
         for (const sh of outcome.splashHits) {
           const px2 = axialToPixel(sh.pos)
           pushPopup(`-${sh.damage}`, "good", px2.x, px2.y)
+          pushFlash(px2.x, px2.y, {
+            ...primarySpec,
+            scale: primarySpec.scale * 0.75,
+            ms: Math.round(primarySpec.ms * 0.7),
+          })
         }
         if (outcome.killed && Math.random() < 0.5) {
           setTaunt({ from: "UNDERLORD", text: rand(UNDERLORD_LINES.roundWin) })
@@ -1119,10 +1185,28 @@ export function BattleScreen({
             </p>
           </div>
 
+          {/* Inner board frame.
+              CRITICAL FIX (v7): the SVG uses preserveAspectRatio="xMidYMid
+              meet" — when the container's aspect doesn't match the
+              viewBox's, the SVG content letterboxes (centers itself with
+              empty bars) but the absolutely-positioned HTML overlays
+              (units, popups, flashes) keep using a flat `% of container`,
+              so they DRIFT off the hex centers. We lock the inner frame's
+              aspect ratio to viewW/viewH so SVG and HTML map 1:1 and the
+              units sit exactly on their tiles regardless of viewport. */}
           <div
-            className="relative h-full w-full"
+            className="relative mx-auto flex h-full w-full max-h-full items-center justify-center"
             style={{ paddingTop: "1.5rem", paddingBottom: "1.5rem" }}
           >
+            <div
+              className="relative w-full max-w-full"
+              style={{
+                aspectRatio: `${viewW} / ${viewH}`,
+                // Don't let the locked aspect push the board taller than
+                // the available main area when the device is short.
+                maxHeight: "100%",
+              }}
+            >
             <svg
               viewBox={`0 0 ${viewW} ${viewH}`}
               className="absolute inset-0 h-full w-full"
@@ -1580,6 +1664,42 @@ export function BattleScreen({
               </span>
             ))}
 
+            {/* Per-archetype attack flash overlay. Each entry is a tiny
+                animated SVG at the target hex; pointer-events-none so it
+                never interferes with hex tap. Anim is 100% CSS keyframes
+                in globals.css (.flash-burst / .flash-ring). */}
+            {flashes.map((f) => {
+              const cx = ((f.x + offsetX) / viewW) * 100
+              const cy = ((f.y + offsetY) / viewH) * 100
+              const sizePct = ((HEX_SIZE * 2 * f.spec.scale) / viewW) * 100
+              return (
+                <span
+                  key={f.id}
+                  className={cn(
+                    "pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full",
+                    f.spec.shape === "burst" ? "flash-burst" : "flash-ring",
+                  )}
+                  style={{
+                    left: `${cx}%`,
+                    top: `${cy}%`,
+                    width: `${sizePct}%`,
+                    aspectRatio: "1",
+                    backgroundColor:
+                      f.spec.shape === "burst" ? f.spec.color : "transparent",
+                    boxShadow:
+                      f.spec.shape === "burst"
+                        ? `0 0 24px ${f.spec.color}, 0 0 48px ${f.spec.color}`
+                        : `0 0 16px ${f.spec.color}`,
+                    border:
+                      f.spec.shape === "ring"
+                        ? `3px solid ${f.spec.color}`
+                        : "none",
+                    animationDuration: `${f.spec.ms}ms`,
+                  }}
+                />
+              )
+            })}
+
             {state.done ? (
               <div className="slam-in absolute inset-0 z-30 grid place-items-center bg-background/85 backdrop-blur-md">
                 <div className="text-center">
@@ -1600,6 +1720,7 @@ export function BattleScreen({
                 </div>
               </div>
             ) : null}
+            </div>
           </div>
         </div>
       </main>

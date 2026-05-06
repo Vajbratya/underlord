@@ -257,6 +257,24 @@
 .dmg-pop { animation: dmg-pop 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 .crit-pop { animation: crit-pop 1.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 .kill-puff { animation: kill-puff 0.7s ease-out forwards; }
+
+/* Per-archetype attack flash overlays (see lib/underlord/sfx-archetype.ts).
+   Two visual modes: "burst" (filled circle that scales up + fades) and
+   "ring" (hollow ring that expands while fading). Animation duration is
+   set inline via the `animationDuration` style so each archetype can pick
+   its own pace without polluting the keyframes. */
+@keyframes flash-burst {
+  0%   { transform: scale(0.4); opacity: 0; }
+  25%  { transform: scale(1.0); opacity: 0.85; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+@keyframes flash-ring {
+  0%   { transform: scale(0.3); opacity: 0; }
+  20%  { transform: scale(1.0); opacity: 1; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+.flash-burst { animation-name: flash-burst; animation-timing-function: ease-out; animation-fill-mode: forwards; }
+.flash-ring { animation-name: flash-ring; animation-timing-function: ease-out; animation-fill-mode: forwards; }
 .hit-flash { animation: hit-flash 0.35s ease-out; }
 .streak-bump { animation: streak-bump 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 .turn-banner { animation: turn-banner 1.4s cubic-bezier(.36,.07,.19,.97) forwards; }

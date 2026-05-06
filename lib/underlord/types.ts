@@ -25,18 +25,28 @@ export type MinionArchetype =
   | 'gorger'
   | 'wraith'
   | 'lich'
+  // v7 expansion — six new archetypes that diversify the late-game
+  // roster. Each maps to an existing AttackKind so the battle engine
+  // doesn't need new branches; they trade stats for distinct flavor +
+  // sound + flash signatures.
+  | 'behemoth'
+  | 'spore'
+  | 'oracle'
+  | 'ravager'
+  | 'wyrmling'
+  | 'crowlord'
 
 /**
  * Each archetype has a single distinguishing attack rule:
  *  - basic    : single target, full damage (heroes default).
- *  - cleave   : target full + adjacent enemies 50% (brown bruiser).
- *  - splash   : target full + all enemies within 1 hex of target 50% (red AOE).
- *  - execute  : single target, +50% damage if target HP < 40% (green assassin).
+ *  - cleave   : target full + adjacent enemies 50% (brown bruiser, ravager).
+ *  - splash   : target full + all enemies within 1 hex of target 50% (red AOE, wyrmling).
+ *  - execute  : single target, +50% damage if target HP < 40% (green assassin, wraith).
  *  - heal     : alternate action — restore 30% hpMax to ally (blue support).
- *  - pierce   : target full + tile beyond in attacker→target line 50% (grey siege).
- *  - curse    : ranged hex — full damage AND target's incoming damage +50% next round (bone).
- *  - siphon   : melee — full damage AND attacker heals 30% of damage dealt (gorger).
- *  - volley   : long-range AOE — target + every enemy within 2 hexes 50% (lich).
+ *  - pierce   : target full + tile beyond in attacker→target line 50% (grey siege, harpy).
+ *  - curse    : ranged hex — full damage AND target's incoming damage +50% next round (bone, oracle, crowlord).
+ *  - siphon   : melee — full damage AND attacker heals 30% of damage dealt (gorger, behemoth).
+ *  - volley   : long-range AOE — target + every enemy within 2 hexes 50% (lich, spore).
  */
 export type AttackKind =
   | 'basic'

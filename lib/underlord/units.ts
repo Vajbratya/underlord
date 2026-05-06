@@ -209,6 +209,139 @@ export const MINION_TEMPLATES: Record<MinionArchetype, UnitTemplate> = {
     unlockTier: 13,
     hasActiveSpecial: false,
   },
+
+  /* ----------- v7 expansion archetypes ----------- */
+  /* Unlock cadence is interleaved with the older progression tier so the
+     player gets a new toy every 2-3 levels instead of waiting until 13. */
+
+  behemoth: {
+    archetype: 'behemoth',
+    name: 'BEHEMOTH',
+    glyph: '⛰',
+    role: 'Tanque siphon implacável',
+    hp: 260,
+    move: 2,
+    atk: 55,
+    range: 1,
+    spd: 3,
+    tone: 'foreground',
+    flavor:
+      'Pesa toneladas. Anda devagar. Cada passo deixa pegada permanente no chão.',
+    attackKind: 'siphon',
+    abilityTag: 'COLOSSO',
+    abilityText:
+      'Cada golpe corpo-a-corpo cura 30% do dano. Mais HP que dois Gorgers somados.',
+    unlockTier: 5,
+    hasActiveSpecial: false,
+  },
+
+  spore: {
+    archetype: 'spore',
+    name: 'SPORE',
+    glyph: '✺',
+    role: 'Praga a distância',
+    hp: 70,
+    move: 3,
+    atk: 35,
+    range: 4,
+    spd: 7,
+    tone: 'accent',
+    flavor:
+      'Esporo flutuante. Frágil, mas o bolor acompanha quem encosta. Espirra como reza.',
+    attackKind: 'volley',
+    abilityTag: 'NUVEM',
+    abilityText:
+      'Solta nuvem de esporo a 4 hex. Atinge o alvo + todo inimigo em 2 hex (50% colateral).',
+    unlockTier: 7,
+    flying: true,
+    hasActiveSpecial: false,
+  },
+
+  oracle: {
+    archetype: 'oracle',
+    name: 'ORACLE',
+    glyph: '◉',
+    role: 'Profeta da vulnerabilidade',
+    hp: 90,
+    move: 3,
+    atk: 40,
+    range: 5,
+    spd: 6,
+    tone: 'gold',
+    flavor:
+      'Vê o futuro. Avisa quem vai morrer apontando — e a profecia se cumpre.',
+    attackKind: 'curse',
+    abilityTag: 'PROFECIA',
+    abilityText:
+      'Maldição a 5 hex. Alvo recebe +50% de dano de tudo durante o próximo round.',
+    unlockTier: 9,
+    hasActiveSpecial: false,
+  },
+
+  ravager: {
+    archetype: 'ravager',
+    name: 'RAVAGER',
+    glyph: '⚔',
+    role: 'Cleave em pé de guerra',
+    hp: 160,
+    move: 4,
+    atk: 65,
+    range: 1,
+    spd: 7,
+    tone: 'destructive',
+    flavor:
+      'Gira o machado, gira o pescoço, gira o estômago. Tudo pra fora ao mesmo tempo.',
+    attackKind: 'cleave',
+    abilityTag: 'TURBILHÃO',
+    abilityText:
+      'Ataque atinge o alvo + todo inimigo adjacente (50% colateral). Brown numa segunda-feira ruim.',
+    unlockTier: 11,
+    hasActiveSpecial: false,
+  },
+
+  wyrmling: {
+    archetype: 'wyrmling',
+    name: 'WYRMLING',
+    glyph: '𓆑',
+    role: 'Dragãozinho cuspe-fogo',
+    hp: 120,
+    move: 5,
+    atk: 70,
+    range: 3,
+    spd: 8,
+    tone: 'destructive',
+    flavor:
+      'Filhote de wyrm. Cospe fogo do tamanho do ego. Já é mais perigoso que o pai.',
+    attackKind: 'splash',
+    abilityTag: 'CUSPE',
+    abilityText:
+      'Cuspe a 3 hex. Atinge o alvo + todos os inimigos em 1 hex dele (50% colateral). Voa.',
+    unlockTier: 12,
+    flying: true,
+    hasActiveSpecial: false,
+  },
+
+  crowlord: {
+    archetype: 'crowlord',
+    name: 'CROWLORD',
+    glyph: '𓅓',
+    role: 'Corvo-mestre debuffador',
+    hp: 85,
+    move: 6,
+    atk: 35,
+    range: 4,
+    spd: 10,
+    tone: 'primary',
+    flavor:
+      'Bate asa no exato segundo da pancada. Os heróis chamam de "azar"; o exército chama de "TÁTICA".',
+    attackKind: 'curse',
+    abilityTag: 'PRESSÁGIO',
+    abilityText:
+      'Bicada-maldição a 4 hex. +50% dano recebido pelo alvo no próximo round. Voa, esquiva fácil.',
+    unlockTier: 14,
+    flying: true,
+    hasActiveSpecial: false,
+  },
 }
 
 let unitIdCounter = 0
@@ -383,6 +516,18 @@ function archMinionTitle(arch: MinionArchetype): string {
       return 'ESPECTRO'
     case 'lich':
       return 'ARCANISTA'
+    case 'behemoth':
+      return 'COLOSSO'
+    case 'spore':
+      return 'PRAGA'
+    case 'oracle':
+      return 'PROFETA'
+    case 'ravager':
+      return 'CARRASCO'
+    case 'wyrmling':
+      return 'WYRM'
+    case 'crowlord':
+      return 'CORVO'
   }
 }
 
@@ -428,6 +573,12 @@ const RECRUIT_NAMES: Record<MinionArchetype, string[]> = {
   gorger: ['MAW', 'GLUTT', 'GORE', 'CHOMP'],
   wraith: ['SHAD', 'VEIL', 'WISP', 'NEPH'],
   lich: ['VOSS', 'MORDA', 'KESS', 'GHAR'],
+  behemoth: ['DRAU', 'KORG', 'ULM', 'BHAAL'],
+  spore: ['MYC', 'PUFF', 'ROT', 'SIRN'],
+  oracle: ['VYRA', 'NOEM', 'ESYL', 'MORN'],
+  ravager: ['GHAR', 'KRELL', 'ZORN', 'BRUM'],
+  wyrmling: ['SCYTH', 'EMRYS', 'NID', 'VYR'],
+  crowlord: ['MORRIK', 'BRAN', 'NEVRA', 'VEX'],
 }
 
 let recruitCounter = 0
