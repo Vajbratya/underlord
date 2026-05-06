@@ -10,7 +10,11 @@
  * Você está cansado. Você está com raiva. E desta vez, você vai responder.
  */
 
-import type { MinionArchetype } from './underlord/types'
+import type {
+  EliteKind,
+  ElitePassiveId,
+  MinionArchetype,
+} from './underlord/types'
 
 export type Hero = {
   /** Internal id used by stage routing. */
@@ -34,6 +38,16 @@ export type Hero = {
   entourage: MinionArchetype[]
   /** Display flavor for the entourage (one-liner shown in war room briefing). */
   entourageLabel: string
+
+  /* ----- Elite (mini-boss / boss) fields, optional ----- */
+  /** When set, scales stats and badges this hero as a special encounter. */
+  eliteKind?: EliteKind
+  /** Which unique passive this elite carries; ignored if `eliteKind` empty. */
+  passiveId?: ElitePassiveId
+  /** Short PT-BR name for the unique gimmick, used in the briefing UI.
+   * Free-form so the catalog can flavor each boss differently from the
+   * mechanical passive label (e.g. "FÚRIA DO TRONO" instead of "ENRAGE"). */
+  passiveName?: string
 }
 
 /**
@@ -267,6 +281,288 @@ export const HEROES: Hero[] = [
     ],
     entourage: ['red', 'red', 'grey'],
     entourageLabel: 'Dois serafins-pirômanos e um arqueiro de raios solares.',
+    eliteKind: 'boss',
+    passiveId: 'aura-rage',
+    passiveName: 'CORONA SOLAR',
+  },
+
+  /* ============================================================
+   * MINI-BOSSES (8) — appear at intermediate stages.
+   * Each one has a unique passive and elevated entourage so they
+   * feel meaningfully different from a regular hero.
+   * ============================================================ */
+
+  {
+    id: 'mb-husk-king',
+    name: 'O REI-CASCA',
+    title: 'Mini-boss · estágio 3',
+    bio: 'Um morto que insiste em ser rei. Carrega a própria coroa enferrujada. Cada espinho da armadura tem uma história triste e duas mortes.',
+    entry: 'Eu reino aqui. Mesmo que o reino tenha apodrecido em volta.',
+    gloat: 'Adicionado à minha corte. Pode levantar agora — está morto também.',
+    underlordKill: 'O Rei-Casca cai. A casca permanece. A coroa rola.',
+    taunts: [
+      'Toda batida sua doi MENOS que a minha primeira morte.',
+      'Já tive coroa de verdade. Hoje uso de espinho.',
+      'Quem te apunhalar HOJE, vai sentir o que eu senti.',
+    ],
+    entourage: ['bone', 'bone', 'wraith'],
+    entourageLabel: 'Dois ossos da guarda real e um wraith que já foi conselheiro.',
+    eliteKind: 'miniboss',
+    passiveId: 'thorns',
+    passiveName: 'COROA DE ESPINHOS',
+  },
+  {
+    id: 'mb-twin-saints',
+    name: 'OS SANTOS GÊMEOS',
+    title: 'Mini-boss · estágio 6',
+    bio: 'Dois irmãos canonizados pelo mesmo bispo no mesmo dia. Quando um cai, o outro reza forte demais.',
+    entry: 'Em nome do nosso, e do nosso outro nome.',
+    gloat: 'Hoje o calendário ganha um santo a mais. Cuidado pra não ser você.',
+    underlordKill: 'Despromovidos. Ambos. Postumamente.',
+    taunts: [
+      'Reze conosco. Junte-se ao panteão. (Vagas limitadas.)',
+      'Você não consegue matar AMBOS, vilão.',
+      'Um sermão para cada lado da espada.',
+    ],
+    entourage: ['blue', 'blue', 'tidesinger'],
+    entourageLabel: 'Dois acólitos azulados e uma cantora-da-maré em transe.',
+    eliteKind: 'miniboss',
+    passiveId: 'revive',
+    passiveName: 'O OUTRO IRMÃO',
+  },
+  {
+    id: 'mb-mirror-knight',
+    name: 'A CAVALEIRA-ESPELHO',
+    title: 'Mini-boss · estágio 9',
+    bio: 'Capacete espelhado. Armadura espelhada. Devolve cada golpe — e cada insulto — refletido. Não tem rosto. Tem o seu rosto.',
+    entry: 'Olha pra mim. (Você se olha.)',
+    gloat: 'Você me bateu. Você se bateu. Bem feito.',
+    underlordKill: 'O espelho racha. Por dentro, ela tem o rosto de outra pessoa morrendo.',
+    taunts: [
+      'Cada gota sua, eu devolvo dobrada.',
+      'Se machuca? Eu também. (Você também.)',
+      'Não vou cansar antes de você.',
+    ],
+    entourage: ['grey', 'gargoyle', 'grey'],
+    entourageLabel: 'Dois flecheiros e uma gárgula que vê tudo de cima.',
+    eliteKind: 'miniboss',
+    passiveId: 'thorns',
+    passiveName: 'ARMADURA-ESPELHO',
+  },
+  {
+    id: 'mb-warden',
+    name: 'O CARCEREIRO INSAUSTO',
+    title: 'Mini-boss · estágio 11',
+    bio: 'Carcereiro do calabouço de baixo da torre. Quanto mais ele apanha, mais ele lembra do trabalho — e do quanto não foi pago.',
+    entry: 'Hora extra é sagrada. Você vai pagar a minha.',
+    gloat: 'Folha de ponto carimbada com o seu sangue.',
+    underlordKill: 'Demitido sem aviso. Pelas suas próprias chaves.',
+    taunts: [
+      'Cada arranhão me lembra do contrato.',
+      'O sindicato não vai gostar.',
+      'Vou levar isso pro RH. Spoiler: o RH é minha esposa.',
+    ],
+    entourage: ['behemoth', 'ravager', 'gorger'],
+    entourageLabel: 'Um colosso, um carrasco e um devorador — escolta de cela.',
+    eliteKind: 'miniboss',
+    passiveId: 'enrage',
+    passiveName: 'HORA EXTRA',
+  },
+  {
+    id: 'mb-temple-twins',
+    name: 'OS GÊMEOS-TEMPLO',
+    title: 'Mini-boss · estágio 13',
+    bio: 'Sacerdote e cavaleiro nascidos do mesmo ovo. Um cura, o outro mata. Trocam de função no meio do round.',
+    entry: 'Sermão e espada. Pode escolher pelo que morrer primeiro.',
+    gloat: 'Bençao seca. Pode descer.',
+    underlordKill: 'Os dois ovos quebraram juntos. Era hora.',
+    taunts: [
+      'Eu curo. Ele mata. Reciprocamente.',
+      'Ainda dá pra você se converter… até a próxima rodada.',
+      'Faz fila pra absolvição.',
+    ],
+    entourage: ['blue', 'oracle', 'crowlord'],
+    entourageLabel: 'Coral celeste: assistente, profeta e corvo-mestre.',
+    eliteKind: 'miniboss',
+    passiveId: 'lifesteal',
+    passiveName: 'COMUNHÃO',
+  },
+  {
+    id: 'mb-spore-priest',
+    name: 'O SACERDOTE-COGUMELO',
+    title: 'Mini-boss · estágio 15',
+    bio: 'Pegou um esporo da floresta proibida. Hoje ele é o esporo. Deixou de falar — fala em mofo. O mofo escuta.',
+    entry: 'Eu não sou um. Eu sou muitos. Cada um te quer ferido.',
+    gloat: 'Vou crescer no seu túmulo. Já marquei a data.',
+    underlordKill: 'Colhido com fogo. Adubo pra próxima geração de inimigos.',
+    taunts: [
+      'Cada gota sua… vira mais um de mim.',
+      'Sopra. SOPRA. Estou em você.',
+      'Você vai espirrar a minha vingança.',
+    ],
+    entourage: ['spore', 'spore', 'pyrelich'],
+    entourageLabel: 'Dois esporos voadores e um pyrelich que queima a infestação dos outros.',
+    eliteKind: 'miniboss',
+    passiveId: 'summon',
+    passiveName: 'BROTAÇÃO',
+  },
+  {
+    id: 'mb-debt-collector',
+    name: 'O COBRADOR DE DÍVIDAS',
+    title: 'Mini-boss · estágio 16',
+    bio: 'Subprefeito do reino, contratado de fora. Anda com livro-razão. Vai cobrar de você cada favor que seus ancestrais pediram.',
+    entry: 'Boa tarde. Tem 14 séculos de juros pra acertar.',
+    gloat: 'Quitação total. Agora me devolve a alma — está nos contratos.',
+    underlordKill: 'Calote registrado. Cobrador caiu. Imposto se foi com ele.',
+    taunts: [
+      'Tem boleto. Pode parcelar — em sangue.',
+      'Você assinou em vida. Em morte vale igual.',
+      'Multa por atraso: aplicada na cabeça.',
+    ],
+    entourage: ['succubus', 'grey', 'grey'],
+    entourageLabel: 'Uma sedutora-pacto e dois auditores armados.',
+    eliteKind: 'miniboss',
+    passiveId: 'time-stop',
+    passiveName: 'JUROS COMPOSTOS',
+  },
+  {
+    id: 'mb-dawn-herald',
+    name: 'A ARAUTO DA AURORA',
+    title: 'Mini-boss · estágio 17',
+    bio: 'Anuncia o amanhecer puxando o sol pelo cabelo. Quando ela aparece, é manhã — você gosta ou não.',
+    entry: 'Hoje é o dia que termina com você.',
+    gloat: 'Saudações ao novo dia. (Você não vê.)',
+    underlordKill: 'A aurora não veio. A noite é minha de novo.',
+    taunts: [
+      'Acorda, vilão. (Pra última vez.)',
+      'O sol pediu desculpas pelo que vou fazer.',
+      'Café da manhã: você.',
+    ],
+    entourage: ['red', 'wyrmling', 'pyrelich'],
+    entourageLabel: 'Um wyrm-filhote, um pyrelich e um pirômano da escolta solar.',
+    eliteKind: 'miniboss',
+    passiveId: 'phase',
+    passiveName: 'EM FASE COM O SOL',
+  },
+
+  /* ============================================================
+   * BOSSES (6) — endgame encounters. Heliarch (above) is also a
+   * boss. Together they cover stages 18-23 and the Eternity Loop.
+   * ============================================================ */
+
+  {
+    id: 'boss-iron-pope',
+    name: 'O PAPA-FERRO',
+    title: 'BOSS · estágio 18',
+    bio: 'Papa eleito por aclamação dos canhões. Não fala — só decreta. Cada decreto vira uma cunha de ferro no seu peito.',
+    entry: 'Eu sou a Igreja. Eu sou o Estado. Eu sou o ferro.',
+    gloat: 'Bula póstuma assinada. Bem-vindo ao Inferno administrado por mim.',
+    underlordKill: 'O Papa-Ferro derrete. O molde fica. O próximo papa já está no forno.',
+    taunts: [
+      'Excomungar é arte. Esculpo em você.',
+      'Pulpito de aço. Sermão de bigorna.',
+      'Vou te bater com o catecismo. (Edição encadernada em chumbo.)',
+    ],
+    entourage: ['behemoth', 'oracle', 'thornbeast', 'crowlord'],
+    entourageLabel: 'Comitiva pesada: colosso, profeta, caçador e corvo-conselheiro.',
+    eliteKind: 'boss',
+    passiveId: 'aura-rage',
+    passiveName: 'AURA DOGMÁTICA',
+  },
+  {
+    id: 'boss-tide-empress',
+    name: 'A IMPERATRIZ DAS MARÉS',
+    title: 'BOSS · estágio 19',
+    bio: 'Saiu do mar com tridente próprio e contrato de exclusividade. O oceano é dela; o continente, em negociação.',
+    entry: 'A maré vai e volta. Você só vai.',
+    gloat: 'Afogamento controlado. Selo de qualidade real.',
+    underlordKill: 'A maré recua. A coroa fica. (Eu fico com a coroa.)',
+    taunts: [
+      'Cada onda lembra de você. Eu, também.',
+      'Submersa, Submersa, Submersa — não eu, VOCÊ.',
+      'Aprenda a nadar em sangue.',
+    ],
+    entourage: ['tidesinger', 'tidesinger', 'leech', 'wyrmling'],
+    entourageLabel: 'Coral aquático: duas cantoras-da-maré, uma sanguessuga e um wyrm.',
+    eliteKind: 'boss',
+    passiveId: 'lifesteal',
+    passiveName: 'MARÉ DE SANGUE',
+  },
+  {
+    id: 'boss-time-warden',
+    name: 'O GUARDIÃO DO TEMPO',
+    title: 'BOSS · estágio 20',
+    bio: 'Vive em outro fluxo de tempo. Está sempre meio segundo à frente. Já viu sua morte; quer marcar de novo.',
+    entry: 'Já te vi cair. Vou te ver cair de novo. E de novo.',
+    gloat: 'Próximo ciclo, mesmo final. Eu saboreio.',
+    underlordKill: 'Quebrei o relógio. Agora o tempo é meu também.',
+    taunts: [
+      'Você já está morto. Só não percebeu.',
+      'Atraso seu, vilão.',
+      'Eu já joguei essa partida. Spoiler: você perde.',
+    ],
+    entourage: ['oracle', 'oracle', 'wyrmling', 'crowlord'],
+    entourageLabel: 'Dois oráculos sincronizados, um wyrm voador e um corvo-mestre.',
+    eliteKind: 'boss',
+    passiveId: 'time-stop',
+    passiveName: 'BIFURCAÇÃO TEMPORAL',
+  },
+  {
+    id: 'boss-final-hero',
+    name: 'O HERÓI FINAL',
+    title: 'BOSS · estágio 21',
+    bio: 'É TODOS os heróis que você matou, agora num só corpo. Tem o ego de Daggor, a fúria de Blazborn, o blá-blá do Padre Gregórius.',
+    entry: 'Sou todos eles. Aliás — sou TODOS eles juntos. (Eu lembro de cada um.)',
+    gloat: 'Vinte e tantos heróis dentro de um. Vinte e tantos motivos pra você ter morrido.',
+    underlordKill: 'Vinte e tantas almas sopradas pra fora num só sopro. Foi terapêutico.',
+    taunts: [
+      'Bryan diz oi. Tyrella manda a fatura. Daggor pede pra postar.',
+      'Você matou todos nós. Nós somos um. Adivinha o resto.',
+      'O reino confiou em mim. Erro deles. Erro fatal pra você.',
+    ],
+    entourage: ['ravager', 'crowlord', 'pyrelich', 'thornbeast'],
+    entourageLabel: 'Coro dos caídos: carrasco, corvo, pyrelich e caçador-de-feridos.',
+    eliteKind: 'boss',
+    passiveId: 'enrage',
+    passiveName: 'EGO COLETIVO',
+  },
+  {
+    id: 'boss-author',
+    name: 'O AUTOR',
+    title: 'BOSS · estágio 22',
+    bio: 'Escreveu este mundo. Vai escrever sua morte. Carrega a pena que assinou seu obituário ainda em rascunho.',
+    entry: 'Já estava no roteiro. Você é só o terceiro ato.',
+    gloat: 'Capítulo final entregue. Editorial muito satisfeito.',
+    underlordKill: 'Continuação cancelada. Universo refundado. Sem você.',
+    taunts: [
+      'Próxima fala sua: "isso não pode estar acontecendo".',
+      'Estou escrevendo enquanto você fala.',
+      'Boa-fé editorial: eu te avisei.',
+    ],
+    entourage: ['oracle', 'spore', 'gargoyle', 'succubus'],
+    entourageLabel: 'Personagens-arquétipo: profeta, praga, predador e tentadora.',
+    eliteKind: 'boss',
+    passiveId: 'phase',
+    passiveName: 'PRIMEIRA RASURA',
+  },
+  {
+    id: 'boss-eternity',
+    name: 'A ETERNIDADE',
+    title: 'BOSS FINAL · estágio 23',
+    bio: 'O fim. Em pessoa. Não tem rosto, tem padrão. Não fala, tem ressonância. Mata você no presente, no passado e no futuro — simultâneos.',
+    entry: 'Eu sou o que sempre foi. E o que finalmente vai parar.',
+    gloat: 'O ciclo termina aqui. (Você termina aqui.)',
+    underlordKill: 'A Eternidade caiu. O tempo continua. Eu venci o impossível.',
+    taunts: [
+      'Eu já te vi morrer. Em três tempos.',
+      'Você vai esquecer essa luta. Eu, não.',
+      'O que sempre foi, sempre será. (Você não.)',
+    ],
+    entourage: ['lich', 'pyrelich', 'crowlord', 'wyrmling', 'oracle'],
+    entourageLabel: 'A corte do fim: arcanista, pyrelich, corvo-mestre, wyrm e oráculo.',
+    eliteKind: 'boss',
+    passiveId: 'revive',
+    passiveName: 'CICLO ETERNO',
   },
 ]
 

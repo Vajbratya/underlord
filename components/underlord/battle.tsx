@@ -230,6 +230,17 @@ function buildBattle(
   }
 
   // ---- Heroes + their entourages ----
+  // Build a quick id → elite descriptor map. Heroes not in `eliteHeroes`
+  // spawn as regular units. Boss-tier regions usually flag the named
+  // marquee hero; mid-stage tracts flag a miniboss instead.
+  const eliteById = new Map<
+    string,
+    { kind: "miniboss" | "boss"; passiveId: import("@/lib/underlord/types").ElitePassiveId }
+  >()
+  for (const e of region.eliteHeroes ?? []) {
+    eliteById.set(e.id, { kind: e.kind, passiveId: e.passiveId })
+  }
+
   const heroUnits: Unit[] = []
   region.heroIds.forEach((heroId, i) => {
     const hero = getHeroById(heroId)
@@ -238,6 +249,7 @@ function buildBattle(
     const slot = region.heroIds.length === 1 ? 0.5 : i / (region.heroIds.length - 1)
     const desiredCol = Math.round(heroOffset + slot * (cols - 1))
     const heroPos = place({ q: desiredCol, r: heroRow })
+    const elite = eliteById.get(heroId)
 
     heroUnits.push(
       makeHero(
@@ -246,11 +258,22 @@ function buildBattle(
         "?",
         heroPos,
         region.stage,
+        elite,
       ),
     )
 
+    // Boss-tier heroes get TWO extra entourage slots so the encounter
+    // feels like a set-piece (3 minions instead of the usual 1-2). The
+    // bonus archetypes lean melee so the boss has front-line cover.
     const entRow = 1
-    const entourage = hero?.entourage ?? []
+    const baseEntourage = hero?.entourage ?? []
+    const bonusEntourage: typeof baseEntourage =
+      elite?.kind === "boss"
+        ? ["brown", "grey"]
+        : elite?.kind === "miniboss"
+          ? ["brown"]
+          : []
+    const entourage = [...baseEntourage, ...bonusEntourage]
     entourage.forEach((arch, eIdx) => {
       const side = eIdx % 2 === 0 ? -1 : 1
       const stride = Math.ceil((eIdx + 1) / 2)

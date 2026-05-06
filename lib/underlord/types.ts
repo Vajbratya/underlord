@@ -35,6 +35,17 @@ export type MinionArchetype =
   | 'ravager'
   | 'wyrmling'
   | 'crowlord'
+  // v8 expansion — eight more minion archetypes. Each maps to an existing
+  // AttackKind so the engine doesn't need new branches; differentiation
+  // comes from stats + voice/flash + flavor.
+  | 'golem'      // pierce tank — slow but with line damage
+  | 'gargoyle'   // flying basic — agile harasser
+  | 'leech'      // melee siphon — small but heals on hit
+  | 'succubus'   // ranged curse — debuffer
+  | 'pyrelich'   // ranged splash — fire AOE caster
+  | 'tidesinger' // ranged heal — water priestess
+  | 'ratking'    // melee cleave — swarm leader, low HP, fast
+  | 'thornbeast' // melee execute — bleeds out wounded prey
 
 /**
  * Each archetype has a single distinguishing attack rule:
@@ -136,7 +147,48 @@ export type Unit = {
   skillCooldowns?: Record<string, number>
   /** Per-skill once-per-battle spent flag — only the Overlord uses this. */
   skillSpent?: Record<string, boolean>
+
+  /* ---------- Elite (miniboss/boss) state ---------- */
+  /** Set on hero units that are minibosses or bosses. Drives HUD badge,
+   * stat boosts, and which passive the engine triggers. */
+  eliteKind?: EliteKind
+  /** ID into the elite passive registry. Only relevant when `eliteKind`
+   * is set; ignored on regular heroes/minions. */
+  passiveId?: ElitePassiveId
+  /** True after a one-shot passive has fired (revive used, summon used,
+   * enrage triggered, etc). Lets the engine guard against double-fire. */
+  passiveFired?: boolean
+  /** Set when `enrage` triggers — the engine multiplies outgoing ATK by
+   * this value on every subsequent attack until end of battle. */
+  enrageMult?: number
 }
+
+/* ---------- Elite enemies (mini-bosses & bosses) ---------- */
+
+/**
+ * Tier of a hero encounter. Affects stat scaling, entourage size, the HUD
+ * badge, and which passive ID the engine looks up.
+ *  - undefined: regular hero (current behavior).
+ *  - 'miniboss': +35% HP/ATK, larger entourage, one passive, glowing accent badge.
+ *  - 'boss':     +75% HP/ATK, two extra entourage slots, one passive, gold badge.
+ */
+export type EliteKind = 'miniboss' | 'boss'
+
+/**
+ * Discriminated union of unique elite passives. Each id is implemented in
+ * `lib/underlord/elite-passives.ts` and triggered at well-known engine
+ * hooks. New ids should always come with a no-op fallback so the engine
+ * stays robust to old saves / typos in the hero catalog.
+ */
+export type ElitePassiveId =
+  | 'thorns'         // reflects 30% of damage taken back to attacker
+  | 'aura-rage'      // adjacent enemy heroes/minions deal +25% damage
+  | 'enrage'         // when hero HP < 50%, gains +50% ATK permanently
+  | 'phase'          // first hit per round is reduced to 1 damage
+  | 'revive'         // first time the hero would die, revives at 50% HP
+  | 'summon'         // when HP first crosses 50%, spawns 2 archetype minions
+  | 'lifesteal'      // hero heals 25% of damage dealt back to itself
+  | 'time-stop'      // when killing a minion, hero acts again immediately
 
 /* ---------- Loot ---------- */
 

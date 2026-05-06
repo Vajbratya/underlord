@@ -21,7 +21,14 @@ import { axialEqual, axialKey, hexDistance, neighbors } from './hex'
 import type { Axial, Unit } from './types'
 import { SPECIALS } from './specials'
 import { OVERLORD_SKILLS } from './overlord-skills'
-import { makeBarrier } from './units'
+import { makeBarrier, makeHeroMinion } from './units'
+import {
+  onDealDamage,
+  onPostDamage,
+  onTakeDamage,
+  outgoingMult,
+  rearmPhasePassives,
+} from './elite-passives'
 
 /** Fire effect on a tile. Damages anyone standing on it at start of turn. */
 export type FireTile = {
@@ -36,8 +43,11 @@ export type FireTile = {
 
 export type Obstacle = {
   pos: Axial
-  /** Visual / tooltip kind — drives the glyph in the renderer. */
-  kind: 'rock' | 'pillar' | 'tree' | 'altar' | 'crystal'
+  /** Visual / tooltip kind — drives the glyph in the renderer. The
+   * authoritative union lives in `./maps` so any new terrain authored
+   * for the v7 biomes (bones/idol/wreck/ice/dune/coral) widens this
+   * automatically without editing the engine. */
+  kind: import('./maps').TerrainKind
 }
 
 /** Boon-derived effects the engine consults during a battle. The UI
@@ -267,14 +277,24 @@ export function attackUnit(
   const executed =
     att.attackKind === 'execute' && tgt.hp / tgt.hpMax < EXECUTE_THRESHOLD
   const kindMult = executed ? EXECUTE_MULT : 1
+  // Elite outgoing-damage multiplier (aura-rage from adjacent boss /
+  // self-applied enrage stack). Multiplies the attacker's punch BEFORE
+  // we run the target's damage-taken modifiers, so passives compound
+  // in the natural order: source buff → target resist.
+  const eliteOutMult = outgoingMult(att, s.units)
   const baseDmg =
     att.atk *
     variance *
     (crit ? CRIT_MULT : 1) *
     bonusMult *
     kindMult *
-    sombraBonus
-  const dmg = applyDamageMod(s, tgt, baseDmg)
+    sombraBonus *
+    eliteOutMult
+  const rawDmg = applyDamageMod(s, tgt, baseDmg)
+
+  // Elite incoming hooks (PHASE absorbs to 1, THORNS schedules a reflect).
+  const incoming = onTakeDamage(tgt, att, rawDmg)
+  const dmg = incoming.damage
 
   const newHp = Math.max(0, tgt.hp - dmg)
   const killed = newHp === 0
@@ -374,6 +394,93 @@ export function attackUnit(
     })
   }
 
+  /* ----------------------- ELITE PASSIVES ----------------------- */
+  // Build the post-damage patches AFTER target HP has settled. Order:
+  //   1. THORNS reflect → attacker takes a chunk back.
+  //   2. LIFESTEAL → attacker self-heals on a successful hit.
+  //   3. POST hooks on the TARGET (revive/enrage/summon).
+  //   4. POST hooks on COLLATERAL (each splash hex can also trigger).
+  // Anything that mutates the unit list returns a new array; we keep
+  // collapsing into `nextUnits` so each pass sees the latest state.
+  const passiveLogs: string[] = []
+
+  // 1. Thorns reflect from the primary target.
+  if (incoming.reflect > 0) {
+    const reflectDmg = incoming.reflect
+    nextUnits = nextUnits.map((u) => {
+      if (u.id !== att.id) return u
+      const newAttHp = Math.max(0, u.hp - reflectDmg)
+      return { ...u, hp: newAttHp, dead: newAttHp === 0 }
+    })
+    if (incoming.log) passiveLogs.push(incoming.log)
+  }
+
+  // 2. Lifesteal / time-stop on the ATTACKER.
+  const dealPatch = onDealDamage(att, dmg, killed)
+  if (dealPatch.selfHeal > 0) {
+    nextUnits = nextUnits.map((u) =>
+      u.id === att.id
+        ? {
+            ...u,
+            hp: Math.min(u.hpMax, u.hp + dealPatch.selfHeal),
+          }
+        : u,
+    )
+    if (dealPatch.log) passiveLogs.push(dealPatch.log)
+  }
+  if (dealPatch.bonusAction) {
+    // Time-stop: clear the attacker's `acted` flag so it can fire again
+    // this same turn. We deliberately don't refund `moved` — only the
+    // attack action repeats.
+    nextUnits = nextUnits.map((u) =>
+      u.id === att.id ? { ...u, acted: false } : u,
+    )
+    if (dealPatch.log) passiveLogs.push(dealPatch.log)
+  }
+
+  // 3. Post-damage on the target — revive/enrage/summon.
+  const tgtPost = onPostDamage(
+    nextUnits.find((u) => u.id === tgt.id) ?? tgt,
+    nextUnits,
+  )
+  if (tgtPost.units) nextUnits = tgtPost.units
+  if (tgtPost.log) passiveLogs.push(tgtPost.log)
+
+  // 3b. Materialize summons spawned by `onPostDamage`. We use
+  // `makeHeroMinion` so the spawn shows up correctly in the hero faction
+  // with the right archetype stats, then drop it on the closest empty
+  // neighbor of the elite. If no free hex, we silently skip (boss
+  // surrounded == no reinforcements, by design).
+  if (tgtPost.summons && tgtPost.summons.length > 0) {
+    const occupied = new Set(
+      nextUnits.filter((u) => !u.dead).map((u) => axialKey(u.pos)),
+    )
+    const elite = nextUnits.find((u) => u.id === tgt.id)
+    if (elite) {
+      for (const sum of tgtPost.summons) {
+        const slot = neighbors(sum.near).find((p) => !occupied.has(axialKey(p)))
+        if (!slot) continue
+        occupied.add(axialKey(slot))
+        const stage = Math.max(1, Math.round(elite.hpMax / 130))
+        nextUnits = [
+          ...nextUnits,
+          makeHeroMinion(sum.archetype, slot, stage, elite.name),
+        ]
+      }
+    }
+  }
+
+  // 4. Post-damage on COLLATERAL — every splash victim's elite passive
+  // can fire too (a splash that brings two minibosses to 49% will
+  // double-summon, by design).
+  for (const c of collateral) {
+    const colUnit = nextUnits.find((u) => u.id === c.unitId)
+    if (!colUnit?.eliteKind) continue
+    const colPost = onPostDamage(colUnit, nextUnits)
+    if (colPost.units) nextUnits = colPost.units
+    if (colPost.log) passiveLogs.push(colPost.log)
+  }
+
   const collateralKilled = collateral.filter((c) => c.killed).length
   const tag =
     att.attackKind === 'splash'
@@ -398,7 +505,10 @@ export function attackUnit(
     `${att.name} → ${tgt.name}: -${dmg}${crit ? ' CRIT' : ''}${tag}${
       killed ? ' (abatido)' : ''
     }${collateralKilled ? ` +${collateralKilled} colateral` : ''}`,
-  ].slice(-6)
+    // Append every elite passive that fired this exchange (THORNS,
+    // ENRAGE, REVIVE, etc) so the player can read the chain.
+    ...passiveLogs,
+  ].slice(-8)
 
   return {
     state: { ...s, units: nextUnits, log },
@@ -987,6 +1097,10 @@ export function endTurn(s: BattleState): BattleState {
       fires = fires
         .map((f) => ({ ...f, ttl: f.ttl - 1 }))
         .filter((f) => f.ttl > 0)
+      // Re-arm PHASE passives so the first hit of the new round is again
+      // absorbed. Other one-shot passives (revive, summon, enrage)
+      // intentionally stay fired for the rest of the battle.
+      units = rearmPhasePassives(units)
       nextOrder = sortInitiative(units)
       next = 0
       round += 1

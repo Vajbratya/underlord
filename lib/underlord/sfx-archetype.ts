@@ -131,6 +131,60 @@ function crowlordVoice() {
   sfx.rageGain()
 }
 
+/* v8 archetypes — eight more distinct voices. Each composes the existing
+ * `sfx` primitives so we don't ship new audio assets. */
+
+function golemVoice() {
+  // Stone grind + heavy thud.
+  sfx.shake()
+  sfx.damage()
+  sfx.tick()
+}
+
+function gargoyleVoice() {
+  // Wing snap + dive screech.
+  sfx.tap()
+  sfx.reveal()
+}
+
+function leechVoice() {
+  // Wet bite + tiny chime (siphon heal).
+  sfx.tap()
+  sfx.heal()
+}
+
+function succubusVoice() {
+  // Honeyed whisper sweep — same as bone curse but lighter.
+  sfx.reveal()
+  sfx.heal()
+}
+
+function pyrelichVoice() {
+  // Ignition + arcane peal.
+  sfx.bomb()
+  sfx.combo(2)
+}
+
+function tidesingerVoice() {
+  // Liquid harp — heal trio twice (priestess chant).
+  sfx.heal()
+  sfx.heal()
+}
+
+function ratkingVoice() {
+  // Skittering swarm + a bite.
+  sfx.tap()
+  sfx.tap()
+  sfx.tap()
+  sfx.damage()
+}
+
+function thornbeastVoice() {
+  // Bone-snap execute.
+  sfx.shake()
+  sfx.bomb()
+}
+
 const VOICE: Record<MinionArchetype, () => void> = {
   brown: brownVoice,
   red: redVoice,
@@ -148,6 +202,15 @@ const VOICE: Record<MinionArchetype, () => void> = {
   ravager: ravagerVoice,
   wyrmling: wyrmlingVoice,
   crowlord: crowlordVoice,
+  // v8 batch
+  golem: golemVoice,
+  gargoyle: gargoyleVoice,
+  leech: leechVoice,
+  succubus: succubusVoice,
+  pyrelich: pyrelichVoice,
+  tidesinger: tidesingerVoice,
+  ratking: ratkingVoice,
+  thornbeast: thornbeastVoice,
 }
 
 /** Special voice for the Underlord — louder, deeper, throne-room. */
@@ -210,6 +273,15 @@ const FLASH: Record<MinionArchetype, FlashSpec> = {
   ravager: { color: 'oklch(0.58 0.21 20)', scale: 1.4, ms: 280, shape: 'ring' },
   wyrmling: { color: 'oklch(0.66 0.18 50)', scale: 1.5, ms: 320, shape: 'burst' },
   crowlord: { color: 'oklch(0.55 0.08 280)', scale: 1.2, ms: 280, shape: 'ring' },
+  // v8 batch — distinguishable hues that don't collide with the older set.
+  golem: { color: 'oklch(0.60 0.04 240)', scale: 1.5, ms: 340, shape: 'burst' },
+  gargoyle: { color: 'oklch(0.50 0.04 220)', scale: 1.0, ms: 220, shape: 'ring' },
+  leech: { color: 'oklch(0.55 0.18 25)', scale: 1.0, ms: 220, shape: 'burst' },
+  succubus: { color: 'oklch(0.70 0.18 350)', scale: 1.2, ms: 280, shape: 'ring' },
+  pyrelich: { color: 'oklch(0.68 0.20 35)', scale: 1.6, ms: 380, shape: 'burst' },
+  tidesinger: { color: 'oklch(0.78 0.13 200)', scale: 1.3, ms: 320, shape: 'ring' },
+  ratking: { color: 'oklch(0.55 0.08 50)', scale: 1.2, ms: 240, shape: 'burst' },
+  thornbeast: { color: 'oklch(0.60 0.14 145)', scale: 1.3, ms: 280, shape: 'burst' },
 }
 
 const OVERLORD_FLASH: FlashSpec = {

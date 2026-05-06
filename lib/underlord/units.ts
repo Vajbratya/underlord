@@ -342,6 +342,182 @@ export const MINION_TEMPLATES: Record<MinionArchetype, UnitTemplate> = {
     flying: true,
     hasActiveSpecial: false,
   },
+
+  /* ----------- v8 expansion archetypes ----------- */
+  /* These eight fill the gaps in the bestiary so the Underlord roster
+     reaches 24 distinct units. Each leans on an existing AttackKind so
+     no engine work is needed; differentiation is stat curve + flavor +
+     voice (sfx-archetype.ts) + flash. */
+
+  golem: {
+    archetype: 'golem',
+    name: 'GOLEM',
+    glyph: '◰',
+    role: 'Tanque siege que perfura',
+    hp: 220,
+    move: 2,
+    atk: 50,
+    range: 2,
+    spd: 2,
+    tone: 'foreground',
+    flavor:
+      'Pedra animada com runa no peito. Anda como geleira. Quando bate, atravessa.',
+    attackKind: 'pierce',
+    abilityTag: 'IMPACTO',
+    abilityText:
+      'Soco perfurante a 2 hex. Atinge alvo + tile atrás dele (50%). HP descomunal.',
+    unlockTier: 6,
+    hasActiveSpecial: false,
+  },
+
+  gargoyle: {
+    archetype: 'gargoyle',
+    name: 'GARGOYLE',
+    glyph: '☷',
+    role: 'Voador hostigador',
+    hp: 95,
+    move: 6,
+    atk: 45,
+    range: 1,
+    spd: 9,
+    tone: 'foreground',
+    flavor:
+      'Acordou com fome depois de seis séculos pendurado numa fachada. Tudo é brunch agora.',
+    attackKind: 'basic',
+    abilityTag: 'ASA',
+    abilityText:
+      'Voador rápido. Move 6, ignora terreno. Garra simples mas chega aonde quer e quando quer.',
+    unlockTier: 8,
+    flying: true,
+    hasActiveSpecial: false,
+  },
+
+  leech: {
+    archetype: 'leech',
+    name: 'LEECH',
+    glyph: '∽',
+    role: 'Vampiro de bolso',
+    hp: 80,
+    move: 4,
+    atk: 38,
+    range: 1,
+    spd: 8,
+    tone: 'destructive',
+    flavor:
+      'Pequena, ágil, e cura no impacto. Mata em três turnos sem perder HP — e ainda agradece a nutrição.',
+    attackKind: 'siphon',
+    abilityTag: 'SUGA',
+    abilityText:
+      'Cada acerto cura 30% do dano. Não bate forte — só bate sempre.',
+    unlockTier: 7,
+    hasActiveSpecial: false,
+  },
+
+  succubus: {
+    archetype: 'succubus',
+    name: 'SUCCUBUS',
+    glyph: '⚉',
+    role: 'Maldição flertadora',
+    hp: 75,
+    move: 4,
+    atk: 32,
+    range: 4,
+    spd: 9,
+    tone: 'primary',
+    flavor:
+      'Sussurra "te juro que te amo" enquanto te transforma em alvo +50%. O herói nem percebeu.',
+    attackKind: 'curse',
+    abilityTag: 'BEIJO',
+    abilityText:
+      'Maldição a 4 hex. Alvo recebe +50% de dano por 1 round. Adora o herói romântico.',
+    unlockTier: 10,
+    flying: true,
+    hasActiveSpecial: false,
+  },
+
+  pyrelich: {
+    archetype: 'pyrelich',
+    name: 'PYRELICH',
+    glyph: '✸',
+    role: 'Necro-piromante AOE',
+    hp: 110,
+    move: 3,
+    atk: 60,
+    range: 5,
+    spd: 6,
+    tone: 'destructive',
+    flavor:
+      'Lich que cansou de magia gélida e descobriu napalm. Anda com manto chamuscado e cheiro de fim do mundo.',
+    attackKind: 'splash',
+    abilityTag: 'IGNIÇÃO',
+    abilityText:
+      'Bola de fogo a 5 hex. Alvo + adjacentes em chamas (50% colateral). Range alto, HP frágil.',
+    unlockTier: 11,
+    hasActiveSpecial: false,
+  },
+
+  tidesinger: {
+    archetype: 'tidesinger',
+    name: 'TIDESINGER',
+    glyph: '∿',
+    role: 'Suporte de cura ranged',
+    hp: 100,
+    move: 3,
+    atk: 25,
+    range: 4,
+    spd: 7,
+    tone: 'accent',
+    flavor:
+      'Canta em uma língua afogada. Os aliados regeneram. Os inimigos têm pesadelo com aquele refrão.',
+    attackKind: 'heal',
+    abilityTag: 'BÁLSAMO',
+    abilityText:
+      'Cura 30% do hpMax de um aliado em até 4 hex. Atira água-doce nos vivos.',
+    unlockTier: 9,
+    hasActiveSpecial: false,
+  },
+
+  ratking: {
+    archetype: 'ratking',
+    name: 'RATKING',
+    glyph: '⚒',
+    role: 'Cleave de enxame, frágil',
+    hp: 95,
+    move: 5,
+    atk: 50,
+    range: 1,
+    spd: 9,
+    tone: 'destructive',
+    flavor:
+      'Treze ratos amarrados pela cauda governando como um. Rouba moedas até quando você está vivo.',
+    attackKind: 'cleave',
+    abilityTag: 'MARÉ',
+    abilityText:
+      'Cleave melee — atinge alvo + adjacente (50%). Move 5. Frágil mas rápido pra caralho.',
+    unlockTier: 8,
+    hasActiveSpecial: false,
+  },
+
+  thornbeast: {
+    archetype: 'thornbeast',
+    name: 'THORNBEAST',
+    glyph: '✦',
+    role: 'Predador finalizador',
+    hp: 130,
+    move: 4,
+    atk: 70,
+    range: 1,
+    spd: 7,
+    tone: 'foreground',
+    flavor:
+      'Espera o herói cair em silêncio. Quando ataca, é coup-de-grâce — sempre. Cheiro de carne ferida é apetite.',
+    attackKind: 'execute',
+    abilityTag: 'CAÇA',
+    abilityText:
+      'Execute brutal: +50% dano se alvo está abaixo de 40% HP. Faz wraith parecer brando.',
+    unlockTier: 10,
+    hasActiveSpecial: false,
+  },
 }
 
 let unitIdCounter = 0
@@ -528,6 +704,22 @@ function archMinionTitle(arch: MinionArchetype): string {
       return 'WYRM'
     case 'crowlord':
       return 'CORVO'
+    case 'golem':
+      return 'GOLEM'
+    case 'gargoyle':
+      return 'CAÇADOR'
+    case 'leech':
+      return 'VAMPIRO'
+    case 'succubus':
+      return 'SEDUTORA'
+    case 'pyrelich':
+      return 'PIRO'
+    case 'tidesinger':
+      return 'MARÉ'
+    case 'ratking':
+      return 'PRAGA'
+    case 'thornbeast':
+      return 'CAÇA'
   }
 }
 
@@ -579,6 +771,14 @@ const RECRUIT_NAMES: Record<MinionArchetype, string[]> = {
   ravager: ['GHAR', 'KRELL', 'ZORN', 'BRUM'],
   wyrmling: ['SCYTH', 'EMRYS', 'NID', 'VYR'],
   crowlord: ['MORRIK', 'BRAN', 'NEVRA', 'VEX'],
+  golem: ['ROCH', 'KARN', 'GROL', 'STEN'],
+  gargoyle: ['STIR', 'PEREL', 'NOX', 'OSSA'],
+  leech: ['SLURM', 'BIB', 'GUL', 'SIRP'],
+  succubus: ['LYRA', 'NAEL', 'VESH', 'IRMA'],
+  pyrelich: ['PYRA', 'EMBR', 'HEX', 'FORG'],
+  tidesinger: ['MIRA', 'NEREN', 'KIRA', 'AELL'],
+  ratking: ['SCURG', 'FLEK', 'GROIT', 'PRAG'],
+  thornbeast: ['BARB', 'JAGAR', 'KORN', 'BRYL'],
 }
 
 let recruitCounter = 0
@@ -590,22 +790,42 @@ export function recruitMinion(archetype: MinionArchetype): Unit {
   return makeUnit(archetype, { q: 0, r: 0 }, { name })
 }
 
-/** Make a hero unit on the enemy team. */
+/**
+ * Make a hero unit on the enemy team.
+ *
+ * `elite` is optional — when provided, the hero spawns as a miniboss /
+ * boss with stat multipliers, gold/red badge tone, and a `passiveId` the
+ * engine reads from `lib/underlord/elite-passives.ts`. Regions tag heroes
+ * with `eliteHeroes: [{ id, kind, passiveId }]` to drive this.
+ */
 export function makeHero(
   heroId: string,
   name: string,
   glyph: string,
   pos: Axial,
   difficulty: number,
+  elite?: { kind: 'miniboss' | 'boss'; passiveId: import('./types').ElitePassiveId },
 ): Unit {
   // Heroes scale with difficulty (region stage 1-14) — XL numbers to match
   // the new minion economy. Boss heroes hit hard, take a beating.
   const tier = Math.max(1, Math.min(14, difficulty))
-  const hp = 110 + tier * 20
-  const atk = 30 + Math.floor(tier * 7)
+  let hp = 110 + tier * 20
+  let atk = 30 + Math.floor(tier * 7)
   const spd = 4 + Math.floor(tier / 3)
   const move = 3 + Math.floor(tier / 5)
   const range = tier >= 7 ? 2 : 1
+
+  // Elite stat overlay. Miniboss = +35% HP / +20% ATK; Boss = +75% / +40%.
+  // Engine handles the unique passive separately (see elite-passives.ts).
+  if (elite) {
+    const mult =
+      elite.kind === 'boss'
+        ? { hp: 1.75, atk: 1.4 }
+        : { hp: 1.35, atk: 1.2 }
+    hp = Math.round(hp * mult.hp)
+    atk = Math.round(atk * mult.atk)
+  }
+
   return {
     id: nextUnitId(),
     templateId: 'brown', // not used for heroes; visual only
@@ -619,7 +839,8 @@ export function makeHero(
     move,
     range,
     spd,
-    tone: 'foreground',
+    // Bosses get the gold ring; minibosses keep the hero red but flagged.
+    tone: elite?.kind === 'boss' ? 'gold' : 'foreground',
     acted: false,
     moved: false,
     dead: false,
@@ -627,6 +848,14 @@ export function makeHero(
     specialCd: 999,
     specialSpent: true,
     heroId,
+    // Elite tagging — engine reads `eliteKind` + `passiveId` to dispatch.
+    ...(elite
+      ? {
+          eliteKind: elite.kind,
+          passiveId: elite.passiveId,
+          passiveFired: false,
+        }
+      : {}),
   }
 }
 
