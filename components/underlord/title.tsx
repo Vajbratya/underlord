@@ -1,9 +1,12 @@
 "use client"
 
-import { Crown, Skull, Trash2 } from "lucide-react"
+import { useState } from "react"
+import { BookOpen, Crown, Skull, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { haptic } from "@/lib/underlord/haptics"
 import { Atmosphere } from "./atmosphere"
+import { Codex } from "./codex"
+import { InstallButton } from "@/components/pwa/install-button"
 
 export function TitleScreen({
   hasSave,
@@ -16,6 +19,7 @@ export function TitleScreen({
   onContinue: () => void
   onWipe: () => void
 }) {
+  const [showCodex, setShowCodex] = useState(false)
   function tap(fn: () => void) {
     return () => {
       haptic.select()
@@ -43,6 +47,22 @@ export function TitleScreen({
           {hasSave ? "SAVE PRESENTE" : "NOVO REINADO"}
         </span>
       </header>
+
+      {/* Secondary action strip — Codex + Install. Sits just below the
+          brand strip so it doesn't compete with the hero CTA but is still
+          easy to reach. Fades to muted styling so the eye still flows
+          down to CONTINUAR / NOVA CRUZADA. */}
+      <div className="relative z-10 flex w-full items-center justify-center gap-2 px-4 pt-2 sm:px-8 sm:pt-3">
+        <button
+          type="button"
+          onClick={tap(() => setShowCodex(true))}
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border-2 border-border bg-card/70 px-3 py-2 font-display text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground backdrop-blur transition active:scale-[0.97] hover:border-accent/60 hover:text-foreground"
+        >
+          <BookOpen className="size-3.5" />
+          CÓDEX
+        </button>
+        <InstallButton variant="pill" />
+      </div>
 
       {/* Title block — always vertically centered. `overflow-hidden` and a
           tighter clamp guarantee the hero word never bleeds outside the
@@ -149,6 +169,8 @@ export function TitleScreen({
           v0.4 · vertical slice
         </p>
       </footer>
+
+      {showCodex ? <Codex onClose={() => setShowCodex(false)} /> : null}
     </div>
   )
 }
