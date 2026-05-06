@@ -24,11 +24,11 @@ export function TitleScreen({
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col bg-background pb-safe pt-safe">
+    <div className="relative flex min-h-dvh w-full flex-col overflow-x-hidden bg-background pb-safe pt-safe">
       <Atmosphere src="/images/bg/title.jpg" intensity="default" embers={22} />
 
       {/* Top brand strip */}
-      <header className="relative z-10 flex w-full items-center justify-between gap-2 px-5 pt-4 sm:px-8">
+      <header className="relative z-10 flex w-full items-center justify-between gap-2 px-4 pt-3 sm:px-8 sm:pt-4">
         <span className="font-mono text-[9px] tracking-[0.32em] text-muted-foreground sm:text-[10px] sm:tracking-[0.36em]">
           VAEL&apos;THRAND · 814
         </span>
@@ -44,26 +44,30 @@ export function TitleScreen({
         </span>
       </header>
 
-      {/* Title block — vertically centered with hard caps so desktop stays compact */}
-      <main className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-end px-5 pb-3 text-center sm:justify-center sm:px-8 sm:pb-12">
+      {/* Title block — always vertically centered. `overflow-hidden` and a
+          tighter clamp guarantee the hero word never bleeds outside the
+          viewport on small phones. */}
+      <main className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center overflow-hidden px-4 py-4 text-center sm:px-8 sm:py-12">
         {/* Decorative chapter mark */}
-        <div className="mb-3 flex items-center gap-3 opacity-90">
-          <span className="h-px w-10 bg-gradient-to-r from-transparent to-accent/60" />
-          <span className="font-mono text-[9px] uppercase tracking-[0.4em] text-accent sm:text-[10px]">
+        <div className="mb-2.5 flex items-center gap-2.5 opacity-90 sm:gap-3">
+          <span className="h-px w-8 bg-gradient-to-r from-transparent to-accent/60 sm:w-10" />
+          <span className="font-mono text-[9px] uppercase tracking-[0.36em] text-accent sm:text-[10px] sm:tracking-[0.4em]">
             Capítulo Zero
           </span>
-          <span className="h-px w-10 bg-gradient-to-l from-transparent to-accent/60" />
+          <span className="h-px w-8 bg-gradient-to-l from-transparent to-accent/60 sm:w-10" />
         </div>
 
-        <p className="font-mono text-[9px] uppercase tracking-[0.32em] text-foreground/85 sm:text-xs">
+        <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.28em] text-foreground/85 sm:text-xs sm:tracking-[0.32em]">
           As Cinzas da Coroa Submersa
         </p>
 
-        {/* Hero title — clamp() guarantees a sane size from 360px phones to 4K monitors */}
+        {/* Hero title — `min-w-0` + `max-w-full` ensure the word ALWAYS fits.
+            The clamp scales conservatively so 9 letters of bold serif fit
+            on 320px phones up through 4K monitors. */}
         <h1
-          className="mt-2 font-display font-black uppercase leading-[0.82] tracking-tight text-foreground"
+          className="mt-2 max-w-full px-1 font-display font-black uppercase leading-[0.82] tracking-tight text-foreground"
           style={{
-            fontSize: "clamp(3.5rem, 18vw, 9rem)",
+            fontSize: "clamp(2.5rem, 12.5vw, 7rem)",
             textShadow:
               "0 0 30px oklch(0.55 0.21 22 / 0.55), 0 0 60px oklch(0.72 0.17 60 / 0.30), 0 4px 0 oklch(0.10 0.012 22)",
           }}
@@ -72,13 +76,13 @@ export function TitleScreen({
         </h1>
 
         {/* Underline ornament */}
-        <div className="mt-2 flex items-center gap-2 opacity-90">
-          <span className="h-px w-12 bg-gradient-to-r from-transparent to-primary" />
+        <div className="mt-3 flex items-center gap-2 opacity-90">
+          <span className="h-px w-10 bg-gradient-to-r from-transparent to-primary sm:w-12" />
           <span className="size-1.5 rotate-45 bg-primary" />
-          <span className="h-px w-12 bg-gradient-to-l from-transparent to-primary" />
+          <span className="h-px w-10 bg-gradient-to-l from-transparent to-primary sm:w-12" />
         </div>
 
-        <p className="mt-4 max-w-xs text-balance text-base font-bold leading-tight text-foreground sm:max-w-md sm:text-lg">
+        <p className="mt-4 max-w-xs text-balance text-[15px] font-bold leading-snug text-foreground sm:mt-5 sm:max-w-md sm:text-lg">
           Você foi enterrado por{" "}
           <span className="text-primary">14 séculos</span>.
           <br />
@@ -86,8 +90,8 @@ export function TitleScreen({
         </p>
       </main>
 
-      {/* PRIMARY ACTION ZONE — bottom 40% reserved for thumbs */}
-      <footer className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-2.5 px-5 pb-6 sm:px-8 sm:pb-7">
+      {/* PRIMARY ACTION ZONE — bottom of screen, thumb-friendly */}
+      <footer className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-2.5 px-4 pb-5 sm:px-8 sm:pb-7">
         {hasSave ? (
           <>
             <button
