@@ -668,6 +668,9 @@ export const REGIONS: Region[] = [
   }),
 
   /* =========================== STAGE 10 =========================== */
+  // Stage 10 mid-boss arena. Profecia is the boss (enrage at 50% HP),
+  // Baldrik is a thorns miniboss — punishes the player for hitting him
+  // melee, forcing ranged-archetype thinking before the final fight.
   r({
     id: 'usurper-hall',
     name: 'SALÃO DOS USURPADORES',
@@ -680,10 +683,18 @@ export const REGIONS: Region[] = [
     lore: 'Cada Underlord anterior deixou aqui sua coroa partida. Você vai precisar de algum lugar pra sentar.',
     goldReward: 1100,
     heroIds: ['profecia', 'baldrik'],
+    eliteHeroes: [
+      { id: 'profecia', kind: 'boss', passiveId: 'enrage' },
+      { id: 'baldrik', kind: 'miniboss', passiveId: 'thorns' },
+    ],
     dropsLoot: true,
   }),
 
   /* =========================== STAGE 14 (BOSS) =========================== */
+  // Final encounter — DOUBLE boss. Profecia revives once at 50% HP and
+  // Heliarch broadcasts a +25% damage aura to nearby allies. The combo is
+  // designed to feel unfair on first attempt: the player must pick which
+  // boss to bury first, knowing one of them will rescue itself.
   r({
     id: 'sunkencrown',
     name: 'A COROA SUBMERSA',
@@ -696,6 +707,10 @@ export const REGIONS: Region[] = [
     lore: 'A Profecia em Pessoa te aguarda. Heliarch também. Nem dão bom dia.',
     goldReward: 2400,
     heroIds: ['profecia', 'heliarch'],
+    eliteHeroes: [
+      { id: 'profecia', kind: 'boss', passiveId: 'revive' },
+      { id: 'heliarch', kind: 'boss', passiveId: 'aura-rage' },
+    ],
     dropsLoot: true,
   }),
 
@@ -775,6 +790,8 @@ export const REGIONS: Region[] = [
     heroIds: ['heliarch'],
     dropsLoot: false,
   }),
+  // Mid-game lifesteal miniboss — Kevin keeps healing himself off your
+  // squad. Forces the player to focus-fire instead of spreading damage.
   r({
     id: 'tide-throne',
     name: 'TRONO DA MARÉ',
@@ -787,6 +804,7 @@ export const REGIONS: Region[] = [
     lore: 'O assento se enche a cada lua. Quem reina respira a metade do tempo. Os outros, nenhum.',
     goldReward: 705,
     heroIds: ['kevin'],
+    eliteHeroes: [{ id: 'kevin', kind: 'miniboss', passiveId: 'lifesteal' }],
     dropsLoot: true,
   }),
 
@@ -895,6 +913,9 @@ export const REGIONS: Region[] = [
     heroIds: ['blazborn'],
     dropsLoot: false,
   }),
+  // Heliarch boss with summon (calls 2 minions at 50% HP) + Blazborn
+  // miniboss with thorns. The summon punishes a slow grind; thorns
+  // punishes burst — players have to balance their damage curve.
   r({
     id: 'volcan-temple',
     name: 'TEMPLO DO VULCAL',
@@ -907,6 +928,10 @@ export const REGIONS: Region[] = [
     lore: 'A erupção é argumentativa. Cada lasca de basalto é um postulado. Os fiéis morrem citados.',
     goldReward: 615,
     heroIds: ['heliarch', 'blazborn'],
+    eliteHeroes: [
+      { id: 'heliarch', kind: 'boss', passiveId: 'summon' },
+      { id: 'blazborn', kind: 'miniboss', passiveId: 'thorns' },
+    ],
     dropsLoot: true,
   }),
 ]
