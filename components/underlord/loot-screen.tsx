@@ -31,6 +31,7 @@ import { Atmosphere } from "./atmosphere"
 export function LootScreen({
   victory,
   goldEarned,
+  shardsEarned = 0,
   loot,
   fallenNames,
   killedHeroIds,
@@ -49,6 +50,8 @@ export function LootScreen({
 }: {
   victory: boolean
   goldEarned: number
+  /** Soulshards awarded by this battle. Shown as a chip alongside Gold. */
+  shardsEarned?: number
   loot: LootItem[]
   fallenNames: string[]
   killedHeroIds: string[]
@@ -219,6 +222,14 @@ export function LootScreen({
                   value={`+${goldShown}`}
                   tone="gold"
                   ticking={goldShown < goldEarned}
+                />
+                {/* Soulshards always drop. Shows on every battle so the
+                    player learns the alternate currency exists. */}
+                <RewardChip
+                  icon={<Gem className="size-3.5" />}
+                  label="Soulshards"
+                  value={`+${shardsEarned}`}
+                  tone="accent"
                 />
                 {comboMax >= 2 ? (
                   <RewardChip

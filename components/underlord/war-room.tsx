@@ -12,6 +12,7 @@ import {
   Lock,
   Map,
   Shield,
+  ShoppingBag,
   Skull,
   Sparkles,
   Swords,
@@ -28,6 +29,10 @@ import { getHero } from "@/lib/elementum-flavor"
 import { haptic } from "@/lib/underlord/haptics"
 import { xpProgress } from "@/lib/underlord/meta"
 import { squadCap } from "@/lib/underlord/perks"
+import {
+  canClaimDailyShards,
+  DAILY_SHARD_POUCH,
+} from "@/lib/underlord/economy"
 import { Atmosphere } from "./atmosphere"
 
 const TONE_TO_VAR: Record<string, string> = {
@@ -44,6 +49,11 @@ const BIOME_COLOR: Record<Region["biome"], string> = {
   iron: "oklch(0.62 0.025 240)",
   verdant: "oklch(0.55 0.13 140)",
   crown: "oklch(0.78 0.14 78)",
+  // New biomes from v6 — colored to read distinct on the world map dot.
+  // Tundra: pale cyan-white. Dunes: sun-bleached gold. Abyss: deep black-cyan.
+  tundra: "oklch(0.85 0.04 220)",
+  dunes: "oklch(0.78 0.14 90)",
+  abyss: "oklch(0.30 0.08 220)",
 }
 
 const BIOME_LABEL: Record<Region["biome"], string> = {
@@ -52,6 +62,9 @@ const BIOME_LABEL: Record<Region["biome"], string> = {
   iron: "FERRO",
   verdant: "VIÇO",
   crown: "COROA",
+  tundra: "TUNDRA",
+  dunes: "DUNAS",
+  abyss: "ABISMO",
 }
 
 export function WarRoom({
@@ -61,6 +74,7 @@ export function WarRoom({
   onOpenForge,
   onOpenSkillMap,
   onOpenBoons,
+  onOpenMarket,
   streakBonus,
 }: {
   save: SaveState
@@ -69,12 +83,16 @@ export function WarRoom({
   onOpenForge: () => void
   onOpenSkillMap: () => void
   onOpenBoons: () => void
+  onOpenMarket: () => void
   streakBonus?: number | null
 }) {
   const xp = xpProgress(save.xp)
   // Cap scales with Underlord level (+2 minions per level past 1) on top
   // of the EXÉRCITO perk ranks.
   const cap = squadCap(save.perks, xp.level)
+  // Daily Soulshard pouch readiness — drives the MERCADO button glow so
+  // the player has a clear "free reward waiting" affordance.
+  const pouchReady = canClaimDailyShards(save)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = REGIONS.find((r) => r.id === selectedId) ?? null
   // Glow the SKILLS button when the player has unlocked skills they
@@ -231,6 +249,34 @@ export function WarRoom({
                   {save.perkPoints}
                 </span>
               ) : null}
+            </button>
+            {/* Mercado Negro — daily-rotating loot shop. Glows when the
+                daily Soulshard pouch is unclaimed (see canClaimDailyShards). */}
+            <button
+              type="button"
+              onClick={() => {
+                haptic.select()
+                onOpenMarket()
+              }}
+              aria-label="Mercado Negro"
+              title={
+                pouchReady
+                  ? `Mercado Negro · saco diário disponível (+${DAILY_SHARD_POUCH} Soulshards)`
+                  : "Mercado Negro"
+              }
+              className={cn(
+                "relative flex h-7 shrink-0 items-center gap-1 rounded-sm border px-2 font-mono text-[9px] font-black uppercase tracking-[0.18em] transition active:scale-95",
+                pouchReady
+                  ? "border-gold bg-gold/15 text-gold ready-pulse"
+                  : "border-border bg-card/70 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <ShoppingBag className="size-3" />
+              <span className="hidden sm:inline">MERCADO</span>
+              <span className="flex items-center gap-0.5 rounded bg-card/80 px-1 font-display text-[10px] leading-none tabular-nums text-foreground">
+                <Gem className="size-2.5" />
+                {save.soulshards ?? 0}
+              </span>
             </button>
           </div>
         </div>

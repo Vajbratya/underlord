@@ -392,6 +392,13 @@ const PATTERNS_BY_BIOME: Record<Biome, MapLayout[]> = {
   ash: ASH_PATTERNS,
   verdant: VERDANT_PATTERNS,
   crown: CROWN_PATTERNS,
+  // The three v6 biomes don't yet have bespoke layout pools — they reuse
+  // thematically-closest existing pools so all 60+ regions are playable
+  // immediately. Bespoke pools can be authored later without breaking the
+  // grid build, since `pickMapLayout` falls back to MOOR_PATTERNS anyway.
+  tundra: IRON_PATTERNS, // frozen ground reads like cobble/iron
+  dunes: ASH_PATTERNS, // hot, exposed, sparse cover
+  abyss: MOOR_PATTERNS, // flooded, low-vis, treacherous footing
 }
 
 /** Pick a layout for a region. Deterministic — same region → same map. */

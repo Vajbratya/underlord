@@ -11,6 +11,7 @@ import { SquadPicker } from "@/components/underlord/squad-picker"
 import { Forge } from "@/components/underlord/forge"
 import { SkillMap } from "@/components/underlord/skill-map"
 import { BoonsPanel } from "@/components/underlord/boons-panel"
+import { BlackMarket } from "@/components/underlord/black-market"
 import {
   AchievementToaster,
   fireAchievement,
@@ -40,6 +41,7 @@ export function UnderlordGame() {
   const [showForge, setShowForge] = useState(false)
   const [showSkillMap, setShowSkillMap] = useState(false)
   const [showBoons, setShowBoons] = useState(false)
+  const [showMarket, setShowMarket] = useState(false)
   const [streakBonusToShow, setStreakBonusToShow] = useState<number | null>(null)
   const dailyCheckedToday = useRef<string>("")
 
@@ -145,6 +147,7 @@ export function UnderlordGame() {
           onOpenForge={() => setShowForge(true)}
           onOpenSkillMap={() => setShowSkillMap(true)}
           onOpenBoons={() => setShowBoons(true)}
+          onOpenMarket={() => setShowMarket(true)}
           streakBonus={streakBonusToShow}
         />
         {showSquadPicker ? (
@@ -175,6 +178,19 @@ export function UnderlordGame() {
           <BoonsPanel
             ownedBoons={state.save.boons ?? []}
             onClose={() => setShowBoons(false)}
+          />
+        ) : null}
+        {showMarket ? (
+          <BlackMarket
+            save={state.save}
+            onClaimDaily={() => dispatch({ type: "claim-shards" })}
+            onBuy={(itemId, price, item) =>
+              dispatch({ type: "bm-buy", itemId, price, item })
+            }
+            onDismantle={(lootId) =>
+              dispatch({ type: "dismantle-loot", lootId })
+            }
+            onClose={() => setShowMarket(false)}
           />
         ) : null}
         <AchievementToaster />
@@ -266,6 +282,7 @@ export function UnderlordGame() {
         <LootScreen
           victory={result.victory}
           goldEarned={result.goldEarned}
+          shardsEarned={result.shardsEarned}
           xpEarned={result.xpEarned}
           levelsGained={result.levelsGained}
           perkPointsGained={result.perkPointsGained}

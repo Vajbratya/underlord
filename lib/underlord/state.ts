@@ -27,6 +27,14 @@ import {
   unlockedSkillIds,
 } from './overlord-skills'
 import { aggregateBoons, BOONS, rollBoonChoices } from './boons'
+import {
+  canClaimDailyShards,
+  DAILY_SHARD_POUCH,
+  dismantleValue,
+  lossConsolationShards,
+  todayKey as economyTodayKey,
+  winRewardShards,
+} from './economy'
 
 const STORAGE_KEY = 'underlord-save-v5'
 const LEGACY_KEY_V4 = 'underlord-save-v4'
@@ -40,6 +48,9 @@ export type GameState = {
   lastResult: {
     victory: boolean
     goldEarned: number
+    /** Soulshards awarded by this battle (win or loss). Surfaced on the
+     * loot screen so the player learns the alt currency exists. */
+    shardsEarned: number
     xpEarned: number
     loot: LootItem[]
     fallenIds: string[]
@@ -96,6 +107,11 @@ export function freshSave(name: string): SaveState {
     equippedSkills: DEFAULT_LOADOUT.slice(0, SKILL_SLOTS),
     // No boons accumulated yet — every victory is a chance to grab one.
     boons: [],
+    // Economy v2 — Soulshards start at 0; player earns them by winning,
+    // dismantling, or claiming the daily pouch.
+    soulshards: 0,
+    lastShardClaimDay: '',
+    blackMarketBought: [],
   }
 }
 
@@ -169,6 +185,11 @@ function migrateLegacy(parsed: { save?: Partial<SaveState> }): SaveState | null 
     // Older saves carry no boons — that's fine, they'll start picking
     // them on their next victory.
     boons: ((s as Partial<SaveState>).boons ?? []).filter((id) => !!BOONS[id]),
+    // Economy v2 fields — preserve when present, otherwise seed at 0 so
+    // a returning player gets the daily pouch on their next login.
+    soulshards: (s as Partial<SaveState>).soulshards ?? 0,
+    lastShardClaimDay: (s as Partial<SaveState>).lastShardClaimDay ?? '',
+    blackMarketBought: (s as Partial<SaveState>).blackMarketBought ?? [],
   }
 }
 
@@ -262,6 +283,15 @@ export type Action =
   | { type: 'respec' }
   | { type: 'set-skill-loadout'; skillIds: string[] }
   | { type: 'pick-boon'; boonId: string }
+  /** Claim today's daily Soulshard pouch. No-op if already claimed. */
+  | { type: 'claim-shards' }
+  /** Dismantle an inventory item into Soulshards. Removes the item and
+   * adds shards based on its rarity (see `dismantleValue`). */
+  | { type: 'dismantle-loot'; lootId: string }
+  /** Buy an item from the daily Black Market. Charges shards, adds the
+   * item to inventory, and marks the offer as spent so it can't be
+   * re-bought today. */
+  | { type: 'bm-buy'; itemId: string; price: number; item: LootItem }
   | { type: 'reset' }
 
 function unlockNew(save: SaveState, ids: AchievementId[]): {
@@ -421,6 +451,15 @@ export function reduce(state: GameState, action: Action): GameState {
         Math.floor(goldEarned * goldMult(save.perks) * boonBag.goldMult),
       )
 
+      // Soulshard rewards. Wins pay full freight, losses get a small
+      // consolation drip so wipes still feel like progress. Counted
+      // BEFORE the rest of the win/loss bookkeeping so both branches
+      // can read the same value cleanly.
+      const shardsEarned = result.victory
+        ? winRewardShards(region.stage)
+        : lossConsolationShards(region.stage)
+      save.soulshards = (save.soulshards ?? 0) + shardsEarned
+
       if (result.victory) {
         save.gold += goldFinal
         save.inventory = [...save.inventory, ...loot]
@@ -429,7 +468,13 @@ export function reduce(state: GameState, action: Action): GameState {
         )
         save.battlesWon += 1
 
-        const gotRare = loot.some((l) => l.rarity === 'cursed' || l.rarity === 'relic')
+        // Pity counter resets on cursed-or-better. Legendaries also count.
+        const gotRare = loot.some(
+          (l) =>
+            l.rarity === 'cursed' ||
+            l.rarity === 'relic' ||
+            l.rarity === 'legendary',
+        )
         save.battlesSinceRare = gotRare ? 0 : save.battlesSinceRare + 1
 
         const regions = { ...save.regions, [region.id]: 'cleared' as RegionStatus }
@@ -473,6 +518,7 @@ export function reduce(state: GameState, action: Action): GameState {
         lastResult: {
           victory: result.victory,
           goldEarned: goldFinal + bonusGold,
+          shardsEarned,
           xpEarned,
           loot,
           fallenIds: result.fallenIds,
@@ -547,6 +593,62 @@ export function reduce(state: GameState, action: Action): GameState {
         ...state,
         save,
         lastResult: { ...result, boonChoices: [] },
+      }
+    }
+    case 'claim-shards': {
+      // Daily login pouch. Idempotent: claiming twice in the same UTC
+      // day is a no-op so a player can't farm it by remounting the modal.
+      if (!canClaimDailyShards(state.save)) return state
+      return {
+        ...state,
+        save: {
+          ...state.save,
+          soulshards: (state.save.soulshards ?? 0) + DAILY_SHARD_POUCH,
+          lastShardClaimDay: economyTodayKey(),
+        },
+      }
+    }
+    case 'dismantle-loot': {
+      // Find the inventory entry. Equipped items aren't dismantle-eligible
+      // here (the UI hides them); the check is just a safety net.
+      const item = state.save.inventory.find((i) => i.id === action.lootId)
+      if (!item) return state
+      const reward = dismantleValue(item.rarity)
+      return {
+        ...state,
+        save: {
+          ...state.save,
+          inventory: state.save.inventory.filter((i) => i !== item),
+          soulshards: (state.save.soulshards ?? 0) + reward,
+        },
+      }
+    }
+    case 'bm-buy': {
+      // Validate: enough shards, not already bought today. The price
+      // arrives in the action so the reducer doesn't have to know the
+      // shop seed — it's whatever the UI showed at click time.
+      if ((state.save.soulshards ?? 0) < action.price) return state
+      if ((state.save.blackMarketBought ?? []).includes(action.itemId)) {
+        return state
+      }
+      // Each BM purchase clones the catalog entry into a fresh inventory
+      // row with a unique id so two purchases of the same item don't
+      // collide on the equip-by-id lookup.
+      const cloned: LootItem = {
+        ...action.item,
+        id: `${action.item.id}-bm-${Date.now().toString(36)}`,
+      }
+      return {
+        ...state,
+        save: {
+          ...state.save,
+          soulshards: state.save.soulshards - action.price,
+          inventory: [...state.save.inventory, cloned],
+          blackMarketBought: [
+            ...(state.save.blackMarketBought ?? []),
+            action.itemId,
+          ],
+        },
       }
     }
     case 'reset':
