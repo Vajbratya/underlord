@@ -107,11 +107,21 @@ export function UnderlordGame() {
             setHasSave(false)
           }}
           onContinue={() => {
+            // Hydrate the actual saved tree into the reducer in a single
+            // tick — no `window.location.reload()`. The old code reloaded
+            // the page, which (a) caused a one-frame flicker of WarRoom
+            // backed by an empty `freshGame()` state, and (b) bounced
+            // straight back to Title because `useReducer`'s initializer
+            // always runs `freshGame()` on mount and the persisted save
+            // was never re-injected. `load-save` swaps the entire
+            // GameState atomically and the next render is the real run.
             const saved = loadGame()
             if (saved) {
-              dispatch({ type: "phase", phase: "warroom" })
-              window.location.reload()
+              dispatch({ type: "load-save", state: saved })
             } else {
+              // Save disappeared (cleared between mount and click) — start
+              // a fresh campaign rather than getting stuck on Title.
+              setHasSave(false)
               dispatch({ type: "phase", phase: "intro" })
             }
           }}

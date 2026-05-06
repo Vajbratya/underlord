@@ -293,6 +293,13 @@ export type Action =
    * re-bought today. */
   | { type: 'bm-buy'; itemId: string; price: number; item: LootItem }
   | { type: 'reset' }
+  /** v8 — Replace the entire game state with a fresh hydration from
+   * persistence. Used by the Title screen's "CONTINUAR" button so we can
+   * resume a save WITHOUT a `window.location.reload()` (which caused a
+   * one-frame flicker followed by a reset to Title because the page
+   * remount initialized `useReducer` with `freshGame()` again). The
+   * payload comes straight from `loadGame()`. */
+  | { type: 'load-save'; state: GameState }
 
 function unlockNew(save: SaveState, ids: AchievementId[]): {
   achievements: string[]
@@ -316,6 +323,11 @@ export function reduce(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'phase':
       return { ...state, phase: action.phase }
+    case 'load-save':
+      // Trust the loader — it already migrated and validated. Replacing
+      // the whole tree (rather than spreading) means no stale fragments
+      // from the title-screen `freshGame()` leak into the resumed run.
+      return action.state
     case 'set-name':
       return { ...state, save: { ...state.save, underlordName: action.name } }
     case 'select-region':
