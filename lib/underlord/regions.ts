@@ -473,9 +473,12 @@ export const REGIONS: Region[] = [
     x: 52,
     y: 86,
     links: ['ember-isthmus', 'wretch-quay', 'tide-throne'],
+    // Kraken-rise reused — shipwreck arena fits "três vozes" choir + boss.
+    mapId: 'kraken-rise',
     lore: 'O Senhor do Mar perdeu o trono pra um tubarão letrado. Voltou do exílio. Trouxe currículo.',
     goldReward: 670,
-    heroIds: ['heliarch', 'profecia'],
+    heroIds: ['mb-temple-twins', 'heliarch', 'profecia'],
+    eliteHeroes: [{ id: 'mb-temple-twins', kind: 'miniboss', passiveId: 'lifesteal' }],
     dropsLoot: true,
   }),
   r({
@@ -517,9 +520,12 @@ export const REGIONS: Region[] = [
     x: 94,
     y: 48,
     links: ['salt-tomb', 'wyrm-shelf', 'glasspriest'],
+    // Sandstorm-spire reused with a different cast — solar mirage variant.
+    mapId: 'sandstorm-spire',
     lore: 'Os habitantes te cumprimentam. Não estão lá. Os cumprimentos, sim.',
     goldReward: 700,
-    heroIds: ['vexanna'],
+    heroIds: ['mb-dawn-herald', 'vexanna'],
+    eliteHeroes: [{ id: 'mb-dawn-herald', kind: 'miniboss', passiveId: 'phase' }],
     dropsLoot: true,
   }),
   r({
@@ -567,6 +573,10 @@ export const REGIONS: Region[] = [
 
   /* =========================== STAGE 8 =========================== */
   r({
+    // The-gauntlet — narrow vertical corridor matches the prison-chimney
+    // theme. Carcereiro at the top, you climb up under fire.
+    mapId: 'the-gauntlet',
+    eliteHeroes: [{ id: 'mb-warden', kind: 'miniboss', passiveId: 'enrage' }],
     id: 'hollow-belfry',
     name: 'CAMPANÁRIO OCO',
     subtitle: 'Sino sem badalo, badalo sem sino',
@@ -617,6 +627,9 @@ export const REGIONS: Region[] = [
     x: 36,
     y: 24,
     links: ['cracked-prophecy', 'inverse-monastery'],
+    // Buried-archive (chess shelves) reused for a verdant tomb-library look.
+    mapId: 'buried-archive',
+    eliteHeroes: [{ id: 'mb-spore-priest', kind: 'miniboss', passiveId: 'summon' }],
     lore: 'Cantam doze horas, descansam zero. Quem ouve até o fim concorda em qualquer coisa.',
     goldReward: 850,
     heroIds: ['vexanna', 'tyrella'],
