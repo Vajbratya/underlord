@@ -130,7 +130,10 @@ export type Unit = {
 
 /* ---------- Loot ---------- */
 
-export type LootRarity = 'common' | 'uncommon' | 'cursed' | 'relic'
+/** Loot rarity ladder. `legendary` was added in v6 — drops only from
+ * boss-tier regions and the Black Market. Cursed/relic remain the bulk
+ * of mid/late drops. */
+export type LootRarity = 'common' | 'uncommon' | 'cursed' | 'relic' | 'legendary'
 
 export type LootItem = {
   id: string
@@ -155,7 +158,19 @@ export type Region = {
   name: string
   subtitle: string
   stage: number
-  biome: 'ash' | 'moor' | 'iron' | 'verdant' | 'crown'
+  /** Tag drives map layout pool, ground tinting, and HUD biome chip.
+   * Three new biomes were added in v6: `tundra` (north of the tower,
+   * frozen crusader-ground), `dunes` (Vael'Thrand's southern singing
+   * desert), and `abyss` (the flooded base of the Subtower). */
+  biome:
+    | 'ash'
+    | 'moor'
+    | 'iron'
+    | 'verdant'
+    | 'crown'
+    | 'tundra'
+    | 'dunes'
+    | 'abyss'
   x: number
   y: number
   links: string[]
@@ -251,4 +266,17 @@ export type SaveState = {
    * 3 random unowned ids and the player commits to one. Stack
    * multiplicatively (HP/ATK) and additively (crit, lifesteal). */
   boons: string[]
+
+  /* ---- Economy v2 — Soulshards & Black Market ---- */
+  /** Soulshards: secondary currency. Earned by dismantling unwanted
+   * loot, awarded as a consolation on every battle, and as a daily-login
+   * bonus. Spent at the Black Market for guaranteed-rarity items. */
+  soulshards: number
+  /** ISO date (YYYY-MM-DD) of the last day the player claimed the
+   * daily-login Soulshard pouch. Reset every UTC midnight. */
+  lastShardClaimDay: string
+  /** Item ids the player has already bought from today's Black Market
+   * stock. Stops them from re-buying the same offer. Cleared each day
+   * automatically when the BM rotates. */
+  blackMarketBought: string[]
 }
