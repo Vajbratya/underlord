@@ -21,6 +21,7 @@
  * No new types are introduced — every patch is plain Unit fields.
  */
 
+import { sfx } from '@/lib/elementum-sounds'
 import { neighbors } from './hex'
 import type { Axial } from './types'
 import type { ElitePassiveId, Unit } from './types'
@@ -136,6 +137,9 @@ export function onPostDamage(
   // ENRAGE — first time HP drops below 50%, double-down.
   if (passive === 'enrage' && !target.passiveFired) {
     if (target.hp > 0 && target.hp / target.hpMax < 0.5) {
+      // Boss roar — heavy hit + bomb feel.
+      sfx.heavyHit()
+      sfx.bomb()
       const next = allUnits.map((u) =>
         u.id === target.id
           ? { ...u, enrageMult: 1.5, passiveFired: true }
@@ -152,6 +156,9 @@ export function onPostDamage(
   if (passive === 'revive' && !target.passiveFired) {
     if (target.hp <= 0) {
       const restored = Math.max(1, Math.round(target.hpMax * 0.5))
+      // The signature "boss came back" sound — combo-breaker layered
+      // under a deep sweep. Fires once per boss.
+      sfx.bossLastStand()
       const next = allUnits.map((u) =>
         u.id === target.id
           ? { ...u, hp: restored, dead: false, passiveFired: true }
@@ -167,6 +174,8 @@ export function onPostDamage(
   // SUMMON — first time HP < 50%, spawn 2 archetype minions nearby.
   if (passive === 'summon' && !target.passiveFired) {
     if (target.hp > 0 && target.hp / target.hpMax < 0.5) {
+      // Reinforcements arrive — magic shimmer + boss intro thud.
+      sfx.bossIntro()
       const next = allUnits.map((u) =>
         u.id === target.id ? { ...u, passiveFired: true } : u,
       )

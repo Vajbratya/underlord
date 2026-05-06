@@ -1,9 +1,25 @@
 let audioContext: AudioContext | null = null;
 const bufferCache = new Map<string, AudioBuffer>();
 
+/**
+ * Lazily get (or create) the AudioContext. SSR-safe: if `window` does
+ * not exist OR the AudioContext constructor isn't available we throw a
+ * recognizable error so callers can catch and fall back silently.
+ *
+ * Locked-autoplay browsers leave the context in `suspended` state until
+ * the first user gesture; `playSound` calls `resume()` before playing.
+ */
 export function getAudioContext(): AudioContext {
+  if (typeof window === "undefined") {
+    throw new Error("AudioContext unavailable in SSR");
+  }
   if (!audioContext) {
-    audioContext = new AudioContext();
+    const Ctor =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!Ctor) throw new Error("AudioContext not supported in this browser");
+    audioContext = new Ctor();
   }
   return audioContext;
 }

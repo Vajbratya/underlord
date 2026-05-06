@@ -38,9 +38,15 @@ export type FlashSpec = {
 /*  before user-gesture audio unlock.                                       */
 /* ----------------------------------------------------------------------- */
 
+// v8 — voices now classify their hit kind so the right soundcn sample
+// plays underneath: heavy metal slam (brown/golem/behemoth/thornbeast/gorger/
+// ravager), light metal/range tick (green/grey/harpy/oracle/leech), magical
+// jingle (bone/blue/lich/succubus/pyrelich/crowlord/spore/tidesinger/
+// gargoyle/wyrmling/wraith). The fall-through tones still play.
+
 function brownVoice() {
-  // Heavy thud, square wave, low frequency.
-  sfx.damage()
+  // Heavy thud — full brute slam.
+  sfx.heavyHit()
   sfx.shake()
 }
 
@@ -50,71 +56,74 @@ function redVoice() {
 }
 
 function greenVoice() {
-  // Quick stab: high tap, sharp falloff.
-  sfx.tap()
+  // Quick stab: high tap, sharp falloff. Light metal hit.
+  sfx.rangedHit()
   sfx.click()
 }
 
 function blueVoice() {
   // Chime trio — same as `sfx.heal`, intentional reuse.
+  sfx.magicHit()
   sfx.heal()
 }
 
 function greyVoice() {
-  // Bowstring twang then dull thunk.
+  // Bowstring twang then dull thunk — ranged.
+  sfx.rangedHit()
   sfx.tick()
-  sfx.shake()
 }
 
 function boneVoice() {
   // Eerie hiss + low whistle (curse drift).
+  sfx.magicHit()
   sfx.rageGain()
-  sfx.tick()
 }
 
 function harpyVoice() {
   // Two quick high taps + a sweep down (stoop).
+  sfx.rangedHit()
   sfx.tap()
-  sfx.tap()
-  sfx.shake()
 }
 
 function gorgerVoice() {
   // Wet chomp: bomb compressed, plus a heal chime (lifesteal).
-  sfx.damage()
+  sfx.heavyHit()
   sfx.heal()
 }
 
 function wraithVoice() {
-  // Phase whoosh — reveal sweep.
+  // Phase whoosh — reveal sweep with a magic shimmer.
+  sfx.magicHit()
   sfx.reveal()
 }
 
 function lichVoice() {
   // Crystalline ascending arpeggio = ultimate magic.
+  sfx.magicHit()
   sfx.powerup()
 }
 
 function behemothVoice() {
-  // Earth-shaker — bomb + double shake.
-  sfx.bomb()
+  // Earth-shaker — heavy slam + double shake.
+  sfx.heavyHit()
   sfx.shake()
 }
 
 function sporeVoice() {
   // Whisper-puff. Pure noise sweep, very short.
-  sfx.reveal()
+  sfx.magicHit()
   sfx.tick()
 }
 
 function oracleVoice() {
   // Bell-like prophecy — combo arpeggio.
+  sfx.rangedHit()
   sfx.combo(3)
 }
 
 function ravagerVoice() {
-  // Whirlwind — 3 quick damage thumps in a row.
-  sfx.damage()
+  // Whirlwind — 3 quick heavy thumps in a row.
+  sfx.heavyHit()
   sfx.damage()
   sfx.shake()
 }
@@ -122,13 +131,13 @@ function ravagerVoice() {
 function wyrmlingVoice() {
   // Dragon breath — bomb + ascending heat tone.
   sfx.bomb()
-  sfx.powerup()
+  sfx.magicHit()
 }
 
 function crowlordVoice() {
   // Crow caw + curse hiss.
+  sfx.magicHit()
   sfx.tap()
-  sfx.rageGain()
 }
 
 /* v8 archetypes — eight more distinct voices. Each composes the existing
@@ -136,52 +145,51 @@ function crowlordVoice() {
 
 function golemVoice() {
   // Stone grind + heavy thud.
+  sfx.heavyHit()
   sfx.shake()
-  sfx.damage()
   sfx.tick()
 }
 
 function gargoyleVoice() {
   // Wing snap + dive screech.
-  sfx.tap()
+  sfx.magicHit()
   sfx.reveal()
 }
 
 function leechVoice() {
   // Wet bite + tiny chime (siphon heal).
-  sfx.tap()
+  sfx.rangedHit()
   sfx.heal()
 }
 
 function succubusVoice() {
   // Honeyed whisper sweep — same as bone curse but lighter.
-  sfx.reveal()
+  sfx.magicHit()
   sfx.heal()
 }
 
 function pyrelichVoice() {
   // Ignition + arcane peal.
   sfx.bomb()
-  sfx.combo(2)
+  sfx.magicHit()
 }
 
 function tidesingerVoice() {
   // Liquid harp — heal trio twice (priestess chant).
-  sfx.heal()
+  sfx.magicHit()
   sfx.heal()
 }
 
 function ratkingVoice() {
   // Skittering swarm + a bite.
-  sfx.tap()
-  sfx.tap()
+  sfx.rangedHit()
   sfx.tap()
   sfx.damage()
 }
 
 function thornbeastVoice() {
   // Bone-snap execute.
-  sfx.shake()
+  sfx.heavyHit()
   sfx.bomb()
 }
 

@@ -298,6 +298,29 @@ function buildBattle(
     source: 'biome',
   }))
 
+  // If this region declared any elite heroes, fire the boss-intro stinger
+  // ONCE at battle build. Adds drama before the player even sees the board.
+  // Tries with a tiny rAF delay so the AudioContext has a chance to be
+  // unlocked by the click that started the battle.
+  if (region.eliteHeroes && region.eliteHeroes.length > 0) {
+    if (typeof window !== "undefined") {
+      const fire = () => {
+        try {
+          // Lazy import to avoid pulling sound code into any SSR path that
+          // somehow imports this builder. Browser-only.
+          void import("@/lib/elementum-sounds").then(({ sfx }) => {
+            sfx.bossIntro()
+          })
+        } catch {
+          /* swallow — audio failures must not block the build */
+        }
+      }
+      // requestAnimationFrame so the click's user-gesture audio unlock has
+      // already resolved by the time we hit `getAudioContext().resume()`.
+      window.requestAnimationFrame(fire)
+    }
+  }
+
   return initBattle(
     [...placedSquad, overlord, ...heroUnits],
     cols,
