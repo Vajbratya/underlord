@@ -34,6 +34,7 @@ import {
   DAILY_SHARD_POUCH,
 } from "@/lib/underlord/economy"
 import { Atmosphere } from "./atmosphere"
+import { WorldMap } from "./world-map"
 
 const TONE_TO_VAR: Record<string, string> = {
   primary: "var(--primary)",
@@ -303,17 +304,14 @@ export function WarRoom({
             <span className="h-px flex-1 bg-gradient-to-l from-transparent to-border" />
           </div>
 
-          <div className="flex flex-col gap-2.5">
-            {REGIONS.map((r, idx) => (
-              <RegionCard
-                key={r.id}
-                region={r}
-                index={idx}
-                status={save.regions[r.id]}
-                onTap={() => pickRegion(r.id)}
-              />
-            ))}
-          </div>
+          {/* The actual interactive Crusade map. Replaces the old vertical
+              list (which never used the `x`/`y`/`links` data on Region).
+              Tapping a node opens the same RegionDrawer used previously. */}
+          <WorldMap
+            save={save}
+            selectedId={selectedId}
+            onSelectRegion={pickRegion}
+          />
         </div>
       </main>
 
@@ -383,7 +381,10 @@ export function WarRoom({
   )
 }
 
-function RegionCard({
+// RegionCard was the old list-style row. Replaced by `WorldMap`'s SVG
+// nodes; kept exported in case any downstream view wants to reuse a
+// list rendering. Currently unused inside this file.
+function _RegionCard({
   region,
   index,
   status,
