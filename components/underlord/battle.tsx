@@ -62,6 +62,7 @@ import {
 } from "@/lib/underlord/overlord-skills"
 import { rand, getHeroById, UNDERLORD_LINES } from "@/lib/elementum-flavor"
 import { Atmosphere } from "./atmosphere"
+import { ObjectiveBanner } from "./objective-banner"
 import { haptic } from "@/lib/underlord/haptics"
 import {
   flashFor,
@@ -334,6 +335,12 @@ function buildBattle(
       // Boon: Sopro Vital — start-of-round regen as % of hpMax.
       hpRegenStartOfRound: bag.hpRegenStartOfRound,
     },
+    // v9 — region-defined battle objective. Defaults to classic rout
+    // when the field is missing, which preserves every legacy region.
+    region.objective ?? { kind: "rout" },
+    // v9 — interactive walkable features (vents, spike pits) drawn
+    // from the bespoke map layout. Empty for legacy biome maps.
+    layout.features ?? [],
   )
 }
 
@@ -1215,6 +1222,14 @@ export function BattleScreen({
             </div>
           ) : null}
         </div>
+        {/* v9 — Objective banner. Renders only when the region declares
+            anything other than the default `rout`, keeping the standard
+            "kill them all" missions clean. The banner shows a goal
+            label, a parameter (rounds remaining, target name, ward
+            name), and an icon. Tucked between the header text and the
+            initiative ladder so it's the first thing read after the
+            region name. */}
+        <ObjectiveBanner state={state} />
         <div className="border-t border-border/40">
           <div className="mx-auto w-full max-w-2xl px-2 py-1.5">
             <InitiativeLadder state={state} />
@@ -1392,6 +1407,49 @@ export function BattleScreen({
                         {TERRAIN_GLYPH[obstacle.kind]}
                       </text>
                     ) : null}
+                    {/* v9 — walkable feature glyphs.
+                        Vents pulse when their cooldown is 1 (about to
+                        fire); spike pits stay quiet but readable. We
+                        skip drawing when a fire is already on the
+                        tile (the fire visual takes over). */}
+                    {(() => {
+                      if (obstacle || fire) return null
+                      const feat = (state.features ?? []).find(
+                        (f) => f.pos.q === t.q && f.pos.r === t.r,
+                      )
+                      if (!feat) return null
+                      const isVent = feat.kind === "vent"
+                      const armed = isVent && (feat.cooldown ?? 99) <= 1
+                      return (
+                        <text
+                          x={cx}
+                          y={cy + HEX_SIZE * 0.18}
+                          textAnchor="middle"
+                          pointerEvents="none"
+                          className={cn(armed && "ready-pulse")}
+                          style={{
+                            fontSize: HEX_SIZE * 0.6,
+                            fontWeight: 900,
+                            fill: isVent
+                              ? armed
+                                ? "oklch(0.78 0.18 50 / 0.95)"
+                                : "oklch(0.62 0.10 220 / 0.85)"
+                              : "oklch(0.55 0.21 22 / 0.9)",
+                            filter:
+                              "drop-shadow(0 0 4px oklch(0 0 0 / 0.7))",
+                          }}
+                        >
+                          <title>
+                            {isVent
+                              ? armed
+                                ? "Respiradouro · ignição iminente"
+                                : "Respiradouro · vapor"
+                              : "Fosso de espinhos · 4 dano ao terminar o turno"}
+                          </title>
+                          {isVent ? "≋" : "✸"}
+                        </text>
+                      )
+                    })()}
                   </g>
                 )
               })}

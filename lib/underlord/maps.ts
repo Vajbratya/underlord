@@ -52,11 +52,42 @@ export type TerrainKind =
   | 'dune'
   | 'coral'
 
+/**
+ * v9 — interactive, WALKABLE tile features. Unlike obstacles (which
+ * are always impassable visual decoration), features have rules:
+ *
+ *   - 'vent'      : every 2 rounds, ignites a fire on its own tile
+ *                   with TTL 2. The renderer paints a steam glyph.
+ *                   The map author places these to create rhythmic
+ *                   no-go zones (ash + iron forges).
+ *   - 'spike-pit' : any unit that ENDS its turn on this tile takes
+ *                   4 damage. Doesn't expire. Forces the AI/player
+ *                   to think about footprint, not just destination.
+ *
+ * Features are stored in a parallel array (`features`) on `BattleState`
+ * so we never have to widen `Obstacle` and break renderers that look
+ * for hard walls. Empty by default — every legacy map continues to
+ * work without features.
+ */
+export type MapFeatureKind = 'vent' | 'spike-pit'
+
+export type MapFeature = {
+  pos: Axial
+  kind: MapFeatureKind
+  /** Internal counter used by the engine. For `vent`: rounds until
+   * next ignition (2 → 1 → 0 → ignite + reset to 2). For `spike-pit`:
+   * unused. Authors should leave this undefined; the engine seeds it
+   * from `kind` at `initBattle`. */
+  cooldown?: number
+}
+
 export type MapLayout = {
   cols: number
   rows: number
   /** Impassable terrain hexes. */
   obstacles: { pos: Axial; kind: TerrainKind }[]
+  /** v9 — Optional walkable interactive tiles. */
+  features?: MapFeature[]
   /** Hexes that ignite at battle start (ash/coastal/abyss ambient hazards). */
   prelitFires: Axial[]
   /** Tag used by the renderer for ground-color tinting. */

@@ -5,10 +5,12 @@ import { useMemo, useState } from "react"
 import {
   ChevronRight,
   Coins,
+  Crosshair,
   Crown,
   Flame,
   Gem,
   Hammer,
+  Hourglass,
   Lock,
   Map,
   Shield,
@@ -622,6 +624,11 @@ function RegionDrawer({
             {region.lore}
           </p>
 
+          {/* v9 — show non-default objectives BEFORE the player commits.
+              Lets them swap squads if they're walking into a Survive or
+              Assassinate. Default rout is implicit so we hide it. */}
+          <RegionObjectiveCard region={region} />
+
           <div>
             <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.32em] text-muted-foreground">
               Defensores
@@ -705,6 +712,95 @@ function RegionDrawer({
                   : "INVADIR"}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * RegionObjectiveCard — drawer-side preview of the v9 battle objective.
+ *
+ * Shows nothing for the default (`rout` or missing) so the standard
+ * "kill them all" missions stay quiet. For everything else it surfaces
+ * a tonally-distinct card with goal label + parameter so the player
+ * knows the win condition before committing the squad.
+ */
+function RegionObjectiveCard({ region }: { region: Region }) {
+  const obj = region.objective
+  if (!obj || obj.kind === "rout") return null
+
+  let icon = <Skull className="size-3.5" />
+  let label = ""
+  let detail = ""
+  let tone: "danger" | "warn" | "info" = "danger"
+
+  switch (obj.kind) {
+    case "survive": {
+      icon = <Hourglass className="size-3.5" />
+      label = "Resistir"
+      detail = `Aguente ${obj.rounds} rodada${obj.rounds === 1 ? "" : "s"} sem perder o Underlord.`
+      tone = "warn"
+      break
+    }
+    case "assassinate": {
+      // Resolve target name through the same getHero scan used for the
+      // defenders list. Falls back to the id if we can't find them.
+      let targetName = obj.targetHeroId
+      for (let s = 1; s <= 14; s++) {
+        const h = getHero(s)
+        if (h.id === obj.targetHeroId) {
+          targetName = h.name
+          break
+        }
+      }
+      icon = <Crosshair className="size-3.5" />
+      label = "Assassinar"
+      detail = `Mate apenas ${targetName}. Os demais defensores podem fugir.`
+      tone = "danger"
+      break
+    }
+    case "protect": {
+      icon = <Shield className="size-3.5" />
+      label = "Proteger"
+      detail = `Garanta que ${obj.protectId} sobreviva ao confronto.`
+      tone = "info"
+      break
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex items-start gap-2.5 rounded border-2 p-2.5",
+        tone === "danger" && "border-destructive/55 bg-destructive/10",
+        tone === "warn" && "border-gold/55 bg-gold/10",
+        tone === "info" && "border-primary/55 bg-primary/10",
+      )}
+    >
+      <div
+        className={cn(
+          "grid size-7 shrink-0 place-items-center rounded-sm",
+          tone === "danger" && "bg-destructive/20 text-destructive",
+          tone === "warn" && "bg-gold/20 text-gold",
+          tone === "info" && "bg-primary/20 text-primary",
+        )}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            "font-mono text-[9px] font-black uppercase tracking-[0.32em]",
+            tone === "danger" && "text-destructive",
+            tone === "warn" && "text-gold",
+            tone === "info" && "text-primary",
+          )}
+        >
+          Objetivo · {label}
+        </p>
+        <p className="mt-0.5 text-[12px] leading-snug text-foreground/90">
+          {detail}
+        </p>
       </div>
     </div>
   )

@@ -70,6 +70,11 @@ export type BattleState = {
    * but ranged attacks pass over them (no LoS modeling — keeps tactics
    * readable). Empty for the default open biome. */
   obstacles: Obstacle[]
+  /** v9 — Interactive walkable tile features (vents, spike pits). The
+   * engine ticks these in `endTurn` (round transitions) and applies
+   * spike-pit damage when a unit's turn ends on one. Always present;
+   * empty array = no features on this map. */
+  features: import('./maps').MapFeature[]
   /** Initiative order: ids in turn order. */
   order: string[]
   /** Index into order — whose turn it is. */
@@ -105,14 +110,24 @@ export function initBattle(
   // v9 — optional objective. Default: classic rout. The engine threads
   // it through to `computeDone()` so legacy callers don't need to know.
   objective: BattleObjective = { kind: 'rout' },
+  // v9 — optional walkable tile features (vents, spike pits). Defaults
+  // to no features so every legacy map keeps working. Each feature
+  // gets a sensible cooldown seed when one isn't provided.
+  features: import('./maps').MapFeature[] = [],
 ): BattleState {
   const order = sortInitiative(units)
+  // Seed cooldowns deterministically. Vents fire every 2 rounds; the
+  // first ignition lands at the start of round 2 (cooldown 1 → 0).
+  const seededFeatures = features.map((f) =>
+    f.kind === 'vent' && f.cooldown == null ? { ...f, cooldown: 1 } : f,
+  )
   return {
     cols,
     rows,
     units,
     fires: prelitFires,
     obstacles,
+    features: seededFeatures,
     order,
     turn: 0,
     round: 1,
@@ -1056,9 +1071,27 @@ export function endTurn(s: BattleState): BattleState {
   const cur = activeUnit(s)
   let units = s.units
   if (cur) {
-    units = units.map((u) =>
-      u.id === cur.id ? { ...u, acted: true, moved: true } : u,
-    )
+    // v9 — spike-pit punishes ending your turn on the trap. The pit
+    // doesn't kill on its own (capped above 1 HP); barriers/dead are
+    // immune. Applied BEFORE marking the unit as acted, so the
+    // damage attribution log line lines up with their turn.
+    const onPit =
+      !cur.dead &&
+      !cur.isBarrier &&
+      (s.features ?? []).some(
+        (f) =>
+          f.kind === 'spike-pit' &&
+          f.pos.q === cur.pos.q &&
+          f.pos.r === cur.pos.r,
+      )
+    units = units.map((u) => {
+      if (u.id !== cur.id) return u
+      const acted = { ...u, acted: true, moved: true }
+      if (!onPit) return acted
+      const dmg = 4
+      const hp = Math.max(1, u.hp - dmg)
+      return { ...acted, hp }
+    })
   }
 
   let next = s.turn + 1
@@ -1105,6 +1138,37 @@ export function endTurn(s: BattleState): BattleState {
       fires = fires
         .map((f) => ({ ...f, ttl: f.ttl - 1 }))
         .filter((f) => f.ttl > 0)
+      // v9 — tick vents. Each vent counts down a cooldown; when it
+      // hits 0 we ignite a TTL-2 fire on the vent's tile and reset.
+      // Walking units find themselves standing in a fresh fire when
+      // it's their turn — same damage pipeline as ambient ash fires.
+      const tickedFeatures: import('./maps').MapFeature[] = []
+      const newFires: FireTile[] = []
+      for (const feat of s.features ?? []) {
+        if (feat.kind !== 'vent') {
+          tickedFeatures.push(feat)
+          continue
+        }
+        const cd = (feat.cooldown ?? 1) - 1
+        if (cd <= 0) {
+          // Don't double-stack a fire on a tile that already has one;
+          // just refresh TTL via the existing decay loop.
+          const already = fires.some(
+            (f) => f.pos.q === feat.pos.q && f.pos.r === feat.pos.r,
+          )
+          if (!already) {
+            newFires.push({ pos: feat.pos, ttl: 2, damage: 3, source: 'vent' })
+          }
+          tickedFeatures.push({ ...feat, cooldown: 2 })
+        } else {
+          tickedFeatures.push({ ...feat, cooldown: cd })
+        }
+      }
+      if (newFires.length > 0) fires = [...fires, ...newFires]
+      // Replace the features array atomically so the next round-tick
+      // sees the new cooldowns. (We were spreading `s.features` later
+      // into nextState; rebind here so that spread picks up the tick.)
+      s = { ...s, features: tickedFeatures }
       // Re-arm PHASE passives so the first hit of the new round is again
       // absorbed. Other one-shot passives (revive, summon, enrage)
       // intentionally stay fired for the rest of the battle.

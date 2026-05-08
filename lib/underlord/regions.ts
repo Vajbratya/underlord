@@ -101,6 +101,10 @@ export const REGIONS: Region[] = [
     x: 26,
     y: 70,
     links: ['tideglass', 'wraith-fen'],
+    // v9 — Hold-out objective. The cloister doors slam shut for four
+    // rounds; the heroes only need to break through, so the goal is
+    // endurance. First "non-rout" the player ever sees.
+    objective: { kind: 'survive', rounds: 4 },
     lore: 'Eles fazem voto de silêncio. Quebram quando você chega. Não quebram bem.',
     goldReward: 250,
     heroIds: ['tyrella'],
@@ -129,6 +133,10 @@ export const REGIONS: Region[] = [
     x: 60,
     y: 76,
     links: ['ironreach', 'pilgrim-pass'],
+    // v9 — Surgical strike. Kevin is the standard-bearer; if he falls,
+    // Tyrella retreats. Teaches the player that skipping enemies is a
+    // valid strategy. (Other heroes can stay alive — only Kevin matters.)
+    objective: { kind: 'assassinate', targetHeroId: 'kevin' },
     lore: 'Dois caminhos. Um vai pra capital, o outro pra forja. Ambos cobram pedágio.',
     goldReward: 280,
     heroIds: ['kevin', 'tyrella'],
@@ -326,6 +334,10 @@ export const REGIONS: Region[] = [
     x: 64,
     y: 52,
     links: ['sun-pyre', 'gallows-square'],
+    // v9 — Hold-out under firestorm. The fire tiles in `ash` biome
+    // make this objectively harder than `salt-cloister` — three rounds
+    // is enough; the burning floor does the work for you if you stall.
+    objective: { kind: 'survive', rounds: 3 },
     lore: 'As árvores morreram em pé há dois séculos. Não caíram. Esperam.',
     goldReward: 430,
     heroIds: ['blazborn'],
@@ -446,6 +458,11 @@ export const REGIONS: Region[] = [
     // other so you must spike both within the same round.
     mapId: 'thunderhead-ridge',
     eliteHeroes: [{ id: 'mb-twin-saints', kind: 'miniboss', passiveId: 'revive' }],
+    // v9 — Heist mission. Midas is the auditor; the Twin Saints are
+    // his bodyguards. Killing only Midas ends the mission — the Saints
+    // walk away. Rewards focus on outplaying the revive-pair instead
+    // of brute-forcing it.
+    objective: { kind: 'assassinate', targetHeroId: 'midas' },
     lore: 'Cada andar é um cofre, cada cofre é uma alma penhorada. Os juros estão atrasados.',
     goldReward: 600,
     heroIds: ['mb-twin-saints', 'midas'],
@@ -638,6 +655,10 @@ export const REGIONS: Region[] = [
     // a thorns miniboss, punishing burst-damage strats.
     mapId: 'kraken-rise',
     eliteHeroes: [{ id: 'mb-mirror-knight', kind: 'miniboss', passiveId: 'thorns' }],
+    // v9 — Late-game assassination. Mirror Knight is the marquee — kill
+    // him and the wyrm wakes up; Profecia is incidental. Punishes
+    // burst comps that try to focus the squishy first.
+    objective: { kind: 'assassinate', targetHeroId: 'mb-mirror-knight' },
     lore: 'O wyrm dormia aqui. Ainda dorme. Ronca em latim eclesiástico.',
     goldReward: 830,
     heroIds: ['mb-mirror-knight', 'profecia'],
