@@ -1113,6 +1113,15 @@ const SIGNATURE_MAPS: Record<string, MapLayout> = {
     prelitFires: [
       tile(5, 5), tile(6, 5), tile(5, 10), tile(6, 10),
     ],
+    // v9 — spike-pits inside the side aisles. The heroes funnel here
+    // since the central staircase is on fire; the pits punish anyone
+    // who ends a turn standing in the most obvious flanking lane.
+    features: [
+      { pos: tile(3, 7), kind: 'spike-pit' },
+      { pos: tile(3, 9), kind: 'spike-pit' },
+      { pos: tile(8, 7), kind: 'spike-pit' },
+      { pos: tile(8, 9), kind: 'spike-pit' },
+    ],
     ground: 'crown',
     label: 'SALÃO DO USURPADOR',
     hint: 'Escadaria central inacessível por fogo. Sobe pelas alas laterais.',
@@ -1254,6 +1263,16 @@ const SIGNATURE_MAPS: Record<string, MapLayout> = {
       tile(0, 8), tile(0, 9), tile(0, 10),
       tile(10, 8), tile(10, 9), tile(10, 10),
       tile(5, 7), tile(5, 11),
+    ],
+    // v9 — vents flanking the altar's approach lanes. They erupt every
+    // 2 rounds, so the player has to time the rush. Two pairs creates
+    // a bracketed fire window in the choke between the pillars and
+    // the cristais — same lane the heroes want to use.
+    features: [
+      { pos: tile(4, 7), kind: 'vent' },
+      { pos: tile(6, 7), kind: 'vent' },
+      { pos: tile(4, 11), kind: 'vent' },
+      { pos: tile(6, 11), kind: 'vent' },
     ],
     ground: 'ash',
     label: 'TEMPLO VULCÂNICO',

@@ -193,6 +193,35 @@ function thornbeastVoice() {
   sfx.bomb()
 }
 
+// v9 voices.
+
+function mortarVoice() {
+  // Long-arc whistle into a low boom — sniper artillery.
+  sfx.tick()
+  sfx.bomb()
+}
+
+function bulwarkVoice() {
+  // Slow, heavy slam — a wall hitting back. Doubled-up shake reads as
+  // weight even though the actual ATK is low.
+  sfx.heavyHit()
+  sfx.shake()
+  sfx.shake()
+}
+
+function swarmVoice() {
+  // Insectile triple-tap. Light, dry, fast — kamikaze chitter.
+  sfx.click()
+  sfx.tap()
+  sfx.tap()
+}
+
+function chimeraVoice() {
+  // Three-headed pierce — ranged hit + a heavy follow-through.
+  sfx.rangedHit()
+  sfx.heavyHit()
+}
+
 const VOICE: Record<MinionArchetype, () => void> = {
   brown: brownVoice,
   red: redVoice,
@@ -219,6 +248,11 @@ const VOICE: Record<MinionArchetype, () => void> = {
   tidesinger: tidesingerVoice,
   ratking: ratkingVoice,
   thornbeast: thornbeastVoice,
+  // v9 batch
+  mortar: mortarVoice,
+  bulwark: bulwarkVoice,
+  swarm: swarmVoice,
+  chimera: chimeraVoice,
 }
 
 /** Special voice for the Underlord — louder, deeper, throne-room. */
@@ -290,6 +324,13 @@ const FLASH: Record<MinionArchetype, FlashSpec> = {
   tidesinger: { color: 'oklch(0.78 0.13 200)', scale: 1.3, ms: 320, shape: 'ring' },
   ratking: { color: 'oklch(0.55 0.08 50)', scale: 1.2, ms: 240, shape: 'burst' },
   thornbeast: { color: 'oklch(0.60 0.14 145)', scale: 1.3, ms: 280, shape: 'burst' },
+  // v9 batch — high-saturation hues that read at a glance.
+  // Mortar: artillery orange. Bulwark: stone slate. Swarm: wasp yellow.
+  // Chimera: heraldic gold-green (three-headed mythos).
+  mortar:  { color: 'oklch(0.66 0.22 35)',  scale: 1.6, ms: 360, shape: 'burst' },
+  bulwark: { color: 'oklch(0.50 0.04 250)', scale: 1.7, ms: 420, shape: 'burst' },
+  swarm:   { color: 'oklch(0.85 0.18 95)',  scale: 0.9, ms: 180, shape: 'ring'  },
+  chimera: { color: 'oklch(0.68 0.16 110)', scale: 1.2, ms: 260, shape: 'ring'  },
 }
 
 const OVERLORD_FLASH: FlashSpec = {

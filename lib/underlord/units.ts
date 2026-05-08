@@ -518,6 +518,101 @@ export const MINION_TEMPLATES: Record<MinionArchetype, UnitTemplate> = {
     unlockTier: 10,
     hasActiveSpecial: false,
   },
+
+  /* ------------------------------------------------------------------ */
+  /* v9 — four niche-fillers. They reuse existing AttackKinds (engine    */
+  /* requires no new branches) but their stat profiles are deliberately  */
+  /* extreme so they read as distinct roles on the board:                */
+  /*   mortar  → only sniper that out-ranges grey/lich.                  */
+  /*   bulwark → wall with HP nobody else has — eats turns.              */
+  /*   swarm   → cheapest body in the army, designed to die.             */
+  /*   chimera → reach-2 melee, fills the gap between range-1 brawlers   */
+  /*             and range-3 ranged DPS.                                 */
+  /* ------------------------------------------------------------------ */
+
+  mortar: {
+    archetype: 'mortar',
+    name: 'MORTAR',
+    glyph: '◉',
+    role: 'Artilharia de longo alcance',
+    hp: 75,
+    move: 2,
+    atk: 40,
+    range: 4,
+    spd: 4,
+    tone: 'destructive',
+    flavor:
+      'Mira de cego, alma de algoritmo. Lança espirais de gosma incandescente que pousam onde precisava.',
+    attackKind: 'splash',
+    abilityTag: 'TIRO LONGO',
+    abilityText:
+      'Splash em alcance 4 — atinge alvo + adjacentes 50%. Move 2: posicione cedo, ele não corre.',
+    unlockTier: 11,
+    hasActiveSpecial: false,
+  },
+
+  bulwark: {
+    archetype: 'bulwark',
+    name: 'BULWARK',
+    glyph: '▣',
+    role: 'Muralha de carne',
+    hp: 280,
+    move: 2,
+    atk: 18,
+    range: 1,
+    spd: 3,
+    tone: 'foreground',
+    flavor:
+      'Não anda. Avança. Cada passo é um veredito da geologia local. Heróis quebram canela antes de quebrar a guarda.',
+    attackKind: 'cleave',
+    abilityTag: 'MURO',
+    abilityText:
+      'HP absurdo (280), ataque fraco mas em CLIVA. Tanca uma rodada inteira pra dar tempo aos outros.',
+    unlockTier: 12,
+    hasActiveSpecial: false,
+  },
+
+  swarm: {
+    archetype: 'swarm',
+    name: 'SWARM',
+    glyph: '∴',
+    role: 'Vespa-suicida',
+    hp: 35,
+    move: 6,
+    atk: 22,
+    range: 1,
+    spd: 11,
+    tone: 'accent',
+    flavor:
+      'Um vão de asas curtas, um zumbido cíclico, um ferrão único. Nasce pra morrer enquanto entrega o recado.',
+    attackKind: 'basic',
+    abilityTag: 'ENXAME',
+    abilityText:
+      'Frágil mas o mais rápido do exército. Move 6, SPD 11. Use pra fechar distância antes que o herói atire.',
+    unlockTier: 9,
+    hasActiveSpecial: false,
+  },
+
+  chimera: {
+    archetype: 'chimera',
+    name: 'CHIMERA',
+    glyph: '☷',
+    role: 'Predador de meia-distância',
+    hp: 115,
+    move: 4,
+    atk: 48,
+    range: 2,
+    spd: 7,
+    tone: 'gold',
+    flavor:
+      'Três cabeças, três fomes, um pescoço. Disputa a presa consigo mesma — vence quem chega primeiro.',
+    attackKind: 'pierce',
+    abilityTag: 'PERFURA',
+    abilityText:
+      'Range 2 com PIERCE — alvo + tile atrás 50%. Preenche o vão entre brutamontes corpo-a-corpo e ranged puro.',
+    unlockTier: 13,
+    hasActiveSpecial: false,
+  },
 }
 
 let unitIdCounter = 0
@@ -720,6 +815,14 @@ function archMinionTitle(arch: MinionArchetype): string {
       return 'PRAGA'
     case 'thornbeast':
       return 'CAÇA'
+    case 'mortar':
+      return 'CANHÃO'
+    case 'bulwark':
+      return 'MURO'
+    case 'swarm':
+      return 'VESPA'
+    case 'chimera':
+      return 'TRÍADE'
   }
 }
 
@@ -779,6 +882,12 @@ const RECRUIT_NAMES: Record<MinionArchetype, string[]> = {
   tidesinger: ['MIRA', 'NEREN', 'KIRA', 'AELL'],
   ratking: ['SCURG', 'FLEK', 'GROIT', 'PRAG'],
   thornbeast: ['BARB', 'JAGAR', 'KORN', 'BRYL'],
+  // v9 fillers — names lean into the role: artillery codenames, fortress
+  // labels, insectile syllables, three-headed mythos.
+  mortar: ['HOWZ', 'BORE', 'ARC', 'SALV'],
+  bulwark: ['REDO', 'KEEL', 'STELE', 'DROM'],
+  swarm: ['SKIT', 'BUZ', 'NIT', 'ZIRR'],
+  chimera: ['TRYAD', 'KEROS', 'OPHID', 'GRYM'],
 }
 
 let recruitCounter = 0

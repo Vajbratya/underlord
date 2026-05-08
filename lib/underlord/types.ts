@@ -46,6 +46,13 @@ export type MinionArchetype =
   | 'tidesinger' // ranged heal — water priestess
   | 'ratking'    // melee cleave — swarm leader, low HP, fast
   | 'thornbeast' // melee execute — bleeds out wounded prey
+  // v9 expansion — four archetypes that fill missing role niches.
+  // Same AttackKind reuse principle: zero engine surgery, distinct
+  // stats + voices + names so they FEEL different on the board.
+  | 'mortar'   // ranged splash, range 4 — true sniper artillery
+  | 'bulwark'  // melee cleave, ultra-high HP, ultra-low ATK — wall
+  | 'swarm'    // melee basic, glass + speed — kamikaze harasser
+  | 'chimera'  // melee pierce, mid-range duelist with reach 2
 
 /**
  * Each archetype has a single distinguishing attack rule:
