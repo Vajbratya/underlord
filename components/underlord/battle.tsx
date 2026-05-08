@@ -519,7 +519,12 @@ export function BattleScreen({
   // Battle done
   useEffect(() => {
     if (!state.done) return
+    // Final-blow rumble + the appropriate outcome stinger. `haptic`
+    // routes the matching sfx (victory / defeat) too, so this single
+    // call handles both vibration and audio in one place.
     haptic.kill()
+    if (state.done === "victory") haptic.victory()
+    else haptic.defeat()
     const fallenIds = state.units.filter((u) => u.faction === "minion" && u.dead).map((u) => u.id)
     const killedHeroIds = state.units
       .filter((u) => u.faction === "hero" && u.dead)

@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { haptic } from "@/lib/underlord/haptics"
 import { RARITY_LABEL, RARITY_TONE } from "@/lib/underlord/loot"
 import type { LootItem, MinionArchetype } from "@/lib/underlord/types"
 import { MINION_TEMPLATES } from "@/lib/underlord/units"
@@ -572,7 +573,12 @@ function BoonPickerSection({
             <button
               key={id}
               type="button"
-              onClick={() => onPick(id)}
+              onClick={() => {
+                // Picking a boon (or pacto) is a campaign-level "power
+                // up" event — fires the powerup sample under the haptic.
+                haptic.levelUp()
+                onPick(id)
+              }}
               className={cn(
                 "group flex flex-col gap-1.5 rounded-lg border-2 px-3.5 py-3 text-left transition",
                 "active:scale-[0.99] hover:border-foreground/60",

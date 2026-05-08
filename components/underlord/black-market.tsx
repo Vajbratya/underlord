@@ -101,7 +101,8 @@ export function BlackMarket({
               disabled={!canClaim}
               onClick={() => {
                 if (!canClaim) return
-                haptic.kill()
+                // Daily-claim is functionally a purchase confirm.
+                haptic.purchase()
                 onClaimDaily()
               }}
               className={cn(
@@ -183,9 +184,8 @@ export function BlackMarket({
                       disabled={owned || broke}
                       onClick={() => {
                         if (owned || broke) return
-                        // No `haptic.gold` channel; reuse `crit` for the
-                        // "satisfying purchase confirm" thump.
-                        haptic.crit()
+                        // Plays the coin-collect sample via haptic.purchase().
+                        haptic.purchase()
                         onBuy(item.id, price, item)
                       }}
                       className={cn(

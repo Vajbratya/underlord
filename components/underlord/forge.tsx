@@ -94,7 +94,9 @@ export function Forge({
     if (level < def.tierLevel) return
     if (rankOf(save.perks, id) >= def.maxRank) return
     if (save.perkPoints <= 0) return
-    haptic.select()
+    // Spending a perk point is a level-up event — fires the powerup
+    // sample under the haptic thump.
+    haptic.levelUp()
     onSpend(id)
   }
 

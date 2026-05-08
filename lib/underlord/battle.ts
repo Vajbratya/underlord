@@ -18,7 +18,7 @@
  */
 
 import { axialEqual, axialKey, hexDistance, neighbors } from './hex'
-import type { Axial, Unit } from './types'
+import type { Axial, BattleObjective, Unit } from './types'
 import { SPECIALS } from './specials'
 import { OVERLORD_SKILLS } from './overlord-skills'
 import { makeBarrier, makeHeroMinion } from './units'
@@ -86,6 +86,10 @@ export type BattleState = {
    * modifiers (damage taken, regen). Always present; defaults are no-ops
    * so legacy callers don't have to think about it. */
   boonEffects: BattleBoonEffects
+  /** v9 — Battle objective. Default `{kind:'rout'}`. Drives `computeDone`.
+   * Always present so the engine never has to null-check; legacy regions
+   * without `Region.objective` get the default at `initBattle` time. */
+  objective: BattleObjective
 }
 
 export function initBattle(
@@ -98,6 +102,9 @@ export function initBattle(
     minionDmgTakenMult: 1,
     hpRegenStartOfRound: 0,
   },
+  // v9 — optional objective. Default: classic rout. The engine threads
+  // it through to `computeDone()` so legacy callers don't need to know.
+  objective: BattleObjective = { kind: 'rout' },
 ): BattleState {
   const order = sortInitiative(units)
   return {
@@ -113,6 +120,7 @@ export function initBattle(
     log: ['As paredes da torre suspiram. O combate começou.'],
     done: null,
     boonEffects,
+    objective,
   }
 }
 
@@ -1122,23 +1130,78 @@ export function endTurn(s: BattleState): BattleState {
   // Apply start-of-turn effects to the newly active unit
   nextState = applyStartOfTurnEffects(nextState)
 
-  const done = computeDone(nextState.units)
+  const done = computeDone(nextState)
   return { ...nextState, done }
 }
 
-function computeDone(units: Unit[]): BattleState['done'] {
-  // The Overlord IS the run. If it falls, the army flees regardless of
-  // remaining minions still on the board — instant defeat.
+/**
+ * Decide whether the battle is over and, if so, who won.
+ *
+ * v9 — now objective-aware. The shared "fail-state" floor is the same
+ * for every objective: if the Overlord dies the run is over, and if
+ * every minion is dead the field is lost. Each objective layers its
+ * own win condition on top.
+ *
+ * Authored to be safe against partial unit lists / barriers / dead
+ * units — this is called every state transition.
+ */
+function computeDone(state: BattleState): BattleState['done'] {
+  const units = state.units
+
+  // Floor 1 — Overlord IS the run.
   const overlord = units.find((u) => u.isOverlord)
   if (overlord && overlord.dead) return 'defeat'
 
+  // Floor 2 — out of attackers. Barriers don't count: if every real
+  // minion fell, the army is broken.
   const minionsAlive = units.some(
     (u) => u.faction === 'minion' && !u.dead && !u.isBarrier,
   )
-  const heroesAlive = units.some((u) => u.faction === 'hero' && !u.dead)
   if (!minionsAlive) return 'defeat'
-  if (!heroesAlive) return 'victory'
-  return null
+
+  const obj = state.objective
+  const heroesAlive = units.some((u) => u.faction === 'hero' && !u.dead)
+
+  switch (obj.kind) {
+    case 'rout': {
+      // Classic — kill them all.
+      return heroesAlive ? null : 'victory'
+    }
+    case 'survive': {
+      // Hold the line. `state.round` is 1-indexed; victory triggers the
+      // moment the round counter passes the requested length. This is
+      // checked BEFORE incrementing in `endTurn`, so the player gets a
+      // clean win round-N+1 frame.
+      if (state.round > obj.rounds) return 'victory'
+      return null
+    }
+    case 'assassinate': {
+      // Surgical strike — only the marked target matters.
+      const target = units.find(
+        (u) => u.faction === 'hero' && u.heroId === obj.targetHeroId,
+      )
+      if (!target) return null // target hasn't spawned yet
+      if (target.dead) return 'victory'
+      // Floor still applies: if all heroes are dead but somehow target
+      // is missing (edge case), treat the rout as a partial win.
+      if (!heroesAlive) return 'victory'
+      return null
+    }
+    case 'protect': {
+      // Escort — if the protected unit dies, instant defeat. Otherwise
+      // win on rout.
+      const ward = units.find(
+        (u) => u.heroId === obj.protectId || u.id === obj.protectId,
+      )
+      if (ward && ward.dead) return 'defeat'
+      return heroesAlive ? null : 'victory'
+    }
+    default: {
+      // Exhaustive fallthrough — if a new objective lands without a
+      // case here, fall back to rout so battles still end.
+      return heroesAlive ? null : 'victory'
+    }
+  }
 }
 
 /* ---------------- Tactical AI ---------------- */

@@ -248,10 +248,41 @@ export type Region = {
    * set, the region uses the bespoke XCOM-style hand-crafted map instead
    * of cycling through the biome pool. Falls back gracefully if unknown. */
   mapId?: string
+  /** v9 — optional battle objective override. Default (`{kind:'rout'}`)
+   * is the classic "kill every hero" win condition. Set to break the
+   * monotony with defenses, holdouts, executions. Engine + HUD pick it
+   * up automatically. Save-safe: missing field = rout. */
+  objective?: BattleObjective
   /** Only loot-bearing regions drop equipment on victory. The others give
    * gold + XP only, so a true item haul becomes a campaign milestone. */
   dropsLoot: boolean
 }
+
+/* ---------- Battle objectives ---------- */
+
+/**
+ * v9 — Battle objective system. Default `rout` matches every existing
+ * region (kill all heroes). Other kinds let the campaign break monotony
+ * with defenses, holdouts, and executions. The engine reads these in
+ * `computeDone()`; the HUD shows a banner with the goal text.
+ *
+ *   - rout         : kill every hero (current behavior).
+ *   - survive      : last `rounds` rounds without losing the Overlord
+ *                    or having all minions die.
+ *   - assassinate  : kill ONLY `targetHeroId`. Other heroes can stay
+ *                    alive — battle ends the moment the target dies.
+ *   - protect      : same as `rout`, BUT if `protectId` (a minion or
+ *                    the Overlord) dies, instant defeat regardless of
+ *                    remaining heroes. Used for "escort" missions.
+ *
+ * The `targetHeroId` and `protectId` fields are interpreted differently
+ * per kind so they can coexist in the same union without nesting.
+ */
+export type BattleObjective =
+  | { kind: 'rout' }
+  | { kind: 'survive'; rounds: number }
+  | { kind: 'assassinate'; targetHeroId: string }
+  | { kind: 'protect'; protectId: string }
 
 /* ---------- Battle ---------- */
 

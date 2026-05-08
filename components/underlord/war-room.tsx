@@ -204,7 +204,7 @@ export function WarRoom({
             <button
               type="button"
               onClick={() => {
-                haptic.select()
+                haptic.panelOpen()
                 onOpenSkillMap()
               }}
               aria-label="Skill Map"
@@ -227,7 +227,7 @@ export function WarRoom({
             <button
               type="button"
               onClick={() => {
-                haptic.select()
+                haptic.panelOpen()
                 onOpenForge()
               }}
               aria-label="Forja"
@@ -256,7 +256,7 @@ export function WarRoom({
             <button
               type="button"
               onClick={() => {
-                haptic.select()
+                haptic.panelOpen()
                 onOpenMarket()
               }}
               aria-label="Mercado Negro"
