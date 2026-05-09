@@ -468,6 +468,13 @@ export function BattleScreen({
   // Reset combo and clear special / skill targeting when active unit changes
   useEffect(() => {
     if (state.turn !== lastTurnRef.current || state.round !== lastRoundRef.current) {
+      // v9 — fire a round-start stinger ONCE per actual round bump.
+      // Initial round=1 mount also lands here; we skip when the ref is
+      // still its default sentinel so the very first frame stays quiet
+      // (the bossIntro from `initBattle` carries that moment).
+      const roundChanged =
+        lastRoundRef.current !== -1 && state.round !== lastRoundRef.current
+      if (roundChanged) haptic.roundStart()
       setCombo(0)
       setSpecialMode(null)
       setSkillMode(null)
@@ -476,6 +483,18 @@ export function BattleScreen({
       lastRoundRef.current = state.round
     }
   }, [state.turn, state.round])
+
+  // v9 — death detection. Whenever the count of dead units climbs we
+  // play a low thud once. Uses a ref so a single death frame never
+  // double-fires across re-renders. Drives the `bomb` channel through
+  // the haptic coalescer, so a triple-kill in one swing gets a single
+  // unified stinger instead of three overlapping booms.
+  const deadCountRef = useRef(0)
+  useEffect(() => {
+    const dead = state.units.filter((u) => u.dead).length
+    if (dead > deadCountRef.current) haptic.death()
+    deadCountRef.current = dead
+  }, [state.units])
 
   // AI turn
   useEffect(() => {
@@ -580,6 +599,11 @@ export function BattleScreen({
   }
 
   function showHint(text: string) {
+    // v9 — every hint is, by definition, a denied action. Fires a
+    // soft "no" tick centrally so all 30+ rejection paths in this file
+    // get audio feedback without per-call wiring. The haptic coalescer
+    // keeps spammy taps from buzzing the AudioContext.
+    haptic.invalid()
     setHint(text)
     window.setTimeout(() => setHint(null), 1400)
   }
@@ -769,12 +793,13 @@ export function BattleScreen({
       }
     }
     setSkillMode({ casterId: active.id, skillId })
-    haptic.tap()
+    // Hero skill arming — same wind-up cue as minion specials.
+    haptic.specialReady()
   }
 
   function cancelSkillMode() {
     setSkillMode(null)
-    haptic.tap()
+    haptic.cancel()
   }
 
   function activateSpecial() {
@@ -838,12 +863,13 @@ export function BattleScreen({
       casterId: active.id,
       archetype: active.templateId as "red" | "green" | "blue" | "grey",
     })
-    haptic.tap()
+    // Wind-up tone — same channel used by Rage-ready meters.
+    haptic.specialReady()
   }
 
   function cancelSpecial() {
     setSpecialMode(null)
-    haptic.tap()
+    haptic.cancel()
   }
 
   function handleHexClick(a: Axial) {
@@ -1097,6 +1123,9 @@ export function BattleScreen({
         }
         const px = axialToPixel(active.pos)
         pushPopup(`+${healed}`, "heal", px.x, px.y - 18)
+        // Lifesteal chime — light, won't compete with the hit voice
+        // because uiSfx coalesces and the heal channel is distinct.
+        haptic.healTick()
       }
       if (outcome.hit) {
         if (!firstBloodRef.current) firstBloodRef.current = true
@@ -1155,7 +1184,9 @@ export function BattleScreen({
       }
       dispatch({ type: "snapshot", state })
       const next = moveUnit(state, active.id, a)
-      haptic.tap()
+      // Footstep tap — distinct from `tap` (UI click) so movement reads
+      // as a board action rather than a button press.
+      haptic.move()
       dispatch({ type: "set", state: next })
       return
     }
@@ -1163,13 +1194,14 @@ export function BattleScreen({
 
   function handleEndTurn() {
     if (!isMinionTurn) return
-    haptic.select()
+    // Heavier than a UI click — confirms a hand-off of control.
+    haptic.endTurn()
     dispatch({ type: "set", state: endTurn(state) })
   }
 
   function handleUndoMove() {
     if (!local.preMove) return
-    haptic.tap()
+    haptic.undo()
     dispatch({ type: "undo" })
   }
 

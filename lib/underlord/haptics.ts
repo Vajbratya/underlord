@@ -90,4 +90,55 @@ export const haptic = {
     vibrate([22, 14, 22])
     uiSfx("craft", () => sfx.shopBuy(), 250)
   },
+  // ---- Battle-specific events (haptic + audio) -------------------
+  // v9 — sound coverage for the silent zones: movement, turn flow,
+  // specials, undo, round breaks, healing pulses, deaths. Each maps
+  // to an existing `sfx.*` channel so we don't add new audio assets.
+  /** A minion finishes a movement step. Footstep-like tap. */
+  move: () => {
+    vibrate(6)
+    uiSfx("move", () => sfx.tick(), 60)
+  },
+  /** End-turn button confirms — heavier than `select`. */
+  endTurn: () => {
+    vibrate([10, 30, 18])
+    uiSfx("endTurn", () => sfx.shake(), 220)
+  },
+  /** Special targeting mode armed — wind-up tone. */
+  specialReady: () => {
+    vibrate([8, 14, 24])
+    uiSfx("specialReady", () => sfx.rageReady(), 220)
+  },
+  /** Special / skill aborted — soft reverse-click. */
+  cancel: () => {
+    vibrate(6)
+    uiSfx("cancel", () => sfx.tap(), 80)
+  },
+  /** Move undone — short reverse tick. */
+  undo: () => {
+    vibrate([6, 10, 6])
+    uiSfx("undo", () => sfx.tick(), 120)
+  },
+  /** A new round starts. Triple ascending tick. */
+  roundStart: () => {
+    vibrate([6, 12, 6, 12, 6])
+    uiSfx("roundStart", () => sfx.combo(2), 600)
+  },
+  /** Any unit just died this frame. Low thump. */
+  death: () => {
+    vibrate([24, 18, 60])
+    uiSfx("death", () => sfx.bomb(), 90)
+  },
+  /** Heal pulse landed (lifesteal, regen, ward). Light chime. */
+  healTick: () => {
+    vibrate(6)
+    uiSfx("healTick", () => sfx.heal(), 200)
+  },
+  /** Action rejected (out of range, already moved, on cooldown). The
+   * single channel that the in-battle `showHint` calls — covers ~30
+   * rejection paths without re-wiring each one individually. */
+  invalid: () => {
+    vibrate([4, 12, 4])
+    uiSfx("invalid", () => sfx.tick(), 220)
+  },
 }
