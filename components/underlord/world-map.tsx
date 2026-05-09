@@ -96,77 +96,116 @@ export function WorldMap({
 }) {
   // ---------------------------------------------------------------
   // Visibility (fog of war)
+  //
+  // We split visibility into two tiers:
+  //   - "active" = available + cleared. These DRIVE the auto-frame.
+  //   - "peek"   = locked neighbors of available regions. These are
+  //                shown ONLY if they fit inside the padded bbox of
+  //                the active set; peeks that would stretch the
+  //                viewport into empty space are dropped instead.
+  //
+  // This is the key fix for the "FERRO label floating in empty
+  // space" bug: previously, peek regions far from the active cluster
+  // dragged the bbox, leaving a wide letterboxed frame and biome
+  // labels orphaned over nothing.
   // ---------------------------------------------------------------
-  const { visibleIds, peekIds } = useMemo(() => {
-    const visible = new Set<string>()
+  const { activeIds, peekCandidates } = useMemo(() => {
+    const active = new Set<string>()
     const peek = new Set<string>()
     const byId = new Map(REGIONS.map((r) => [r.id, r] as const))
     for (const r of REGIONS) {
       const status = save.regions[r.id]
-      if (status === "available" || status === "cleared") visible.add(r.id)
+      if (status === "available" || status === "cleared") active.add(r.id)
     }
-    // Add one-step previews: locked neighbors of available regions.
     for (const r of REGIONS) {
       if (save.regions[r.id] !== "available") continue
       for (const n of r.links) {
         const nb = byId.get(n)
         if (!nb) continue
-        if (save.regions[n] === "locked") {
-          peek.add(n)
-          visible.add(n)
-        }
+        if (save.regions[n] === "locked" && !active.has(n)) peek.add(n)
       }
     }
-    return { visibleIds: visible, peekIds: peek }
+    return { activeIds: active, peekCandidates: peek }
   }, [save.regions])
 
-  const visibleRegions = useMemo(
-    () => REGIONS.filter((r) => visibleIds.has(r.id)),
-    [visibleIds],
+  const activeRegions = useMemo(
+    () => REGIONS.filter((r) => activeIds.has(r.id)),
+    [activeIds],
   )
 
   // ---------------------------------------------------------------
-  // Auto-frame: viewBox = padded bbox of visible regions.
+  // Auto-frame: viewBox = padded bbox of ACTIVE regions only.
+  //
+  // We deliberately ignore peeks here. Peeks that fall inside the
+  // resulting frame are kept; peeks outside are hidden. This keeps
+  // the camera anchored on the player's working set.
   // ---------------------------------------------------------------
   const view = useMemo(() => {
-    if (visibleRegions.length === 0) {
-      // Defensive — shouldn't happen because save always has at least
-      // one available region. Render the whole world if it does.
+    if (activeRegions.length === 0) {
+      // Defensive — early-game saves always contain at least one
+      // `available` region, but if something nukes the save we
+      // fall back to the full world rather than crash.
       return { x: 0, y: 0, w: 100, h: 100 }
     }
     let minX = 100,
       minY = 100,
       maxX = 0,
       maxY = 0
-    for (const r of visibleRegions) {
+    for (const r of activeRegions) {
       if (r.x < minX) minX = r.x
       if (r.y < minY) minY = r.y
       if (r.x > maxX) maxX = r.x
       if (r.y > maxY) maxY = r.y
     }
-    // Pad so nodes don't kiss the edges. Grow more on the short axis
-    // to keep the frame from stretching too narrow.
-    const padX = Math.max(10, (maxX - minX) * 0.18)
-    const padY = Math.max(10, (maxY - minY) * 0.18)
-    let x = Math.max(0, minX - padX)
-    let y = Math.max(0, minY - padY)
-    let w = Math.min(100 - x, maxX - minX + padX * 2)
-    let h = Math.min(100 - y, maxY - minY + padY * 2)
-    // Force a minimum frame so super-early game (1-2 regions visible)
-    // doesn't zoom-bomb the player into a single dot.
-    const minFrame = 38
-    if (w < minFrame) {
+    // Generous padding so nodes never kiss the edge AND so the
+    // closest peeks tend to fit inside the frame rather than be
+    // dropped.
+    const span = Math.max(maxX - minX, maxY - minY)
+    const pad = Math.max(12, span * 0.32)
+    let x = Math.max(0, minX - pad)
+    let y = Math.max(0, minY - pad)
+    let w = Math.min(100 - x, maxX - minX + pad * 2)
+    let h = Math.min(100 - y, maxY - minY + pad * 2)
+    // Force a SQUARE-ish frame so the SVG doesn't letterbox into a
+    // thin horizontal strip when the active cluster is wide-and-short
+    // (or vice versa). We pick whichever axis is bigger and grow
+    // the other to match.
+    const frame = Math.max(w, h, 42)
+    if (w < frame) {
       const cx = x + w / 2
-      x = Math.max(0, Math.min(100 - minFrame, cx - minFrame / 2))
-      w = minFrame
+      x = Math.max(0, Math.min(100 - frame, cx - frame / 2))
+      w = frame
     }
-    if (h < minFrame) {
+    if (h < frame) {
       const cy = y + h / 2
-      y = Math.max(0, Math.min(100 - minFrame, cy - minFrame / 2))
-      h = minFrame
+      y = Math.max(0, Math.min(100 - frame, cy - frame / 2))
+      h = frame
     }
     return { x, y, w, h }
-  }, [visibleRegions])
+  }, [activeRegions])
+
+  // Peek nodes that actually lie inside the auto-frame. Peeks
+  // outside the frame are dropped — they'd be invisible anyway,
+  // and including them would have stretched the bbox.
+  const { visibleIds, peekIds, visibleRegions } = useMemo(() => {
+    const peek = new Set<string>()
+    for (const id of peekCandidates) {
+      const r = REGIONS.find((x) => x.id === id)
+      if (!r) continue
+      const inside =
+        r.x >= view.x &&
+        r.x <= view.x + view.w &&
+        r.y >= view.y &&
+        r.y <= view.y + view.h
+      if (inside) peek.add(id)
+    }
+    const all = new Set<string>([...activeIds, ...peek])
+    return {
+      visibleIds: all,
+      peekIds: peek,
+      visibleRegions: REGIONS.filter((r) => all.has(r.id)),
+    }
+  }, [activeIds, peekCandidates, view])
 
   // ---------------------------------------------------------------
   // Edges between visible regions.
@@ -190,20 +229,26 @@ export function WorldMap({
   }, [visibleRegions, visibleIds])
 
   // ---------------------------------------------------------------
-  // Biome blob centroids (soft territory backgrounds).
+  // Biome blob centroids — soft territory backgrounds.
+  //
+  // Computed strictly from ACTIVE (non-peek) regions so the label
+  // sits inside the player's actual working area, never floating
+  // over empty space pulled out by a far-away peek.
   // ---------------------------------------------------------------
   const biomeBlobs = useMemo(() => {
     const groups = new Map<Region["biome"], Region[]>()
-    for (const r of visibleRegions) {
-      // Don't include peek-only locked regions in biome territory —
-      // they're previews, not yet "claimed" territory.
-      if (peekIds.has(r.id)) continue
+    for (const r of activeRegions) {
       const arr = groups.get(r.biome) ?? []
       arr.push(r)
       groups.set(r.biome, arr)
     }
-    const out: { biome: Region["biome"]; cx: number; cy: number; r: number }[] =
-      []
+    const out: {
+      biome: Region["biome"]
+      cx: number
+      cy: number
+      r: number
+      count: number
+    }[] = []
     for (const [biome, list] of groups) {
       if (list.length === 0) continue
       let sx = 0,
@@ -219,16 +264,13 @@ export function WorldMap({
         const d = Math.hypot(r.x - cx, r.y - cy)
         if (d > maxD) maxD = d
       }
-      out.push({
-        biome,
-        cx,
-        cy,
-        // Pad the radius so the blob reads as territory, not a dot.
-        r: Math.max(7, maxD + 5),
-      })
+      // Single-region biomes still get a generous radius so the
+      // territory reads as a territory, not a halo on one dot.
+      const r = list.length === 1 ? 8 : Math.max(7.5, maxD + 5)
+      out.push({ biome, cx, cy, r, count: list.length })
     }
     return out
-  }, [visibleRegions, peekIds])
+  }, [activeRegions])
 
   // ---------------------------------------------------------------
   // Stats & next-suggestion (lowest-stage available region).
@@ -276,84 +318,152 @@ export function WorldMap({
         ) : null}
       </div>
 
-      <div className="relative overflow-hidden rounded-md border-2 border-border/70 bg-background/40 backdrop-blur">
-        {/* Parchment grid */}
+      <div
+        className="relative overflow-hidden rounded-md border-2 border-border/70 backdrop-blur"
+        style={{
+          // Parchment-toned base with a subtle radial fall-off so the
+          // map feels like a worn document, not a flat black canvas.
+          background:
+            "radial-gradient(ellipse at 50% 30%, oklch(0.20 0.015 35 / 0.85) 0%, oklch(0.12 0.01 35 / 0.95) 60%, oklch(0.08 0.005 30) 100%)",
+        }}
+      >
+        {/* Parchment dot pattern — much subtler than the previous grid */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.06]"
+          className="pointer-events-none absolute inset-0 opacity-[0.10]"
           style={{
             backgroundImage:
-              "linear-gradient(oklch(1 0 0 / 0.5) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / 0.5) 1px, transparent 1px)",
-            backgroundSize: "28px 28px",
+              "radial-gradient(oklch(0.85 0.05 80 / 0.8) 0.6px, transparent 0.7px)",
+            backgroundSize: "18px 18px",
           }}
         />
 
         <svg
           viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
           preserveAspectRatio="xMidYMid meet"
-          className="block h-[460px] w-full sm:h-[520px]"
+          className="relative block h-[460px] w-full sm:h-[520px]"
           role="img"
           aria-label="Mapa da Cruzada"
         >
           <defs>
-            <filter id="node-glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="0.85" result="b" />
+            {/* Per-biome territory gradient. We generate one per biome
+                so each blob has its own tint without leaking to others.
+                Stops: bright core → quick fade → fully transparent edge. */}
+            {(Object.keys(BIOME) as Region["biome"][]).map((b) => (
+              <radialGradient
+                key={`grad-${b}`}
+                id={`territory-${b}`}
+                cx="50%"
+                cy="50%"
+                r="50%"
+              >
+                <stop offset="0%" stopColor={BIOME[b].core} stopOpacity="0.32" />
+                <stop offset="55%" stopColor={BIOME[b].core} stopOpacity="0.14" />
+                <stop offset="100%" stopColor={BIOME[b].core} stopOpacity="0" />
+              </radialGradient>
+            ))}
+
+            <filter
+              id="node-glow"
+              x="-100%"
+              y="-100%"
+              width="300%"
+              height="300%"
+            >
+              <feGaussianBlur stdDeviation="1.1" result="b" />
               <feMerge>
                 <feMergeNode in="b" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
-            <filter id="blob-blur" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="1.2" />
+
+            {/* Soft halo specifically for "available" nodes so they
+                pop against the territory tint. Strong enough to read
+                at thumbnail scale. */}
+            <filter
+              id="available-glow"
+              x="-200%"
+              y="-200%"
+              width="500%"
+              height="500%"
+            >
+              <feGaussianBlur stdDeviation="1.6" result="b" />
+              <feFlood floodColor="oklch(0.80 0.18 78)" floodOpacity="0.6" />
+              <feComposite in2="b" operator="in" result="g" />
+              <feMerge>
+                <feMergeNode in="g" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
             </filter>
-            <radialGradient id="parchment" cx="0.5" cy="0.5" r="0.7">
-              <stop offset="0%" stopColor="oklch(0.18 0.01 30 / 0)" />
-              <stop offset="100%" stopColor="oklch(0.10 0.01 30 / 0.55)" />
-            </radialGradient>
           </defs>
 
-          {/* Vignette covers the visible viewBox */}
-          <rect
-            x={view.x}
-            y={view.y}
-            width={view.w}
-            height={view.h}
-            fill="url(#parchment)"
-          />
-
-          {/* Biome territory blobs — drawn first */}
+          {/* Biome territory blobs — drawn first, layered with edge ring
+              so they read as actual zones with borders. The dashed
+              outer ring helps separate adjacent biomes. */}
           {biomeBlobs.map((b) => (
-            <g key={`blob-${b.biome}`} filter="url(#blob-blur)">
+            <g key={`blob-${b.biome}`}>
+              {/* Filled territory */}
               <circle
                 cx={b.cx}
                 cy={b.cy}
                 r={b.r}
-                fill={BIOME[b.biome].halo}
+                fill={`url(#territory-${b.biome})`}
+              />
+              {/* Soft border so the territory has a visible edge */}
+              <circle
+                cx={b.cx}
+                cy={b.cy}
+                r={b.r * 0.97}
+                fill="none"
+                stroke={BIOME[b.biome].core}
+                strokeOpacity={0.28}
+                strokeWidth={0.18}
+                strokeDasharray="0.6 0.9"
               />
             </g>
           ))}
 
-          {/* Biome labels — small, non-interactive, stripped above blob centroid */}
-          {biomeBlobs.map((b) => (
-            <text
-              key={`blabel-${b.biome}`}
-              x={b.cx}
-              y={b.cy - b.r * 0.85}
-              textAnchor="middle"
-              fontSize={1.65}
-              fontWeight={900}
-              letterSpacing={0.18}
-              fill={BIOME[b.biome].core}
-              opacity={0.55}
-              pointerEvents="none"
-              style={{
-                fontFamily:
-                  "var(--font-display, ui-sans-serif), system-ui, sans-serif",
-              }}
-            >
-              {BIOME[b.biome].label}
-            </text>
-          ))}
+          {/* Biome labels — anchored INSIDE the territory at the top of
+              the centroid disc, with a subtle backdrop pill so the
+              text doesn't disappear behind nodes or blob edges. */}
+          {biomeBlobs.map((b) => {
+            const txt = BIOME[b.biome].label
+            const w = txt.length * 1.05 + 1.8
+            const ly = b.cy - b.r * 0.55
+            return (
+              <g
+                key={`blabel-${b.biome}`}
+                transform={`translate(${b.cx}, ${ly})`}
+                pointerEvents="none"
+              >
+                <rect
+                  x={-w / 2}
+                  y={-1.55}
+                  width={w}
+                  height={3.1}
+                  rx={0.6}
+                  fill="oklch(0.10 0.01 35 / 0.78)"
+                  stroke={BIOME[b.biome].core}
+                  strokeOpacity={0.55}
+                  strokeWidth={0.13}
+                />
+                <text
+                  textAnchor="middle"
+                  dy="0.45"
+                  fontSize={1.55}
+                  fontWeight={900}
+                  letterSpacing={0.22}
+                  fill={BIOME[b.biome].core}
+                  style={{
+                    fontFamily:
+                      "var(--font-display, ui-sans-serif), system-ui, sans-serif",
+                  }}
+                >
+                  {txt}
+                </text>
+              </g>
+            )
+          })}
 
           {/* Edges */}
           {edges.map(({ a, b }, i) => {
@@ -395,18 +505,27 @@ export function WorldMap({
             const isMini =
               r.eliteHeroes?.some((e) => e.kind === "miniboss") ?? false
             const palette = BIOME[r.biome]
-            // Bigger, simpler radius. Boss/miniboss bumps the size slightly
-            // so the marquee fights read taller in the scene.
+            // Peek nodes are deliberately smaller — they're a hint of
+            // "what's next", not a co-equal node the player can act on.
+            const baseRadius = isBoss ? 3.1 : isMini ? 2.7 : 2.4
             const radius =
-              (isBoss ? 3.1 : isMini ? 2.7 : 2.4) +
+              (isPeek ? baseRadius * 0.7 : baseRadius) +
               (isSelected ? 0.4 : 0)
             const ringR = radius + 1.0
             const fill =
               isPeek
-                ? "oklch(0.20 0.005 30)"
+                ? "oklch(0.16 0.005 30 / 0.7)"
                 : status === "cleared"
-                  ? "oklch(0.45 0.02 240)"
+                  ? "oklch(0.30 0.015 240)" // muted, distinct from "available"
                   : palette.core
+            // Per-state ring color. Cleared rings are intentionally
+            // dim so the gold "available" rings are the only thing
+            // that draws the eye.
+            const ringStroke = isPeek
+              ? "oklch(0.42 0.02 30 / 0.7)"
+              : status === "available"
+                ? "oklch(0.82 0.16 78)"
+                : "oklch(0.45 0.015 240 / 0.55)"
             return (
               <g
                 key={r.id}
@@ -416,27 +535,13 @@ export function WorldMap({
                   opacity: isPeek ? 0.55 : 1,
                 }}
               >
-                {/* Outer ring */}
-                <circle
-                  r={ringR}
-                  fill="none"
-                  stroke={
-                    isPeek
-                      ? "oklch(0.45 0.02 30 / 0.7)"
-                      : status === "available"
-                        ? "oklch(0.78 0.14 78)"
-                        : "oklch(0.55 0.02 240 / 0.6)"
-                  }
-                  strokeWidth={isSelected ? 0.7 : 0.45}
-                  strokeDasharray={isPeek ? "0.7 0.6" : undefined}
-                />
-
-                {/* Selected pulse */}
+                {/* Selected pulse — drawn FIRST so it sits behind the
+                    ring; pulse opacity ramp keeps it from dominating */}
                 {isSelected ? (
                   <circle
                     r={ringR + 0.4}
                     fill="none"
-                    stroke="oklch(0.78 0.14 78)"
+                    stroke="oklch(0.82 0.16 78)"
                     strokeWidth={0.4}
                     style={{
                       animation: "wm-pulse 1.6s ease-out infinite",
@@ -445,16 +550,40 @@ export function WorldMap({
                   />
                 ) : null}
 
-                {/* Filled disc */}
+                {/* Outer ring */}
+                <circle
+                  r={ringR}
+                  fill="none"
+                  stroke={ringStroke}
+                  strokeWidth={isSelected ? 0.7 : 0.45}
+                  strokeDasharray={isPeek ? "0.7 0.6" : undefined}
+                />
+
+                {/* Filled disc — only "available" gets the gold halo
+                    filter so it reads as the playable target. Cleared
+                    discs stay flat and recessive. */}
                 <circle
                   r={radius}
                   fill={fill}
                   filter={
                     !isPeek && status === "available"
-                      ? "url(#node-glow)"
+                      ? "url(#available-glow)"
                       : undefined
                   }
                 />
+
+                {/* Inner sheen — tiny lighter cap so the disc reads as
+                    a 3D coin, not a flat sticker. Skipped on peeks. */}
+                {!isPeek ? (
+                  <ellipse
+                    cx={0}
+                    cy={-radius * 0.45}
+                    rx={radius * 0.6}
+                    ry={radius * 0.22}
+                    fill="oklch(1 0 0 / 0.10)"
+                    pointerEvents="none"
+                  />
+                ) : null}
 
                 {/* Centerpiece: peek = "?", cleared = check, others = stage */}
                 {isPeek ? (
