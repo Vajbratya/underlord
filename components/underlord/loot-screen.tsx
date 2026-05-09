@@ -28,6 +28,7 @@ import {
 import { rand, UNDERLORD_LINES, getHeroById } from "@/lib/elementum-flavor"
 import { useEffect, useMemo, useState } from "react"
 import { Atmosphere } from "./atmosphere"
+import { HeroPortrait } from "./hero-portrait"
 
 export function LootScreen({
   victory,
@@ -162,12 +163,12 @@ export function LootScreen({
                       className="flex items-start gap-2.5 rounded border border-destructive/30 bg-destructive/5 p-2"
                     >
                       <span className="relative size-12 shrink-0 overflow-hidden rounded border border-destructive/60 sm:size-14">
-                        <Image
-                          src={`/images/heroes/${h.id}.jpg`}
-                          alt={h.name}
-                          fill
+                        <HeroPortrait
+                          id={h.id}
+                          name={h.name}
                           sizes="(max-width: 640px) 48px, 56px"
-                          className="object-cover grayscale"
+                          variant="elite"
+                          className="grayscale"
                         />
                         <span className="absolute inset-0 grid place-items-center bg-destructive/35">
                           <Skull className="size-5 text-foreground drop-shadow sm:size-6" />

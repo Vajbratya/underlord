@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { HeroPortrait } from "./hero-portrait"
 import { useMemo, useState } from "react"
 import {
   ChevronRight,
@@ -467,15 +468,15 @@ function _RegionCard({
                 key={h.id}
                 className="relative size-7 overflow-hidden rounded-full border-2 border-background"
               >
-                <Image
-                  src={`/images/heroes/${h.id}.jpg`}
-                  alt={h.name}
-                  fill
+                {/* Sigil fallback for elites that don't ship a portrait
+                    (mb-* / boss-*) — still respects cleared grayscale. */}
+                <HeroPortrait
+                  id={h.id}
+                  name={h.name}
                   sizes="28px"
-                  className={cn(
-                    "object-cover",
-                    isCleared && "grayscale",
-                  )}
+                  variant="elite"
+                  rounded
+                  className={cn(isCleared && "grayscale")}
                 />
               </span>
             ))}
@@ -640,12 +641,11 @@ function RegionDrawer({
                   className="flex items-start gap-2.5 rounded border border-destructive/40 bg-destructive/5 p-2"
                 >
                   <span className="relative size-12 shrink-0 overflow-hidden rounded border border-destructive/60">
-                    <Image
-                      src={`/images/heroes/${h.id}.jpg`}
-                      alt={h.name}
-                      fill
+                    <HeroPortrait
+                      id={h.id}
+                      name={h.name}
                       sizes="48px"
-                      className="object-cover"
+                      variant="elite"
                     />
                   </span>
                   <div className="min-w-0 flex-1">

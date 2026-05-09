@@ -9,6 +9,7 @@ import { getHeroById } from "@/lib/elementum-flavor"
 import { haptic } from "@/lib/underlord/haptics"
 import { TERRAIN_GLYPH, pickMapLayout } from "@/lib/underlord/maps"
 import { Atmosphere } from "./atmosphere"
+import { HeroPortrait } from "./hero-portrait"
 
 const TONE_TO_VAR: Record<string, string> = {
   primary: "var(--primary)",
@@ -147,12 +148,14 @@ export function Briefing({
                 className="flex gap-3 rounded border border-destructive/40 bg-destructive/5 p-2.5"
               >
                 <span className="relative size-14 shrink-0 overflow-hidden rounded border-2 border-destructive/60 sm:size-20">
-                  <Image
-                    src={`/images/heroes/${h.id}.jpg`}
-                    alt={h.name}
-                    fill
+                  {/* HeroPortrait gracefully falls back to a tonal sigil
+                      when the elite (mb-* / boss-*) asset is missing,
+                      avoiding the broken-image icon. */}
+                  <HeroPortrait
+                    id={h.id}
+                    name={h.name}
                     sizes="(max-width: 640px) 56px, 80px"
-                    className="object-cover"
+                    variant="elite"
                   />
                 </span>
                 <div className="min-w-0 flex-1">
