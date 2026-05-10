@@ -302,39 +302,33 @@ export function WorldMap({
 
   return (
     <div className="relative">
-      {/* Legend strip — kept compact to leave room for the next-target hint */}
-      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1 font-mono text-[8.5px] uppercase tracking-[0.22em] text-muted-foreground">
-        <LegendDot color="oklch(0.58 0.20 22)" label="DISPONÍVEL" glow />
-        <LegendDot color="oklch(0.62 0.025 240)" label="LIMPA" muted />
-        <LegendDot color="oklch(0.40 0 0)" label="PEEK" dashed />
-        {nextSuggestion ? (
-          <span className="ml-auto hidden items-center gap-1.5 text-foreground sm:inline-flex">
-            <span className="text-muted-foreground">Sugerido</span>
-            <span className="text-gold">·</span>
-            <span className="font-black tracking-[0.18em]">
-              {nextSuggestion.name}
-            </span>
-          </span>
-        ) : null}
+      {/* Legend — simple dots matching reference UI */}
+      <div className="mb-2 flex items-center gap-x-4 px-1 font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+        <LegendDot color="oklch(0.55 0.18 25)" label="DISPONÍVEL" glow />
+        <LegendDot color="oklch(0.50 0.02 220)" label="LIMPA" muted />
       </div>
 
+      {/* Ornate gold frame — matches reference UI */}
       <div
-        className="relative overflow-hidden rounded-md border-2 border-border/70 backdrop-blur"
+        className="relative overflow-hidden rounded-lg"
         style={{
-          // Parchment-toned base with a subtle radial fall-off so the
-          // map feels like a worn document, not a flat black canvas.
-          background:
-            "radial-gradient(ellipse at 50% 30%, oklch(0.20 0.015 35 / 0.85) 0%, oklch(0.12 0.01 35 / 0.95) 60%, oklch(0.08 0.005 30) 100%)",
+          // Double border: outer gold, inner dark
+          border: "3px solid oklch(0.62 0.14 65)",
+          boxShadow:
+            "inset 0 0 0 2px oklch(0.12 0.01 30), 0 4px 24px oklch(0 0 0 / 0.6)",
         }}
       >
-        {/* Parchment dot pattern — much subtler than the previous grid */}
+        {/* Painted fantasy map background */}
         <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.10]"
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/images/map-bg.jpg')" }}
+        />
+        {/* Dark vignette overlay so nodes pop */}
+        <div
+          className="pointer-events-none absolute inset-0"
           style={{
-            backgroundImage:
-              "radial-gradient(oklch(0.85 0.05 80 / 0.8) 0.6px, transparent 0.7px)",
-            backgroundSize: "18px 18px",
+            background:
+              "radial-gradient(ellipse at 50% 50%, transparent 30%, oklch(0 0 0 / 0.55) 100%)",
           }}
         />
 
@@ -346,132 +340,73 @@ export function WorldMap({
           aria-label="Mapa da Cruzada"
         >
           <defs>
-            {/* Per-biome territory gradient. We generate one per biome
-                so each blob has its own tint without leaking to others.
-                Stops: bright core → quick fade → fully transparent edge. */}
-            {(Object.keys(BIOME) as Region["biome"][]).map((b) => (
-              <radialGradient
-                key={`grad-${b}`}
-                id={`territory-${b}`}
-                cx="50%"
-                cy="50%"
-                r="50%"
-              >
-                <stop offset="0%" stopColor={BIOME[b].core} stopOpacity="0.32" />
-                <stop offset="55%" stopColor={BIOME[b].core} stopOpacity="0.14" />
-                <stop offset="100%" stopColor={BIOME[b].core} stopOpacity="0" />
-              </radialGradient>
-            ))}
-
-            <filter
-              id="node-glow"
-              x="-100%"
-              y="-100%"
-              width="300%"
-              height="300%"
-            >
-              <feGaussianBlur stdDeviation="1.1" result="b" />
-              <feMerge>
-                <feMergeNode in="b" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-
-            {/* Soft halo specifically for "available" nodes so they
-                pop against the territory tint. Strong enough to read
-                at thumbnail scale. */}
+            {/* Gold glow for available nodes — strong teal-cyan pop */}
             <filter
               id="available-glow"
-              x="-200%"
-              y="-200%"
-              width="500%"
-              height="500%"
+              x="-150%"
+              y="-150%"
+              width="400%"
+              height="400%"
             >
-              <feGaussianBlur stdDeviation="1.6" result="b" />
-              <feFlood floodColor="oklch(0.80 0.18 78)" floodOpacity="0.6" />
+              <feGaussianBlur stdDeviation="1.4" result="b" />
+              <feFlood floodColor="oklch(0.70 0.16 200)" floodOpacity="0.7" />
               <feComposite in2="b" operator="in" result="g" />
               <feMerge>
                 <feMergeNode in="g" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
+
+            {/* Gold ring glow for selected */}
+            <filter
+              id="ring-glow"
+              x="-100%"
+              y="-100%"
+              width="300%"
+              height="300%"
+            >
+              <feGaussianBlur stdDeviation="0.8" result="b" />
+              <feMerge>
+                <feMergeNode in="b" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
           </defs>
 
-          {/* Biome territory blobs — drawn first, layered with edge ring
-              so they read as actual zones with borders. The dashed
-              outer ring helps separate adjacent biomes. */}
-          {biomeBlobs.map((b) => (
-            <g key={`blob-${b.biome}`}>
-              {/* Filled territory */}
-              <circle
-                cx={b.cx}
-                cy={b.cy}
-                r={b.r}
-                fill={`url(#territory-${b.biome})`}
-              />
-              {/* Soft border so the territory has a visible edge */}
-              <circle
-                cx={b.cx}
-                cy={b.cy}
-                r={b.r * 0.97}
-                fill="none"
-                stroke={BIOME[b.biome].core}
-                strokeOpacity={0.28}
-                strokeWidth={0.18}
-                strokeDasharray="0.6 0.9"
-              />
-            </g>
-          ))}
-
-          {/* Biome labels — anchored INSIDE the territory at the top of
-              the centroid disc, with a subtle backdrop pill so the
-              text doesn't disappear behind nodes or blob edges. */}
+          {/* Biome labels — simple floating text, no pills, matching reference */}
           {biomeBlobs.map((b) => {
             const txt = BIOME[b.biome].label
-            const w = txt.length * 1.05 + 1.8
-            const ly = b.cy - b.r * 0.55
             return (
-              <g
+              <text
                 key={`blabel-${b.biome}`}
-                transform={`translate(${b.cx}, ${ly})`}
+                x={b.cx}
+                y={b.cy - b.r * 0.45}
+                textAnchor="middle"
+                fontSize={2.2}
+                fontWeight={900}
+                letterSpacing={0.28}
+                fill={BIOME[b.biome].core}
+                opacity={0.95}
                 pointerEvents="none"
+                style={{
+                  fontFamily:
+                    "var(--font-display, ui-sans-serif), system-ui, sans-serif",
+                  textShadow: "0 1px 4px oklch(0 0 0 / 0.9)",
+                }}
               >
-                <rect
-                  x={-w / 2}
-                  y={-1.55}
-                  width={w}
-                  height={3.1}
-                  rx={0.6}
-                  fill="oklch(0.10 0.01 35 / 0.78)"
-                  stroke={BIOME[b.biome].core}
-                  strokeOpacity={0.55}
-                  strokeWidth={0.13}
-                />
-                <text
-                  textAnchor="middle"
-                  dy="0.45"
-                  fontSize={1.55}
-                  fontWeight={900}
-                  letterSpacing={0.22}
-                  fill={BIOME[b.biome].core}
-                  style={{
-                    fontFamily:
-                      "var(--font-display, ui-sans-serif), system-ui, sans-serif",
-                  }}
-                >
-                  {txt}
-                </text>
-              </g>
+                {txt}
+              </text>
             )
           })}
 
-          {/* Edges */}
+          {/* Edges — glowing gold for active paths, dashed grey for locked */}
           {edges.map(({ a, b }, i) => {
             const sa = save.regions[a.id]
             const sb = save.regions[b.id]
             const peek = peekIds.has(a.id) || peekIds.has(b.id)
             const hot = a.id === selectedId || b.id === selectedId
-            const cleared = sa === "cleared" && sb === "cleared"
+            const bothCleared = sa === "cleared" && sb === "cleared"
+            const active = !peek && (sa === "available" || sb === "available")
             return (
               <line
                 key={`edge-${i}`}
@@ -481,21 +416,22 @@ export function WorldMap({
                 y2={b.y}
                 stroke={
                   hot
-                    ? "oklch(0.78 0.14 78)"
-                    : cleared
-                      ? "oklch(0.55 0.02 240 / 0.55)"
-                      : peek
-                        ? "oklch(0.55 0.05 30 / 0.45)"
-                        : "oklch(0.65 0.04 30 / 0.7)"
+                    ? "oklch(0.85 0.18 55)" // bright gold
+                    : active
+                      ? "oklch(0.72 0.14 55 / 0.85)" // warm gold
+                      : bothCleared
+                        ? "oklch(0.50 0.03 55 / 0.5)" // muted tan
+                        : "oklch(0.45 0.02 30 / 0.5)" // grey dashed
                 }
-                strokeWidth={hot ? 0.55 : 0.35}
-                strokeDasharray={peek ? "0.9 0.9" : undefined}
+                strokeWidth={hot ? 0.6 : active ? 0.45 : 0.32}
+                strokeDasharray={peek ? "0.8 0.8" : undefined}
                 strokeLinecap="round"
+                filter={active && !hot ? "url(#ring-glow)" : undefined}
               />
             )
           })}
 
-          {/* Nodes */}
+          {/* Nodes — teal discs with gold rings matching reference */}
           {visibleRegions.map((r) => {
             const status = save.regions[r.id]
             const isPeek = peekIds.has(r.id)
@@ -504,64 +440,61 @@ export function WorldMap({
               r.eliteHeroes?.some((e) => e.kind === "boss") ?? false
             const isMini =
               r.eliteHeroes?.some((e) => e.kind === "miniboss") ?? false
-            const palette = BIOME[r.biome]
-            // Peek nodes are deliberately smaller — they're a hint of
-            // "what's next", not a co-equal node the player can act on.
-            const baseRadius = isBoss ? 3.1 : isMini ? 2.7 : 2.4
+            // Sizing: base 2.6, boss bumps, peek shrinks
+            const baseRadius = isBoss ? 3.2 : isMini ? 2.9 : 2.6
             const radius =
-              (isPeek ? baseRadius * 0.7 : baseRadius) +
-              (isSelected ? 0.4 : 0)
-            const ringR = radius + 1.0
+              (isPeek ? baseRadius * 0.72 : baseRadius) +
+              (isSelected ? 0.35 : 0)
+            const ringR = radius + 0.9
+            // Fill: teal for available, dark grey for cleared/peek
             const fill =
               isPeek
-                ? "oklch(0.16 0.005 30 / 0.7)"
+                ? "oklch(0.22 0.01 220 / 0.85)"
                 : status === "cleared"
-                  ? "oklch(0.30 0.015 240)" // muted, distinct from "available"
-                  : palette.core
-            // Per-state ring color. Cleared rings are intentionally
-            // dim so the gold "available" rings are the only thing
-            // that draws the eye.
+                  ? "oklch(0.32 0.015 220)" // dark slate
+                  : "oklch(0.52 0.12 200)" // teal-cyan
+            // Ring: gold for available, grey otherwise
             const ringStroke = isPeek
-              ? "oklch(0.42 0.02 30 / 0.7)"
+              ? "oklch(0.45 0.02 30 / 0.65)"
               : status === "available"
-                ? "oklch(0.82 0.16 78)"
-                : "oklch(0.45 0.015 240 / 0.55)"
+                ? "oklch(0.78 0.16 65)" // warm gold
+                : "oklch(0.50 0.02 30 / 0.6)"
             return (
               <g
                 key={r.id}
                 transform={`translate(${r.x}, ${r.y})`}
                 className="cursor-pointer"
-                style={{
-                  opacity: isPeek ? 0.55 : 1,
-                }}
+                style={{ opacity: isPeek ? 0.6 : 1 }}
               >
-                {/* Selected pulse — drawn FIRST so it sits behind the
-                    ring; pulse opacity ramp keeps it from dominating */}
+                {/* Selection pulse */}
                 {isSelected ? (
                   <circle
-                    r={ringR + 0.4}
+                    r={ringR + 0.5}
                     fill="none"
-                    stroke="oklch(0.82 0.16 78)"
+                    stroke="oklch(0.82 0.18 65)"
                     strokeWidth={0.4}
                     style={{
-                      animation: "wm-pulse 1.6s ease-out infinite",
+                      animation: "wm-pulse 1.5s ease-out infinite",
                       transformOrigin: "center",
                     }}
                   />
                 ) : null}
 
-                {/* Outer ring */}
+                {/* Outer gold ring */}
                 <circle
                   r={ringR}
                   fill="none"
                   stroke={ringStroke}
-                  strokeWidth={isSelected ? 0.7 : 0.45}
-                  strokeDasharray={isPeek ? "0.7 0.6" : undefined}
+                  strokeWidth={isSelected ? 0.65 : 0.4}
+                  strokeDasharray={isPeek ? "0.65 0.55" : undefined}
+                  filter={
+                    !isPeek && status === "available"
+                      ? "url(#ring-glow)"
+                      : undefined
+                  }
                 />
 
-                {/* Filled disc — only "available" gets the gold halo
-                    filter so it reads as the playable target. Cleared
-                    discs stay flat and recessive. */}
+                {/* Filled disc */}
                 <circle
                   r={radius}
                   fill={fill}
@@ -572,27 +505,26 @@ export function WorldMap({
                   }
                 />
 
-                {/* Inner sheen — tiny lighter cap so the disc reads as
-                    a 3D coin, not a flat sticker. Skipped on peeks. */}
+                {/* Glossy highlight on disc */}
                 {!isPeek ? (
                   <ellipse
                     cx={0}
-                    cy={-radius * 0.45}
-                    rx={radius * 0.6}
-                    ry={radius * 0.22}
-                    fill="oklch(1 0 0 / 0.10)"
+                    cy={-radius * 0.4}
+                    rx={radius * 0.55}
+                    ry={radius * 0.18}
+                    fill="oklch(1 0 0 / 0.18)"
                     pointerEvents="none"
                   />
                 ) : null}
 
-                {/* Centerpiece: peek = "?", cleared = check, others = stage */}
+                {/* Content: ? for peek, checkmark for cleared, number for available */}
                 {isPeek ? (
                   <text
                     textAnchor="middle"
-                    dy="0.55"
-                    fontSize={radius * 1.0}
+                    dy="0.6"
+                    fontSize={radius * 1.1}
                     fontWeight={900}
-                    fill="oklch(0.85 0 0 / 0.75)"
+                    fill="oklch(0.70 0 0 / 0.8)"
                     pointerEvents="none"
                     style={{
                       fontFamily:
@@ -602,11 +534,10 @@ export function WorldMap({
                     ?
                   </text>
                 ) : status === "cleared" ? (
-                  // SVG-native check (no lucide dep needed inside <svg>)
                   <path
-                    d="M -1.0 0 L -0.2 0.9 L 1.2 -0.9"
-                    stroke="oklch(0.95 0 0 / 0.85)"
-                    strokeWidth={0.45}
+                    d="M -1.1 0.1 L -0.3 1.0 L 1.3 -0.8"
+                    stroke="oklch(0.90 0 0 / 0.9)"
+                    strokeWidth={0.5}
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     fill="none"
@@ -615,53 +546,67 @@ export function WorldMap({
                 ) : (
                   <text
                     textAnchor="middle"
-                    dy="0.45"
-                    fontSize={radius * 0.95}
+                    dy="0.5"
+                    fontSize={radius * 0.9}
                     fontWeight={900}
                     fill="oklch(1 0 0)"
                     pointerEvents="none"
                     style={{
                       fontFamily:
                         "var(--font-display, ui-sans-serif), system-ui, sans-serif",
-                      paintOrder: "stroke",
-                      stroke: "oklch(0 0 0 / 0.55)",
-                      strokeWidth: 0.18,
+                      textShadow: "0 1px 2px oklch(0 0 0 / 0.6)",
                     }}
                   >
                     {r.stage}
                   </text>
                 )}
 
-                {/* Boss/miniboss banner — sigil + small bar above the node */}
+                {/* Elite/Boss badge — small red pill on top-left, matching reference */}
                 {!isPeek && (isBoss || isMini) ? (
                   <g
-                    transform={`translate(0, ${-(radius + 2.4)})`}
+                    transform={`translate(${-radius * 0.8}, ${-radius * 0.9})`}
                     pointerEvents="none"
                   >
-                    {/* Banner pill */}
                     <rect
-                      x={isBoss ? -3.4 : -2.8}
-                      y={-1.1}
-                      width={isBoss ? 6.8 : 5.6}
-                      height={2.2}
-                      rx={0.6}
-                      fill={isBoss ? "oklch(0.78 0.14 78)" : "oklch(0.55 0.21 22)"}
-                      stroke="oklch(0 0 0 / 0.5)"
-                      strokeWidth={0.12}
+                      x={-2.4}
+                      y={-0.9}
+                      width={4.8}
+                      height={1.8}
+                      rx={0.4}
+                      fill={isBoss ? "oklch(0.55 0.22 25)" : "oklch(0.50 0.20 25)"}
+                      stroke="oklch(0 0 0 / 0.6)"
+                      strokeWidth={0.1}
                     />
                     <text
                       textAnchor="middle"
-                      dy="0.4"
-                      fontSize={1.4}
+                      dy="0.32"
+                      fontSize={1.0}
                       fontWeight={900}
-                      letterSpacing={0.15}
-                      fill="oklch(0.10 0.01 30)"
+                      letterSpacing={0.1}
+                      fill="oklch(0.95 0 0)"
                       style={{
                         fontFamily:
                           "var(--font-display, ui-sans-serif), system-ui, sans-serif",
                       }}
                     >
                       {isBoss ? "BOSS" : "ELITE"}
+                    </text>
+                  </g>
+                ) : null}
+
+                {/* Skull icon below elite badge for minibosses */}
+                {!isPeek && isMini && !isBoss ? (
+                  <g
+                    transform={`translate(${-radius * 0.8}, ${radius * 0.5})`}
+                    pointerEvents="none"
+                  >
+                    <text
+                      textAnchor="middle"
+                      fontSize={1.4}
+                      fill="oklch(0.85 0.15 40)"
+                      style={{ fontFamily: "system-ui" }}
+                    >
+                      ☠
                     </text>
                   </g>
                 ) : null}
