@@ -613,6 +613,73 @@ export const MINION_TEMPLATES: Record<MinionArchetype, UnitTemplate> = {
     unlockTier: 13,
     hasActiveSpecial: false,
   },
+
+  /* ------------------------------------------------------------------ */
+  /* v10 — final three to complete the 27-minion roster                  */
+  /* ------------------------------------------------------------------ */
+
+  shade: {
+    archetype: 'shade',
+    name: 'SHADE',
+    glyph: '◌',
+    role: 'Assassino espectral',
+    hp: 55,
+    move: 5,
+    atk: 62,
+    range: 1,
+    spd: 10,
+    tone: 'accent',
+    flavor:
+      'Onde há sombra há Shade. Se o herói piscar, já era — a lâmina chega antes da retina.',
+    attackKind: 'execute',
+    abilityTag: 'SOMBRA',
+    abilityText:
+      'Execute em glass cannon: +50% em alvos <40% HP. Frágil, mas mata antes de morrer.',
+    unlockTier: 14,
+    hasActiveSpecial: false,
+  },
+
+  colossus: {
+    archetype: 'colossus',
+    name: 'COLOSSUS',
+    glyph: '◼',
+    role: 'Titã imóvel',
+    hp: 320,
+    move: 1,
+    atk: 25,
+    range: 1,
+    spd: 2,
+    tone: 'foreground',
+    flavor:
+      'Move um passo por rodada e pesa como uma catedral. Os heróis vão ao redor — se conseguirem.',
+    attackKind: 'basic',
+    abilityTag: 'TITÃ',
+    abilityText:
+      'HP 320, move 1, SPD 2. Imóvel: bloqueia corredores enquanto o resto do exército flanqueia.',
+    unlockTier: 15,
+    hasActiveSpecial: false,
+  },
+
+  banshee: {
+    archetype: 'banshee',
+    name: 'BANSHEE',
+    glyph: '☽',
+    role: 'Lamentadora de guerra',
+    hp: 70,
+    move: 4,
+    atk: 30,
+    range: 3,
+    spd: 8,
+    tone: 'destructive',
+    flavor:
+      'Seu grito não mata — mas faz o herói hesitar. E hesitação é tudo que os outros precisam.',
+    attackKind: 'curse',
+    abilityTag: 'LAMENTO',
+    abilityText:
+      'Ranged curse com range 3: reduz ATK do alvo em 25% por 2 turnos. Setup pra finalizadores.',
+    unlockTier: 16,
+    hasActiveSpecial: false,
+  },
 }
 
 let unitIdCounter = 0
@@ -823,6 +890,12 @@ function archMinionTitle(arch: MinionArchetype): string {
       return 'VESPA'
     case 'chimera':
       return 'TRÍADE'
+    case 'shade':
+      return 'SOMBRA'
+    case 'colossus':
+      return 'TITÃ'
+    case 'banshee':
+      return 'LAMENTO'
   }
 }
 
@@ -888,6 +961,10 @@ const RECRUIT_NAMES: Record<MinionArchetype, string[]> = {
   bulwark: ['REDO', 'KEEL', 'STELE', 'DROM'],
   swarm: ['SKIT', 'BUZ', 'NIT', 'ZIRR'],
   chimera: ['TRYAD', 'KEROS', 'OPHID', 'GRYM'],
+  // v10 final three
+  shade: ['UMBR', 'VEIL', 'NYX', 'DUSK'],
+  colossus: ['ATLAS', 'TITAN', 'MONOL', 'GRAV'],
+  banshee: ['WAIL', 'KEEN', 'MOURNE', 'LIRA'],
 }
 
 let recruitCounter = 0

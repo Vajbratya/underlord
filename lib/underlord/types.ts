@@ -53,6 +53,10 @@ export type MinionArchetype =
   | 'bulwark'  // melee cleave, ultra-high HP, ultra-low ATK — wall
   | 'swarm'    // melee basic, glass + speed — kamikaze harasser
   | 'chimera'  // melee pierce, mid-range duelist with reach 2
+  // v10 — final three archetypes to hit 27 total minion roster
+  | 'shade'    // melee execute, glass cannon stealth assassin
+  | 'colossus' // melee basic, ultra-tank, slowest in game
+  | 'banshee'  // ranged curse, debuffer with AOE fear
 
 /**
  * Each archetype has a single distinguishing attack rule:

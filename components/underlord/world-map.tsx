@@ -37,6 +37,50 @@ import { REGIONS } from "@/lib/underlord/regions"
 
 type Status = "available" | "cleared" | "locked"
 
+/**
+ * Maps region IDs to the minion archetype unlocked when that region is
+ * cleared. Used to show minion portrait badges on the world map.
+ * 27 minions spread across the campaign.
+ */
+const MINION_UNLOCK: Record<string, string> = {
+  // Stage 1 — core starters
+  'lichmoor': 'brown',
+  'putrid-shoals': 'blue',
+  'meat-market': 'red',
+  // Stage 2
+  'rotwell': 'green',
+  'bog-cathedral': 'grey',
+  'salt-cloister': 'bone',
+  'drowned-warden': 'behemoth',
+  'sermon-fork': 'harpy',
+  'flesh-foundry': 'golem',
+  // Stage 3
+  'hex-orchard': 'spore',
+  'tideglass': 'leech',
+  'ironreach': 'gorger',
+  'rootlich': 'gargoyle',
+  'wraith-fen': 'ratking',
+  'gilded-rookery': 'oracle',
+  'cinder-grove': 'tidesinger',
+  // Stage 4+
+  'wyrm-shelf': 'swarm',
+  'salt-tomb': 'wraith',
+  'thorn-arena': 'succubus',
+  'sunkencrown': 'thornbeast',
+  'pyre-quay': 'pyrelich',
+  'umbra-canal': 'mortar',
+  // Stage 5+
+  'volcan-temple': 'ravager',
+  'hollow-belfry': 'wyrmling',
+  'kingreach': 'bulwark',
+  'crown-causeway': 'lich',
+  'usurper-hall': 'chimera',
+  'forge-spire': 'crowlord',
+  'mind-archive': 'shade',
+  'eternity-foyer': 'colossus',
+  'eternity-loop': 'banshee',
+}
+
 // Biome palette. Tuned so cleared/available/peek versions are clearly
 // distinguishable while every node still reads as "this biome".
 const BIOME: Record<
@@ -608,6 +652,35 @@ export function WorldMap({
                     >
                       ☠
                     </text>
+                  </g>
+                ) : null}
+
+                {/* Minion unlock portrait — shows which minion you get */}
+                {!isPeek && MINION_UNLOCK[r.id] ? (
+                  <g
+                    transform={`translate(${radius * 0.75}, ${radius * 0.65})`}
+                    pointerEvents="none"
+                  >
+                    {/* Gold ring around portrait */}
+                    <circle
+                      r={1.8}
+                      fill="oklch(0.12 0.01 30)"
+                      stroke="oklch(0.72 0.14 65)"
+                      strokeWidth={0.25}
+                    />
+                    {/* Minion portrait as foreignObject for proper img */}
+                    <clipPath id={`clip-${r.id}`}>
+                      <circle r={1.55} />
+                    </clipPath>
+                    <image
+                      href={`/images/minions/${MINION_UNLOCK[r.id]}.jpg`}
+                      x={-1.55}
+                      y={-1.55}
+                      width={3.1}
+                      height={3.1}
+                      clipPath={`url(#clip-${r.id})`}
+                      preserveAspectRatio="xMidYMid slice"
+                    />
                   </g>
                 ) : null}
 

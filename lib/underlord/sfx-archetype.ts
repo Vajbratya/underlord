@@ -222,6 +222,26 @@ function chimeraVoice() {
   sfx.heavyHit()
 }
 
+// v10 final three
+function shadeVoice() {
+  // Spectral assassin — whisper + quick blade.
+  sfx.tap()
+  sfx.damage()
+}
+
+function colossusVoice() {
+  // Titan stomp — earth-shaking slow impact.
+  sfx.heavyHit()
+  sfx.shake()
+  sfx.bomb()
+}
+
+function bansheeVoice() {
+  // Wailing curse — ethereal moan + magic debuff sound.
+  sfx.heal() // eerie tone
+  sfx.magicHit() // debuff impact
+}
+
 const VOICE: Record<MinionArchetype, () => void> = {
   brown: brownVoice,
   red: redVoice,
@@ -253,6 +273,10 @@ const VOICE: Record<MinionArchetype, () => void> = {
   bulwark: bulwarkVoice,
   swarm: swarmVoice,
   chimera: chimeraVoice,
+  // v10 final three
+  shade: shadeVoice,
+  colossus: colossusVoice,
+  banshee: bansheeVoice,
 }
 
 /** Special voice for the Underlord — louder, deeper, throne-room. */
@@ -331,6 +355,10 @@ const FLASH: Record<MinionArchetype, FlashSpec> = {
   bulwark: { color: 'oklch(0.50 0.04 250)', scale: 1.7, ms: 420, shape: 'burst' },
   swarm:   { color: 'oklch(0.85 0.18 95)',  scale: 0.9, ms: 180, shape: 'ring'  },
   chimera: { color: 'oklch(0.68 0.16 110)', scale: 1.2, ms: 260, shape: 'ring'  },
+  // v10 final three
+  shade:    { color: 'oklch(0.35 0.08 280)', scale: 1.0, ms: 160, shape: 'ring' },
+  colossus: { color: 'oklch(0.45 0.03 60)',  scale: 2.0, ms: 500, shape: 'burst' },
+  banshee:  { color: 'oklch(0.70 0.14 300)', scale: 1.3, ms: 320, shape: 'ring' },
 }
 
 const OVERLORD_FLASH: FlashSpec = {
