@@ -64,6 +64,11 @@ import {
   ascensionActive,
 } from "@/lib/underlord/ascension"
 import {
+  MODIFIERS,
+  aggregateModifiers,
+  rollModifiers,
+} from "@/lib/underlord/modifiers"
+import {
   OVERLORD_SKILLS,
   type SkillDef,
 } from "@/lib/underlord/overlord-skills"
@@ -139,6 +144,7 @@ function buildBattle(
   overlordName: string,
   boons: string[] = [],
   ascMods: { hp: number; atk: number; move: number } = { hp: 1, atk: 1, move: 0 },
+  modIds: string[] = [],
 ): BattleState {
   // Boon multipliers that apply at unit-creation time (Overlord stats,
   // starting attack bonus, special CD reduction). Per-action effects
@@ -347,12 +353,60 @@ function buildBattle(
           }
         })
 
+  // v12 — Presságios (battle omens). Apply the rolled modifiers to EVERY
+  // unit on the board (both factions — it's a battlefield condition) and
+  // scatter any extra ambient fires. Build-time only; no round plumbing.
+  const modAgg = aggregateModifiers(modIds)
+  let allUnits: Unit[] = [...placedSquad, overlord, ...scaledHeroUnits]
+  const modsActive =
+    modAgg.allAtkMult !== 1 ||
+    modAgg.allHpMult !== 1 ||
+    modAgg.allMove !== 0 ||
+    modAgg.rangedRangeDelta !== 0
+  if (modsActive) {
+    allUnits = allUnits.map((u) => {
+      if (u.isBarrier) return u
+      const hpMax = Math.max(1, Math.round(u.hpMax * modAgg.allHpMult))
+      const hp = Math.min(hpMax, Math.max(1, Math.round(u.hp * modAgg.allHpMult)))
+      const range =
+        u.range >= 3 ? Math.max(1, u.range + modAgg.rangedRangeDelta) : u.range
+      return {
+        ...u,
+        hpMax,
+        hp,
+        atk: Math.max(1, Math.round(u.atk * modAgg.allAtkMult)),
+        move: Math.max(1, u.move + modAgg.allMove),
+        range,
+      }
+    })
+  }
+
+  let modFires = prelitFires
+  if (modAgg.extraFires > 0) {
+    const occupied = new Set<string>(obstacleKeys)
+    for (const u of allUnits) if (!u.dead) occupied.add(`${u.pos.q},${u.pos.r}`)
+    for (const f of prelitFires) occupied.add(`${f.pos.q},${f.pos.r}`)
+    const extra: typeof prelitFires = []
+    let attempts = 0
+    while (extra.length < modAgg.extraFires && attempts < 300) {
+      attempts++
+      const rr = Math.floor(Math.random() * rows)
+      const off = offsetFor(rr)
+      const qq = off + Math.floor(Math.random() * cols)
+      const k = `${qq},${rr}`
+      if (occupied.has(k)) continue
+      occupied.add(k)
+      extra.push({ pos: { q: qq, r: rr }, ttl: 99, damage: 4, source: 'omen' })
+    }
+    modFires = [...prelitFires, ...extra]
+  }
+
   return initBattle(
-    [...placedSquad, overlord, ...scaledHeroUnits],
+    allUnits,
     cols,
     rows,
     layout.obstacles.map((o) => ({ pos: o.pos, kind: o.kind })),
-    prelitFires,
+    modFires,
     {
       // Boon: Couraça Negra (and Pacto: Berserker inverse) — multiplier on
       // incoming damage for minions only.
@@ -425,14 +479,24 @@ export function BattleScreen({
   const healBonus = healMultiplier(perks)
   const layout = useMemo(() => pickMapLayout(region), [region])
   const ascMods = useMemo(() => ascensionMods(ascension, curses), [ascension, curses])
+  // v12 — roll battlefield omens ONCE per battle entry (lazy useState so
+  // re-renders never re-roll). Higher Ascension rolls more omens.
+  const [omenIds] = useState<string[]>(() =>
+    rollModifiers(ascension >= 6 ? 3 : ascension >= 2 ? 2 : undefined),
+  )
+  const [omenReveal, setOmenReveal] = useState(omenIds.length > 0)
   const initialBattle = useMemo(
     () =>
-      buildBattle(squad, region, overlordLevel, overlordName, boons, {
-        hp: ascMods.hp,
-        atk: ascMods.atk,
-        move: ascMods.move,
-      }),
-    [squad, region, overlordLevel, overlordName, boons, ascMods],
+      buildBattle(
+        squad,
+        region,
+        overlordLevel,
+        overlordName,
+        boons,
+        { hp: ascMods.hp, atk: ascMods.atk, move: ascMods.move },
+        omenIds,
+      ),
+    [squad, region, overlordLevel, overlordName, boons, ascMods, omenIds],
   )
   const [local, dispatch] = useReducer(reducer, {
     state: initialBattle,
@@ -524,6 +588,13 @@ export function BattleScreen({
       lastRoundRef.current = state.round
     }
   }, [state.turn, state.round])
+
+  // v12 — auto-dismiss the Presságio reveal after a beat (also click-to-close).
+  useEffect(() => {
+    if (!omenReveal) return
+    const t = window.setTimeout(() => setOmenReveal(false), 3400)
+    return () => window.clearTimeout(t)
+  }, [omenReveal])
 
   // v11 — combo MILESTONE pop. Purely derived from the `combo` state: when
   // the streak crosses a fixed threshold (3/5/7/10) we punch a transient
@@ -1309,6 +1380,31 @@ export function BattleScreen({
               ) : null}
             </div>
           ) : null}
+          {/* v12 — Presságio (omen) chips. */}
+          {omenIds.map((id) => {
+            const m = MODIFIERS[id]
+            if (!m) return null
+            return (
+              <div
+                key={id}
+                title={`${m.name} — ${m.desc}`}
+                className={cn(
+                  "flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em]",
+                  m.tone === "destructive"
+                    ? "border-destructive/70 bg-destructive/15 text-destructive"
+                    : m.tone === "gold"
+                      ? "border-gold/70 bg-gold/15 text-gold"
+                      : m.tone === "accent"
+                        ? "border-accent/70 bg-accent/15 text-accent"
+                        : m.tone === "primary"
+                          ? "border-primary/70 bg-primary/15 text-primary"
+                          : "border-border bg-card/70 text-muted-foreground",
+                )}
+              >
+                <span className="leading-none">{m.short}</span>
+              </div>
+            )
+          })}
           {combo >= 2 ? (
             <div
               className={cn(
@@ -1994,6 +2090,55 @@ export function BattleScreen({
             </p>
           </div>
         </div>
+      ) : null}
+
+      {/* v12 — Presságio reveal. The omens for this battle slam in over
+          the board for a beat, then fade, so the player reads how the
+          field is twisted before the first move. */}
+      {omenReveal && omenIds.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setOmenReveal(false)}
+          aria-label="Fechar presságios"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background/80 px-6 backdrop-blur-sm"
+        >
+          <span className="font-mono text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+            Presságios
+          </span>
+          {omenIds.map((id, i) => {
+            const m = MODIFIERS[id]
+            if (!m) return null
+            return (
+              <div
+                key={id}
+                className="banner-slam fixed left-1/2 top-1/2 w-[88vw] max-w-md text-center"
+                style={{ animationDelay: `${i * 0.18}s`, marginTop: `${(i - (omenIds.length - 1) / 2) * 5.5}rem` }}
+              >
+                <p
+                  className={cn(
+                    "font-display text-3xl font-black uppercase leading-none tracking-tight sm:text-4xl",
+                    m.tone === "destructive"
+                      ? "text-destructive"
+                      : m.tone === "gold"
+                        ? "text-gold"
+                        : m.tone === "accent"
+                          ? "text-accent"
+                          : "text-primary",
+                  )}
+                  style={{ textShadow: "0 0 36px currentColor" }}
+                >
+                  {m.name}
+                </p>
+                <p className="mt-1 font-mono text-[11px] leading-snug text-foreground/80">
+                  {m.desc}
+                </p>
+              </div>
+            )
+          })}
+          <span className="fixed bottom-10 left-1/2 -translate-x-1/2 font-mono text-[9px] uppercase tracking-[0.3em] text-muted-foreground">
+            toque para começar
+          </span>
+        </button>
       ) : null}
 
       {taunt ? (

@@ -120,6 +120,17 @@ export type AchievementId =
   | 'mythic_bearer'
   | 'ascendant_1'
   | 'void_conqueror'
+  /* v12 — more achievements */
+  | 'hero_slayer_75'
+  | 'hero_slayer_100'
+  | 'veteran_250'
+  | 'combo_15'
+  | 'streak_60'
+  | 'season_finale'
+  | 'omen_survivor'
+  | 'ascension_max'
+  | 'flawless_streak'
+  | 'reader_again'
 
 export type AchievementDef = {
   id: AchievementId
@@ -285,6 +296,67 @@ export const ACHIEVEMENTS: Record<AchievementId, AchievementDef> = {
     title: 'CARRASCO DO LEITOR',
     desc: 'Derrotou O LEITOR, o chefe final do vazio. Quem narrava, agora cala.',
     reward: 6000,
+  },
+  /* v12 — more achievements */
+  hero_slayer_75: {
+    id: 'hero_slayer_75',
+    title: 'COVA COMUM',
+    desc: '75 heróis enterrados. A Liga remarcou os obituários pra horário nobre.',
+    reward: 3200,
+  },
+  hero_slayer_100: {
+    id: 'hero_slayer_100',
+    title: 'CENSO DE CADÁVERES',
+    desc: '100 heróis. Marwen parou de narrar nomes e começou a narrar números.',
+    reward: 5500,
+  },
+  veteran_250: {
+    id: 'veteran_250',
+    title: 'O EXÉRCITO QUE NÃO DORME',
+    desc: '250 batalhas vencidas. O Conselho das Sete Marcas pediu reunião de emergência. De novo.',
+    reward: 7000,
+  },
+  combo_15: {
+    id: 'combo_15',
+    title: 'COREOGRAFIA DO FIM',
+    desc: 'Combo x15 num só turno. Isso não é mais batalha, é número musical.',
+    reward: 3000,
+  },
+  streak_60: {
+    id: 'streak_60',
+    title: 'DOIS MESES DE TREVAS',
+    desc: '60 dias seguidos. Você virou uma temporada inteira por conta própria.',
+    reward: 6500,
+  },
+  season_finale: {
+    id: 'season_finale',
+    title: 'O FIM QUE NÃO ROLOU',
+    desc: 'Derrotou OS CRÉDITOS FINAIS. Recusou o encerramento e escreveu o que vem depois.',
+    reward: 8000,
+  },
+  omen_survivor: {
+    id: 'omen_survivor',
+    title: 'CONTRA O PRESSÁGIO',
+    desc: 'Venceu uma batalha sob presságio. O destino apostou contra você e perdeu a aposta.',
+    reward: 2000,
+  },
+  ascension_max: {
+    id: 'ascension_max',
+    title: 'O ÚLTIMO DEGRAU',
+    desc: 'Atingiu a Ascensão máxima. A realidade desistiu de ranger e simplesmente obedece.',
+    reward: 7500,
+  },
+  flawless_streak: {
+    id: 'flawless_streak',
+    title: 'NEM UM ARRANHÃO',
+    desc: '5 vitórias impecáveis seguidas, sem perder um minion. Os pactos elogiam sua gestão.',
+    reward: 2400,
+  },
+  reader_again: {
+    id: 'reader_again',
+    title: 'OLÁ DE NOVO',
+    desc: 'Encarou o Leitor e voltou pra fazer tudo outra vez. Você sabe que está sendo lido.',
+    reward: 4500,
   },
 }
 

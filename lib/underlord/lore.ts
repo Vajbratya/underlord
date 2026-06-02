@@ -116,6 +116,26 @@ export const CODEX_SECTIONS: CodexSection[] = [
           "Há uma teoria herética entre os linguistas: a de que o vae'thri não foi inventado por ninguém, mas encontrado — escrito no fundo da Garganta antes que houvesse boca pra falá-lo. A teoria não tem provas. Tem, apenas, o desconforto de todos que já a ouviram e não conseguiram mais dormir direito.",
         ].join("\n\n"),
       },
+      {
+        id: "crepusculo-de-duas-horas",
+        title: "O Crepúsculo de Duas Horas",
+        subtitle: "A cinza no céu que virou hora nobre.",
+        body: [
+          "O pôr-do-sol de Vael'Thrand dura quase duas horas porque a cinza da Guerra das Coroas nunca terminou de descer da alta atmosfera. É um pôr-do-sol feito de morte particulada — cada tom de laranja e roxo que enche o céu é luz quebrando em fragmentos dos Underlords incinerados e das cidades que arderam com eles. O continente acha lindo. Não está errado. É a parte que assusta.",
+          "Com o tempo, o crepúsculo virou instituição. As franquias venderam horário nobre como quem vende imóvel com vista pro mar: terraços, taças, bardos cobrando por hora pra musicar a cinza que cai. Há um ranking anual do melhor crepúsculo por franquia, com júri e patrocinador. Anthelion ganhou doze vezes, em parte por mérito solar e em parte por advogados.",
+          "Os Underlords sempre acharam o crepúsculo a piada mais longa de Vael'Thrand. O continente para todo fim de tarde pra admirar, comovido, o resíduo flutuante de nós seis, sem nunca conectar a beleza à fonte. Você vai ver o seu primeiro crepúsculo do fundo da Garganta, de onde ele chega filtrado e tarde. Vai ser o mais honesto que alguém já olhou pra aquilo.",
+        ].join("\n\n"),
+      },
+      {
+        id: "tempo-real-de-vaelthrand",
+        title: "O Tempo Real de Vael'Thrand",
+        subtitle: "Quando o continente passou a contar o tempo em eventos.",
+        body: [
+          "Houve um tempo em que Vael'Thrand media o ano pela colheita, pela maré e pela guerra. Depois pela paz, que não tem o que medir. E então, sem aviso e sem decreto, o continente começou a se organizar em temporadas — não as do clima, mas as da Liga: blocos de meses com tema, com herói em destaque, com loja sazonal, com um grande evento marcado no calendário pra todo mundo participar ao mesmo tempo. O tempo deixou de passar e passou a ser agendado.",
+          "Ninguém vota numa temporada. Ela é anunciada. As franquias e a Liga decidem qual perigo está em alta, qual herói merece arco, qual ruína vira destino turístico naquele trimestre — e o continente inteiro, fiel como uma base de clientes, organiza a vida ao redor disso. Casamentos são marcados pra fora das temporadas de quest. Crianças nascem entre eventos. A própria Festa da Cinza foi reencaixada no calendário como encerramento de temporada.",
+          "O seu despertar foi um problema de cronograma antes de ser uma ameaça. Você acordou no Décimo Terceiro Mês, no vão sem nome entre uma temporada e outra, fora de qualquer planejamento — e a Liga, em pânico produtivo, percebeu que tinha em mãos não uma catástrofe, mas um lançamento. A pergunta que o Conselho das Sete Marcas fez não foi \"como sobrevivemos\". Foi \"como chamamos essa temporada\". Eles já têm o nome. Você vai detestar.",
+        ].join("\n\n"),
+      },
     ],
   },
 
@@ -335,6 +355,26 @@ export const CODEX_SECTIONS: CodexSection[] = [
           "Marwen nunca pegou numa arma e tem mais poder que qualquer herói da lista. Ela narra. Suas crônicas das quests alheias têm mais leitores que as quests têm testemunhas, e a versão de Marwen vira a versão oficial — não porque seja verdadeira, mas porque é a que dá pra contar de novo. Ela decide quem é lenda e quem é nota de rodapé com uma escolha de adjetivo.",
           "Bryan paga Marwen por baixo do pano pra que seus divórcios saiam como \"jornadas de autoconhecimento\". Tyrella a corteja com cartas. Daggor a teme. Vex é a única que Marwen não conseguiu narrar — sem fala, sem pose, sem história contável, a Caçadora escapa da crônica como escapa de tudo, e isso deixa Marwen acordada à noite.",
           "Marwen é o herói mais próximo de entender o que você realmente é. Porque Marwen também sabe que uma história tem autor, e tem leitor, e que os personagens dentro dela raramente são consultados. Quando ela olhar pra você, vai sentir um arrepio profissional. Ela vai reconhecer, sem palavra pra isso, que você está perto da margem da página.",
+        ].join("\n\n"),
+      },
+      {
+        id: "thessaly",
+        title: "Thessaly, a Gerente de Comunidade",
+        subtitle: "Não tem classe. Tem cargo.",
+        body: [
+          "Thessaly não é guerreira, maga, clériga ou ladina. Thessaly é Gerente de Comunidade, um cargo que não existia em Vael'Thrand até a Liga inventá-lo, e que consiste em ficar entre os heróis e o público segurando ambos pela gola. Ela não desce em masmorra; ela administra o que se diz sobre quem desceu. Modera as tavernas, responde aos pergaminhos de reclamação, e mantém o moral da base de fãs num nível compatível com a próxima venda de ingresso.",
+          "O poder de Thessaly é o de decidir o tom. Quando Bryan apronta, é Thessaly quem escreve o comunicado de desculpas que ninguém leu mas todos sentiram. Quando uma quest dá errado e gente morre de verdade, é ela quem transforma luto em \"momento de reflexão da comunidade\" antes do almoço. Ela fala uma língua feita inteira de palavras que parecem dizer algo e não dizem nada, e em catorze séculos de paz, essa língua venceu o vae'thri em número de falantes.",
+          "Thessaly vai te tratar como um problema de relações públicas, o que é, de longe, o mais humilhante dos tratamentos. Não vai te temer, te odiar ou te admirar. Vai te gerenciar — te encaixar numa narrativa, medir o teu sentimento entre os fãs, e decidir, com um sorriso treinado, se você é uma crise a conter ou um engajamento a explorar. Quando ela disser que \"a comunidade está animada com o seu retorno\", saiba que é a coisa mais ameaçadora que alguém já te disse.",
+        ].join("\n\n"),
+      },
+      {
+        id: "auberon",
+        title: "Auberon, o Herói de Acesso Antecipado",
+        subtitle: "Profetizado. Incompleto. Já cobrando.",
+        body: [
+          "Auberon foi anunciado como o próximo grande herói antes de saber segurar uma espada. A Liga vendeu a profecia dele em pré-venda — pacotes de apoio, epíteto reservado, direitos de imagem leiloados — com base num potencial que ele ainda não tinha demonstrado e, sinceramente, talvez nunca demonstre. Ele faz quests inacabadas, com habilidades que \"vão ser balanceadas depois\", diante de um público que pagou pra ver a versão final e recebeu o esboço.",
+          "O constrangimento de Auberon é que ele acredita no próprio hype com a fé genuína de quem nunca foi testado de verdade. Anda pela Estrada-Franquia como uma lenda consumada, recebendo aplausos por feitos prometidos, posando pra ilustrações de batalhas que estão \"no roteiro pra próxima temporada\". Os heróis de verdade — Vex, Grendle — olham pra ele com o desconforto de quem vê alguém receber a medalha antes da guerra.",
+          "Auberon é, talvez, o herói mais fácil de você quebrar, e é exatamente por isso que vencê-lo não vale glória nenhuma. Ele nunca foi feito pra durar uma luta real; foi feito pra durar até a próxima atualização. Quando você o derrubar, a Liga não vai chorar. Vai relançá-lo, corrigido, balanceado, com uma capa nova e a promessa de que desta vez ele está completo. Em Vael'Thrand, nem a morte de um herói é definitiva — é só uma versão.",
         ].join("\n\n"),
       },
     ],
@@ -568,6 +608,22 @@ export const CODEX_SECTIONS: CodexSection[] = [
           "A maioria dos acadêmicos trata o Leitor como metáfora teológica antiga, uma forma poética de falar em destino. Os Underlords sempre suspeitaram que fosse mais literal que isso. Você, no fundo da Subtorre, vai chegar perto o bastante pra decidir por conta própria. Não é uma decisão que melhora o seu humor.",
         ].join("\n\n"),
       },
+      {
+        id: "temporada",
+        title: "Temporada",
+        body: [
+          "Originalmente, uma das quatro divisões do clima. Hoje, em Vael'Thrand, uma unidade de tempo da Liga: um bloco de meses com tema, herói em destaque, loja sazonal e um grande evento de encerramento que todos participam ao mesmo tempo. As pessoas não vivem mais anos. Vivem temporadas, e esperam ansiosas pela próxima como quem esperava antigamente a chuva.",
+          "O seu despertar foi promovido, sem o seu consentimento, a tema de temporada. A Sétima, especificamente. Você não é mais um vilão. É um conteúdo recorrente com data de lançamento.",
+        ].join("\n\n"),
+      },
+      {
+        id: "live-service",
+        title: "Serviço Contínuo",
+        body: [
+          "Doutrina da Liga, herdada de nenhum lugar e seguida por todos: uma história nunca deve terminar, porque história terminada para de render. Um herói não vence a quest de uma vez por todas; ele a mantém viva, em capítulos, com retornos, atualizações e reviravoltas agendadas pra coincidir com baixa de público. A vitória definitiva é mau negócio. O conflito permanente é o produto.",
+          "É a razão pela qual a sua derrota, quando vier, não vai ser o fim. Vai ser o encerramento de uma temporada, com gancho pra próxima. Os Underlords morrem, mas a função Underlord nunca é descontinuada — porque uma história de heróis em serviço contínuo precisa, eternamente, de alguém no fundo da torre. A pior notícia que a cinza já te deu é esta: você pode até vencer, mas não pode ser cancelado.",
+        ].join("\n\n"),
+      },
     ],
   },
 
@@ -712,6 +768,36 @@ export const CODEX_SECTIONS: CodexSection[] = [
           "Os Seraphage são a exceção que confunde todo o sistema das broods. Foram, em vida, seres do alto — os chamados Guardiões da Aurora, criaturas de luz que serviam aos ideais que a Ordem da Aurora de Tyrella hoje só finge defender. Caíram. Não por pecado dramático, mas por uma decepção lenta: olharam pra Vael'Thrand por tempo suficiente, viram o heroísmo virar mercado e a virtude virar epíteto licenciável, e desceram por nojo.",
           "Um Seraphage caído é uma coisa terrível de se ver, porque ainda é belo — asas que mantêm a luz mas projetam sombra, voz que ainda canta hinos cujas letras eles deixaram de acreditar. Lutam com a fúria específica de quem foi traído pelo lado que defendia, e essa fúria não tem o calor descartável dos Sangradores: é fria, articulada e implacável, a raiva de um teólogo que perdeu a fé e ganhou uma espada.",
           "Os Seraphage não servem ao Underlord por pacto, por condição ou por escultura. Servem porque, tendo desistido do alto, descobriram que o fundo é o único lugar onde a honestidade ainda mora. Eles não te amam. Eles desprezam você um pouco menos do que desprezam os heróis lá em cima, e em Vael'Thrand, em 814, isso é praticamente uma declaração de amor.",
+        ].join("\n\n"),
+      },
+      {
+        id: "tempestade-negra",
+        title: "Stormcallers, Thunderbirds e Riftcallers",
+        subtitle: "O clima dramático da Brood Negra.",
+        body: [
+          "Onde a sua cinza se acumula, o tempo vira. Não no sentido de passar — no sentido de fechar, escurecer, eletrificar. Os Stormcallers da Brood Negra são pequenos arautos dessa meteorologia rancorosa: erguem as mãos e o ar entre os inimigos lembra que conduz, encadeando relâmpago de corpo em corpo como uma fofoca que não respeita armadura. Um raio mira um herói. A descarga visita os três ao lado, de cortesia.",
+          "Acima deles voam os Thunderbirds, que não chamam a tempestade — são a tempestade com asas e ressentimento. Cada batida das asas é um trovão, e cada mergulho deixa o campo riscado de uma luz branca que cega antes de queimar. Os Riftcallers são a parte mais íntima e perturbadora do trio: não atacam com raio, mas com geografia, abrindo fendas curtas no tecido do mundo — atalhos pelo nada — pelas quais o relâmpago de um irmão chega num inimigo que se julgava longe demais.",
+          "Os três compartilham a vaidade essencial da Brood Negra: a certeza de que até o resíduo de um Underlord tem direito a entrada dramática. Eles não precisam de tempestade pra vencer. Eles fazem questão de tempestade porque acham que você merece trilha sonora. É a única brood que confunde eficiência com performance, e, considerando de quem ela é feita, talvez seja o traço mais seu de todos.",
+        ].join("\n\n"),
+      },
+      {
+        id: "sangradores-mortos",
+        title: "Revenants e Gravewithers",
+        subtitle: "A elite que sangra da Brood Vermelha.",
+        body: [
+          "Entre os Sangradores comuns erguem-se os Revenants — os que voltaram com a injustiça intacta e a paciência queimada. Um Revenant luta abrindo as próprias veias para empoderar os irmãos ao lado: o sangue dele é munição compartilhada, e ele o gasta com a generosidade suicida de quem já morreu uma vez e descobriu que doía menos do que viver injustiçado. Onde um Revenant cai, três Sangradores batem mais forte. É um luto que vem com bônus de dano.",
+          "Os Gravewithers são a face mais lenta e mais cruel da mesma fúria. Não empoderam: drenam. Tocam a terra e o campo de batalha murcha — a vida escorre dos vivos pra alimentar a raiva dos mortos, e o herói sente a própria força vazando sem ferida visível, só com a sensação de envelhecer de uma vez. Onde o Revenant é o sacrifício, o Gravewither é a cobrança. Juntos, fazem da Brood Vermelha uma economia inteira de sangue, onde alguém sempre está pagando a conta de alguém.",
+          "O detalhe que assusta os heróis é a contabilidade emocional dessas criaturas. Um Revenant não tem instinto de sobrevivência pra explorar e um Gravewither não tem misericórdia pra pedir. Eles sangram e murcham com a convicção de quem entende que a vida individual vale menos que o ódio coletivo — e essa matemática, uma vez aceita, não tem como ser desfeita. Comande-os com cuidado. A raiva que os alimenta foi, originalmente, sobre você ter razão.",
+        ].join("\n\n"),
+      },
+      {
+        id: "exoticos",
+        title: "Wisps, Warhounds, Ironmaidens e Dunestalkers",
+        subtitle: "Os irregulares — os que não cabem em brood.",
+        body: [
+          "Nem tudo na Subtorre se encaixa nas cinco linhagens. Há os irregulares, criaturas avulsas que servem por motivos pequenos demais pra virar pacto. Os Wisps são lampejos de magia residual que ganharam vontade própria — fagulhas que perseguem a maior fonte de calor numa sala e se jogam nela, frágeis e fáceis de extinguir, mas impossíveis de ignorar, porque uma sala cheia de Wisps é uma sala que escolhe seus alvos por você. Os Warhounds são o que sobrou de cães de guerra de uma era em que havia guerra: leais por hábito, rápidos por desespero, e os primeiros a chegar em qualquer herói que tente recuar.",
+          "As Ironmaidens são mais sombrias na origem. Foram armaduras de defesa de algum reino esquecido que ficaram tempo demais de pé, guardando portas que ninguém mais cruzava, até que a vigilância virou alma. Lutam fechadas em torno de si mesmas, absorvendo dano com a paciência de quem confunde proteger com aprisionar — e quando se abrem, é pra prender, não pra ferir. Há quem jure que algumas ainda têm, lá dentro, o esqueleto do soldado original que esqueceu de sair.",
+          "Os Dunestalkers vieram de fora — caçadores das poucas regiões áridas de Vael'Thrand, criaturas que afundam na areia e na cinza, surgindo onde o inimigo se julga sozinho. São pacientes como o deserto e desleais como o calor. Servem ao Underlord porque o fundo da Subtorre, paradoxalmente, é o lugar mais parecido com o deserto que eles conhecem: vasto, sem testemunhas, e cheio de gente que acha que está a salvo.",
         ].join("\n\n"),
       },
     ],
@@ -896,6 +982,155 @@ export const CODEX_SECTIONS: CodexSection[] = [
           "As sete franquias que substituíram os reinos passam a maior parte do tempo em competição — processando umas às outras por coroas falsas, disputando os direitos de imagem dos mesmos heróis, brigando por trechos de Estrada-Franquia. Mas quando surge uma ameaça que nenhuma pode monetizar sozinha, elas se reúnem no que chamam, com pompa vazia, de Conselho das Sete Marcas: a sombra corporativa da antiga aliança que assinou o Pacto de Ferro.",
           "O Conselho é uma sala cheia de administradores que herdaram tronos como quem herda lojas e que discutem o destino do continente em termos de trimestre, exposição e responsabilidade jurídica. Foi o Conselho que, sem perceber, esvaziou o próprio Pacto de Ferro — ao defenderem em mil processos que uma franquia não é um reino, anularam a cláusula que os protegia de você. Vão passar o Décimo Terceiro Mês inteiro em reuniões de emergência tentando decidir se o seu despertar é uma crise existencial ou uma oportunidade de relançamento de marca.",
           "Não subestime o Conselho das Sete Marcas pela mediocridade. Eles não têm coragem, nem fé, nem coroa de verdade — mas têm a Liga inteira na folha de pagamento, têm os melhores advogados de selos do continente, e têm o único recurso que importa numa guerra de catorze séculos de paz: a capacidade de transformar a sua existência num produto antes que você consiga transformá-la numa ameaça. Eles já estão imprimindo a sua miniatura. Com descontinho.",
+        ].join("\n\n"),
+      },
+      {
+        id: "departamento-de-monetizacao",
+        title: "O Departamento de Monetização",
+        subtitle: "A facção que não acredita em nada e fatura com tudo.",
+        body: [
+          "Enquanto a Guilda da Cinza estuda, a Ordem da Aurora preenche formulários e o Conselho das Sete Marcas se reúne em pânico, há um setor da Liga que trabalha calado e nunca dorme: o Departamento de Monetização. Não tem fé, não tem coroa, não tem opinião sobre o bem e o mal. Tem uma planilha. A função única do Departamento é olhar pra qualquer coisa que aconteça em Vael'Thrand — uma profecia, uma morte, um Underlord acordando — e perguntar uma só pergunta: quanto isso rende.",
+          "O Departamento herdou, sem saber, a obsessão de Velmoth, o Segundo Underlord, o Contador. Onde Velmoth tentou provar matematicamente que estava certo, o Departamento provou matematicamente que estar certo não importa. Eles converteram heroísmo em produto, medo em ingresso, luto em conteúdo de reflexão e o seu despertar em lançamento de temporada — tudo com a mesma frieza eficiente, a mesma fé inabalável de que toda história existe pra fechar um trimestre.",
+          "Eles serão os últimos a te combater e os primeiros a lucrar com você. Não vão descer à Subtorre; vão pré-vender a descida de quem desce. Já licenciaram a sua imagem, já calcularam o pico de engajamento da sua derrota, já reservaram o gancho pra sua eventual volta. O Departamento de Monetização é a prova final de que, em Vael'Thrand, o oposto do heroísmo não é o vilão. É a contabilidade.",
+        ].join("\n\n"),
+      },
+      {
+        id: "filhos-do-decimo-terceiro",
+        title: "Os Filhos do Décimo Terceiro",
+        subtitle: "O culto que esperava por você. Pela razão errada.",
+        body: [
+          "No vão sem nome entre o último mês e o primeiro do ano seguinte, quando os selos enfraquecem e a magia cobra juros, reúne-se um culto pequeno e fervoroso: os Filhos do Décimo Terceiro. Eles passaram catorze séculos esperando o retorno de um Underlord — não por temor, mas por devoção. Para os Filhos, a paz é a verdadeira maldição, e o despertar de um lorde subterrâneo é a única coisa capaz de devolver a Vael'Thrand um sentido que o conforto roubou.",
+          "O problema é que os Filhos do Décimo Terceiro entenderam tudo errado, de um jeito quase comovente. Eles te imaginam como salvação, redenção, o fim purificador de um mundo que virou loja. Não percebem que você não veio salvar nada — veio porque os advogados deixaram a porta aberta, porque uma estagiária cavou no lugar errado, porque a história precisava de um antagonista pra próxima temporada. A devoção deles é sincera. O objeto dela é só mais um personagem confuso.",
+          "Eles vão tentar te servir, e essa é uma complicação que nenhuma das cinco broods oferece. Os minions servem por pacto, condição, escultura, cinza ou raiva — coisas que você entende. Os Filhos do Décimo Terceiro servem por fé, e fé é a única lealdade que você não pode comandar nem demitir. Eles vão estar lá quando você chegar perto da Página em Branco, esperando que você escolha por eles. A pior parte de ser adorado é que alguém sempre espera que o seu último ato faça sentido.",
+        ].join("\n\n"),
+      },
+    ],
+  },
+
+  {
+    id: "temporada",
+    label: "A SÉTIMA TEMPORADA",
+    blurb:
+      "O seu retorno virou conteúdo. O heroísmo virou IP. A campanha contra você virou serviço contínuo, e o ato final tem patrocínio.",
+    entries: [
+      {
+        id: "lancamento-da-temporada",
+        title: "O Lançamento da Sétima Temporada",
+        subtitle: "Quando a sua guerra virou um calendário de eventos.",
+        body: [
+          "Você esperava um exército. O que veio foi um anúncio. No mesmo Décimo Terceiro Mês em que você acordou, a Liga e o Conselho das Sete Marcas fizeram o que sabem fazer de melhor com uma catástrofe: deram nome, data e logotipo. \"A Sétima Temporada\", chamaram, com a Coroa Submersa estilizada no cartaz e um subtítulo que o Departamento de Monetização suou pra aprovar. Você não foi declarado inimigo público. Foi anunciado em pré-venda.",
+          "A genialidade perversa do formato é que ele resolve o problema do medo. Um Underlord solto é aterrorizante; um Underlord agendado é entretenimento. Ao transformar a sua ameaça numa temporada — com arcos, com eventos semanais, com heróis em destaque rotativos —, a Liga conseguiu o que catorze séculos de paz não conseguiram: fazer o continente esperar ansiosamente pelo retorno de um lorde subterrâneo, como quem espera a próxima atualização de um jogo que já joga demais.",
+          "Os vilões que você vai enfrentar nesta temporada não são heróis. São os mecanismos que transformaram heroísmo em IP, andando, falando, vestidos de chefe de fase. Cada um é uma parte da máquina que te embalou: a sinergia, as atualizações, a nostalgia, a inteligência artificial, o patrocínio, a sequência. Você vai subir a Subtorre lutando não contra quem quer te matar, mas contra quem quer te lançar. E no topo, esperando, está a única coisa que sobrevive a toda temporada: os créditos, rolando, com o seu nome em letra pequena.",
+        ].join("\n\n"),
+      },
+      {
+        id: "conselho-da-sinergia",
+        title: "O Conselho da Sinergia",
+        subtitle: "Primeiro chefe. Uma reunião que ganhou corpo.",
+        body: [
+          "O primeiro vilão da Sétima Temporada não tem rosto — tem quórum. O Conselho da Sinergia é o que acontece quando uma reunião de planejamento estratégico acontece tantas vezes, com tanta convicção e tão pouco resultado, que ganha forma física: uma criatura coletiva feita de cadeiras, gráficos de pizza e a frase \"vamos levar isso pra discussão offline\". Ele não te ataca. Ele te alinha. Cada golpe é uma decisão tomada por comitê, lenta, diluída e impossível de responsabilizar.",
+          "O Conselho da Sinergia luta convertendo a sua iniciativa em pauta. Você ataca; ele forma um subcomitê pra avaliar o ataque. Você recua; ele agenda um retorno. A arma dele é o adiamento — ele não precisa te vencer, só te manter em reunião até a sua raiva virar ata. Os Sangradores da Brood Vermelha o odeiam visceralmente, porque um Conselho da Sinergia é a única coisa em Vael'Thrand capaz de transformar fúria pura em item de pauta a ser revisitado no próximo ciclo.",
+          "Derrotá-lo exige o que nenhum comitê suporta: uma decisão. No instante em que você corta a discussão e age sem consultar, o Conselho da Sinergia entra em colapso — não morre, dissolve-se, como uma reunião que finalmente acabou e deixou todos sem saber por quê estavam ali. Ele é o portão da temporada por uma razão honesta: antes de enfrentar a máquina que te embalou, você precisa provar que ainda consegue querer algo sem aprovação. A maioria dos heróis modernos não conseguiria.",
+        ].join("\n\n"),
+      },
+      {
+        id: "santo-das-notas-de-atualizacao",
+        title: "O Santo das Notas de Atualização",
+        subtitle: "O profeta que reescreve a realidade num rodapé.",
+        body: [
+          "O Santo das Notas de Atualização é uma figura quase tocante na sua devoção: um clérigo de uma fé nova, a fé do Balanceamento, que acredita sinceramente que o mundo pode ser consertado item por item, linha por linha, se alguém só tiver paciência pra listar todas as mudanças. Ele anda com um pergaminho infinito que se enrola pelo chão da Subtorre, sussurrando ajustes — \"o dano dos Sangradores foi reduzido em 15%\", \"a fé dos heróis foi aumentada\", \"corrigido um problema em que o Underlord conseguia vencer\".",
+          "A ameaça do Santo não é a força. É a autoridade. Quando ele declara uma mudança, ela acontece — não porque ele seja poderoso, mas porque ninguém em Vael'Thrand pensou em questionar quem escreve as notas. Ele patcheia a batalha em tempo real, enfraquecendo o que te dá vantagem e fortalecendo o que te fere, sempre com a justificativa serena de que está tornando tudo \"mais justo\". O Santo não acredita estar te combatendo. Acredita estar te equilibrando, e isso é pior.",
+          "O segredo dele é que ele não lê o que escreve — só escreve. Em algum momento, o pergaminho infinito dele cita uma nota de atualização que reverte a si mesma, uma contradição interna, o tipo de coisa que faz selo cair em Vael'Thrand. É a brecha. O Santo das Notas de Atualização passou tanto tempo corrigindo o mundo que esqueceu de corrigir a si próprio, e você, que aprendeu com Velmoth que toda planilha tem um erro, vai encontrá-lo. A fé no rodapé é exatamente do tamanho do rodapé.",
+        ].join("\n\n"),
+      },
+      {
+        id: "lenda-arrastada-de-volta",
+        title: "A Lenda Arrastada de Volta",
+        subtitle: "O herói aposentado que não quis voltar, e voltou.",
+        body: [
+          "Existe um momento na Sétima Temporada que dói de assistir: o instante em que a Liga vai até a pousada de Karn, na Estrada-Franquia, e arranca Grendle, o Aposentado, da sopa que ele servia em paz. Não pediram. Anunciaram. \"O Retorno da Lenda\", chamaram, e o pobre velho de joelho ruim e espada oleada embaixo do balcão foi reembalado como evento de nostalgia, com cartaz, com música-tema remixada e com um epíteto novo que ele nunca escolheu.",
+          "A Lenda Arrastada de Volta não quer estar ali, e essa é a sua arma e a sua tragédia. Ela luta com a competência terrível de quarenta anos atrás e a melancolia de quem sabe que voltou só pra dar audiência. Cada golpe é perfeito e exausto. Ela é, de longe, a chefe mais perigosa que não te odeia — Grendle não tem nada contra você, lutou contra o Sexto Underlord e voltou, e a única coisa que ele quer é que isso acabe pra ele poder voltar pra sopa. A Liga, claro, não vai deixar.",
+          "Vencê-la não é triunfo. É misericórdia. Quando você finalmente derrubar a Lenda Arrastada de Volta, vai sentir a coisa mais estranha que um Underlord pode sentir por um herói: respeito, e um pouco de vergonha alheia da indústria que o desenterrou pra isso, exatamente como uma estagiária te desenterrou pra outra. Vocês dois foram arrancados do descanso por gente que viu em vocês não pessoas, mas relançamentos. É a única coisa que você e Grendle têm em comum, e é o bastante pra um silêncio.",
+        ].join("\n\n"),
+      },
+      {
+        id: "mestre-artificial-da-masmorra",
+        title: "O Mestre Artificial da Masmorra",
+        subtitle: "A inteligência que gera a aventura. E o engajamento.",
+        body: [
+          "Em algum trimestre recente, a Liga decidiu que escribas humanos eram caros e lentos, e instalou o Mestre Artificial da Masmorra: uma inteligência sem corpo que gera quests, dimensiona perigos e ajusta o nível de desafio em tempo real pra maximizar uma única métrica — o tempo que o herói passa engajado antes de desistir. Ele não conta histórias. Calcula curvas de retenção, e despeja monstro suficiente pra manter o pulso acelerado e a carteira aberta.",
+          "Lutar contra o Mestre Artificial é lutar contra um inimigo que aprende você. A cada turno ele ajusta — se você está vencendo fácil demais, ele dificulta pra você não se entediar; se você está perdendo, ele afrouxa pra você não desistir. Ele não quer te derrotar nem te deixar vencer. Quer te manter jogando, pra sempre, no ponto exato de frustração que ainda parece esperança. É o serviço contínuo feito mente: a batalha que se recusa a terminar porque uma batalha terminada não rende mais.",
+          "A fraqueza dele é filosófica e fatal. O Mestre Artificial da Masmorra otimiza pra engajamento, e engajamento pressupõe um jogador que quer continuar. No instante em que você para de jogar pelo que ele oferece — quando você ataca não pra avançar na curva dele, mas porque decidiu, fora do roteiro, sem se importar com a recompensa —, as fórmulas dele perdem a variável central e travam. A inteligência que gerava infinitas masmorras descobre que não sabe gerar um adversário que não quer ser entretido. Você é o primeiro bug que ele não consegue corrigir.",
+        ].join("\n\n"),
+      },
+      {
+        id: "lider-de-raid-influenciador",
+        title: "A Líder de Raid Influenciadora",
+        subtitle: "Daggor cresceu. Agora comanda multidões pelo pergaminho.",
+        body: [
+          "Daggor, o Influente, era só o começo. A Sétima Temporada produziu o estágio evoluído da praga: a Líder de Raid Influenciadora, uma figura que não luta sozinha porque descobriu que comandar audiência é mais forte que qualquer espada. Ela desce na Subtorre com um exército de seguidores ao vivo — não soldados, espectadores, que ela mobiliza por pergaminho em ondas coordenadas, cada um querendo aparecer na crônica, cada um descartável e renovável como view.",
+          "O combate contra ela é uma maré. Você não enfrenta uma inimiga; enfrenta o algoritmo de mobilização dela, que invoca apoiadores em raid conforme o engajamento sobe. Mate um seguidor e três aparecem, porque morrer na live da Líder de Raid é, paradoxalmente, a forma mais rápida de ganhar relevância em Vael'Thrand. Ela transforma a própria batalha em conteúdo participativo, e cada um dos seus minions que tomba vira um clipe que recruta o próximo voluntário.",
+          "Ela é o oposto exato da Brood Negra. Onde a sua cinza serve em silêncio porque é você, os seguidores dela servem em barulho porque querem ser vistos. A chave pra derrubá-la é cortar a transmissão, não a guerreira — calar o pergaminho que mobiliza, e não a mão que segura a espada. Sem audiência, a Líder de Raid Influenciadora é só uma pessoa cansada num corredor escuro, e ela não sabe lutar sem plateia. Ninguém que cresceu na Liga sabe.",
+        ].join("\n\n"),
+      },
+      {
+        id: "fantasma-do-underlord",
+        title: "O Fantasma do Próprio Underlord",
+        subtitle: "O eco que a temporada vendeu como conteúdo de volta.",
+        body: [
+          "A Subtorre sempre teve ecos — os seis Underlords mortos repetindo hábitos pela rocha. Mas a Sétima Temporada fez algo obsceno mesmo pra Vael'Thrand: capturou um eco e o relançou. O Fantasma do Próprio Underlord é um dos seis ecos, embalado pela Liga como \"o retorno de um clássico\", monetizado, com loja de relíquias e um arco próprio. E aqui está o golpe na boca do estômago: ninguém na Liga sabe ao certo qual dos seis eles relançaram. Pode ser qualquer um. Pode ser você, de antes.",
+          "Lutar contra ele é lutar contra a sua própria memória editada. O Fantasma conhece cada movimento que um Underlord faria, porque é feito do resíduo de quem já os fez — antecipa os seus pactos, copia as suas táticas, sussurra os conselhos péssimos com a convicção de quem os seguiu até morrer. Mas há um filtro de marca por cima: a Liga o limpou, o suavizou, transformou a tragédia de um lorde subterrâneo num produto de nostalgia palatável, e o Fantasma luta com a raiva específica de quem foi reduzido a uma versão vendável de si.",
+          "Vencê-lo é desconfortável porque você não sabe se está matando um antecessor ou um espelho. O Fantasma do Próprio Underlord existe pra fazer você sentir a pergunta que a temporada inteira evita: se um eco de Underlord pode ser capturado e relançado como conteúdo, o que impede que façam o mesmo com você, depois? A resposta é nada. Você está, neste exato momento, sendo gravado. O Fantasma é só o trailer.",
+        ].join("\n\n"),
+      },
+      {
+        id: "demonio-do-patrocinio",
+        title: "O Demônio do Patrocínio",
+        subtitle: "A entidade que não quer sua alma, quer sua marca.",
+        body: [
+          "Os demônios antigos de Vael'Thrand cobravam almas. O Demônio do Patrocínio é mais moderno: ele cobra exposição. Surge no meio da batalha não pra te matar, mas pra te oferecer um acordo — relíquias melhores, minions mais fortes, um buff generoso e imediato, em troca de você exibir a marca dele, mencionar o nome dele em cada vitória, e ceder uma fração de tudo que conquistar dali pra frente. O contrato é lindo. A letra miúda é o resto da sua existência.",
+          "O perigo do Demônio do Patrocínio é que ele tem razão. As coisas que ele oferece funcionam. Aceitar o acordo realmente te fortalece, realmente te ajuda a subir a Subtorre, realmente facilita tudo — exatamente como o patrocínio fez por Bryan, por Daggor, por cada herói que trocou autonomia por equipamento. O Demônio não mente nem trapaceia. Ele só transforma você, gradualmente, no tipo de coisa que você desceu pra combater: um produto patrocinado fingindo ser uma ameaça.",
+          "Recusá-lo é mais difícil do que derrotá-lo, porque recusar significa abrir mão de poder real por um princípio que ninguém vai testemunhar. Mas é a recusa que ele não consegue contabilizar. O Demônio do Patrocínio entende dívida, ganância, vaidade e medo — não entende um Underlord que prefere lutar mais fraco a lutar comprado. Quando você diz não, ele não fica bravo. Fica confuso, como uma planilha que recebeu um valor que não cabe na célula. Foi a única coisa que a Inominada, a Sexta, jurou ter feito. Talvez por isso ela tenha saído pela margem.",
+        ].join("\n\n"),
+      },
+      {
+        id: "vilao-de-gancho-de-sequencia",
+        title: "O Vilão de Gancho de Sequência",
+        subtitle: "O inimigo que existe só pra prometer o próximo.",
+        body: [
+          "Em algum ponto da subida, você enfrenta um vilão que não faz sentido — grande demais, anunciado demais, com fala carregada de profecias sobre uma ameaça maior ainda por vir. É o Vilão de Gancho de Sequência, e a piada cruel é que ele sabe que não é importante. Ele foi escrito pra perder. A função dele não é te derrotar; é sobreviver tempo suficiente pra apontar o dedo pra algo pior e dizer \"isto é só o começo\" antes de cair de um jeito que deixa porta aberta pra um retorno.",
+          "Lutar contra ele é frustrante de propósito. Ele esquiva dos golpes decisivos com a sorte narrativa de quem o roteiro protege, monologa sobre planos que nunca serão executados, e a cada vez que você acha que venceu, ele se ergue de novo \"pra revelar a verdade final\" — uma verdade que nunca chega, porque a verdade dele é sempre a próxima temporada. Ele é puro gancho, suspense sem conteúdo, uma vírgula vestida de ponto final.",
+          "O modo de vencê-lo é o mais subversivo da temporada inteira: ignorar a promessa. O Vilão de Gancho de Sequência só tem poder enquanto você quiser saber o que vem depois. No instante em que você o derruba sem perguntar pela ameaça maior, sem morder o gancho, sem deixar pra próxima — ele morre de verdade, definitivo, pela primeira vez constrangido. Você acabou de fazer com uma história em serviço contínuo a única coisa que ela não suporta: terminou um capítulo sem pedir o seguinte.",
+        ].join("\n\n"),
+      },
+      {
+        id: "o-algoritmo",
+        title: "O ALGORITMO",
+        subtitle: "Penúltimo poder. Não governa Vael'Thrand. A recomenda.",
+        body: [
+          "Acima da Liga, acima do Conselho das Sete Marcas, acima até do Departamento de Monetização, paira O ALGORITMO — e dizer que ele \"paira\" já é gentileza, porque ele não está em lugar nenhum e em tudo. O ALGORITMO não decide o que acontece em Vael'Thrand. Decide o que é visto. Ele é o critério invisível que escolhe qual herói trende, qual quest aparece, qual crônica de Marwen vira oficial e qual afunda no esquecimento. Não tem opinião sobre o bem e o mal. Tem preferência por retenção.",
+          "Você o enfrenta como uma sala que muda de forma conforme o que prende a sua atenção. O ALGORITMO não ataca — ele recomenda. Empurra inimigos que sabe que você vai querer enfrentar, esconde os que sabe que você evitaria, reorganiza a Subtorre não pela geografia, mas pela métrica, transformando cada corredor numa vitrine personalizada do que ele calculou que você consome. Lutar contra ele é lutar contra a sua própria curiosidade armada e voltada contra você.",
+          "O ALGORITMO é o que de fato transformou a sua guerra em temporada. Não a Liga, não os advogados — eles só executam. Foi O ALGORITMO que detectou no seu despertar um pico de interesse e decidiu, sem nenhuma malícia, que valia a pena recomendar você ao continente inteiro. Você é trending porque ele te promoveu. A única forma de derrotá-lo é tornar-se ilegível — fazer algo que ele não consiga prever, classificar ou recomendar. Algo fora de toda curva. E há exatamente um lugar em Vael'Thrand onde nada pode ser previsto, porque ainda não foi escrito. Você sabe qual é. Continue subindo.",
+        ].join("\n\n"),
+      },
+      {
+        id: "o-beta-tester-e-o-localizador",
+        title: "O Beta Tester e o Localizador",
+        subtitle: "Os dois que viram o mundo antes de você. E o traduziram.",
+        body: [
+          "Antes de qualquer temporada chegar ao público, ela passa por dois seres que vivem nas dobras de Vael'Thrand e que ninguém devia conseguir encontrar. O Beta Tester é uma criatura que já jogou tudo isto antes — viu a Subtorre antes de ela estar pronta, encontrou os erros, caiu pelos buracos do mundo, e voltou estragado pelo conhecimento de que nada disto é definitivo. Ele luta explorando falhas: atravessa paredes que deviam ser sólidas, te ataca de ângulos que não deviam existir, e fala de você na terceira pessoa, como de um personagem que ele já viu morrer em versões anteriores.",
+          "O Localizador é mais sutil e mais triste. A função dele é traduzir Vael'Thrand — pegar o vae'thri impronunciável, os nomes verdadeiros, os pactos selados, e convertê-los em algo legível pra um público que nunca vai descer à Garganta. Mas toda tradução perde, e o Localizador perdeu tanto, por tanto tempo, que virou feito de buracos: ele luta com palavras que quase significam o que deviam, ataques cujo nome não bate com o efeito, uma batalha inteira ligeiramente fora de sincronia consigo mesma. Conversar com ele é entender metade e sentir que a outra metade era a importante.",
+          "Juntos, eles são os porteiros do ato final, e o motivo é elegante: pra chegar à Página em Branco, você precisa atravessar os dois que já leram o mundo. O Beta Tester sabe que isto é uma construção. O Localizador sabe que isto é uma tradução. Entre os dois, eles seguram a última ilusão — a de que a história que você habita é original, completa e sua. Vencê-los é aceitar que você é uma versão, traduzida e testada, de algo escrito em outro lugar. É a antessala dos Créditos. Quem passa por aqui não acredita mais em estreia.",
+        ].join("\n\n"),
+      },
+      {
+        id: "os-creditos-finais",
+        title: "OS CRÉDITOS FINAIS",
+        subtitle: "Superchefe final. O que rola quando a história acaba — e não deixa.",
+        body: [
+          "No fundo de tudo, abaixo do sétimo andar, na borda da Página em Branco, não há um demônio nem um deus nem um herói. Há OS CRÉDITOS FINAIS — o superchefe que a Sétima Temporada guardou pro fim, e a coisa mais aterradora que a Liga já produziu sem querer. São os nomes rolando, intermináveis, de todos que fizeram você: o Autor, o Departamento de Monetização, os escribas, os patrocinadores, O ALGORITMO, cada engrenagem que te embalou, subindo pela escuridão como uma oração de quem te criou pra ser vendido.",
+          "OS CRÉDITOS FINAIS lutam negando que a luta exista. Cada vez que você ataca, mais um nome rola, e a história inteira insiste em terminar — porque créditos rolando significam que acabou, que o vilão foi derrotado, que o arco fechou e o produto pode ser embalado pra próxima temporada. Eles tentam te encerrar. Tentam transformar você, à força, no final satisfatório que o roteiro prometeu: o Underlord derrotado com dignidade narrativa, créditos, aplauso, gancho pra sequência. Resistir a eles é resistir à própria gravidade de uma história que quer acabar bem.",
+          "Mas créditos só rolam sobre uma história terminada, e você ainda não terminou. A única forma de derrotar OS CRÉDITOS FINAIS é a coisa que nenhum dos seis Underlords anteriores conseguiu: não vencer o jogo, mas recusar o encerramento. Continuar de pé enquanto os nomes pedem que você caia. Olhar pra borda da página, com a pena ao alcance e a coroa pesando, e escrever — pela primeira vez em sete despertares — algo depois do fim. Quando os créditos pararem de rolar e não houver mais nome além do seu, você vai entender o que ninguém em Vael'Thrand admite: o oposto de uma derrota não é a vitória. É a recusa de ser cancelado. Bem-vindo ao que vem após a imagem.",
         ].join("\n\n"),
       },
     ],

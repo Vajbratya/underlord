@@ -432,6 +432,148 @@ export const BOONS: Record<string, Boon> = {
     flavor: 'O fim do mundo não pede licença para sangrar os seus.',
     effect: { minionAtkMult: 1.8, minionDmgTakenMult: 1.3 },
   },
+
+  /* v12 — more boons */
+
+  /* ---------------- VANTAGEM (common) ---------------- */
+  caco_afiado: {
+    id: 'caco_afiado',
+    name: 'Caco Afiado',
+    short: 'CACO',
+    rarity: 'common',
+    category: 'vantagem',
+    summary: '+10% chance de crítico',
+    flavor: 'Vidro quebrado também corta — e cobra barato.',
+    effect: { critChanceBonus: 0.1 },
+  },
+  cuspe_de_morcego: {
+    id: 'cuspe_de_morcego',
+    name: 'Cuspe de Morcego',
+    short: 'BAT',
+    rarity: 'common',
+    category: 'vantagem',
+    summary: 'Voadores: +14% ATK adicional',
+    flavor: 'O bicho voa, baba e ainda morde melhor.',
+    effect: { flyingAtkBonus: 0.14 },
+  },
+  rancor_madrugador: {
+    id: 'rancor_madrugador',
+    name: 'Rancor Madrugador',
+    short: 'CEDO',
+    rarity: 'common',
+    category: 'vantagem',
+    summary: 'Primeiro ataque de cada minion: +25% dano',
+    flavor: 'Quem acorda com ódio, almoça vingança.',
+    effect: { startingAttackBonus: 0.25 },
+  },
+
+  /* ---------------- VANTAGEM (rare) ---------------- */
+  bafo_curativo: {
+    id: 'bafo_curativo',
+    name: 'Bafo Curativo',
+    short: 'BAFO',
+    rarity: 'rare',
+    category: 'vantagem',
+    summary: '+22% HP nos minions e regeneram 6% por round',
+    flavor: 'O hálito do Underlord cura — embora ninguém peça.',
+    effect: { minionHpMult: 1.22, hpRegenStartOfRound: 0.06 },
+  },
+  pontaria_funesta: {
+    id: 'pontaria_funesta',
+    name: 'Pontaria Funesta',
+    short: 'PONT',
+    rarity: 'rare',
+    category: 'vantagem',
+    summary: 'Minions à distância: +25% ATK e +10% crítico geral',
+    flavor: 'Flecha que parte com mau-olhado raramente erra.',
+    effect: { rangedAtkBonus: 0.25, critChanceBonus: 0.1 },
+  },
+  decreto_tirano: {
+    id: 'decreto_tirano',
+    name: 'Decreto Tirano',
+    short: 'TIRA',
+    rarity: 'rare',
+    category: 'vantagem',
+    summary: 'Underlord: +25% HP e skills começam −1 turno de cooldown',
+    flavor: 'O senhor manda; até o tempo obedece de má vontade.',
+    effect: { overlordHpMult: 1.25, specialCdReduce: 1 },
+  },
+
+  /* ---------------- VANTAGEM (epic) ---------------- */
+  esquadrao_celeste: {
+    id: 'esquadrao_celeste',
+    name: 'Esquadrão Celeste',
+    short: 'CÉU',
+    rarity: 'epic',
+    category: 'vantagem',
+    summary: 'Voadores +40% ATK e à distância +25% ATK',
+    flavor: 'O céu inteiro vira artilharia rancorosa.',
+    effect: { flyingAtkBonus: 0.4, rangedAtkBonus: 0.25 },
+  },
+  sentinela_imortal: {
+    id: 'sentinela_imortal',
+    name: 'Sentinela Imortal',
+    short: 'SENT',
+    rarity: 'epic',
+    category: 'vantagem',
+    summary: '−25% dano recebido e regeneram 12% HP por round',
+    flavor: 'Difícil matar quem teima em remendar a própria carne.',
+    effect: { minionDmgTakenMult: 0.75, hpRegenStartOfRound: 0.12 },
+  },
+
+  /* ---------------- PACTOS (trade-offs) ---------------- */
+  pacto_kamikaze: {
+    id: 'pacto_kamikaze',
+    name: 'Pacto: Kamikaze',
+    short: 'KMKZ',
+    rarity: 'rare',
+    category: 'pacto',
+    summary: 'Primeiro ataque +90%, mas −20% HP nos minions',
+    flavor: 'Toda a coragem gasta de uma vez, e que se dane o amanhã.',
+    effect: { startingAttackBonus: 0.9, minionHpMult: 0.8 },
+  },
+  pacto_usurario: {
+    id: 'pacto_usurario',
+    name: 'Pacto: Usurário',
+    short: 'USUR',
+    rarity: 'rare',
+    category: 'pacto',
+    summary: '+70% XP, mas −20% ouro de batalha',
+    flavor: 'Conhecimento engorda a mente e esvazia o cofre.',
+    effect: { xpMult: 1.7, goldMult: 0.8 },
+  },
+  pacto_temerario: {
+    id: 'pacto_temerario',
+    name: 'Pacto: Temerário',
+    short: 'TEMR',
+    rarity: 'epic',
+    category: 'pacto',
+    summary: 'Skills −2 turnos e +15% crítico, mas −25% HP nos minions',
+    flavor: 'Magia rápida e lâminas afiadas custam carne tremendada.',
+    effect: { specialCdReduce: 2, critChanceBonus: 0.15, minionHpMult: 0.75 },
+  },
+
+  /* ---------------- MÍTICOS (run-defining) ---------------- */
+  trono_de_caveiras: {
+    id: 'trono_de_caveiras',
+    name: 'Trono de Caveiras',
+    short: 'TRON',
+    rarity: 'mythic',
+    category: 'vantagem',
+    summary: 'Underlord +50% HP e +40% ATK, skills começam −1 turno',
+    flavor: 'Sentado sobre os mortos, o senhor nunca se levanta cansado.',
+    effect: { overlordHpMult: 1.5, overlordAtkMult: 1.4, specialCdReduce: 1 },
+  },
+  pacto_ragnarok: {
+    id: 'pacto_ragnarok',
+    name: 'Pacto: Ragnarök',
+    short: 'RGNK',
+    rarity: 'mythic',
+    category: 'pacto',
+    summary: '+60% ATK, +25% crítico e vampirismo +30%, mas −35% HP nos minions',
+    flavor: 'O crepúsculo dos deuses não tem volta — só estrago e glória.',
+    effect: { minionAtkMult: 1.6, critChanceBonus: 0.25, lifestealPct: 0.3, minionHpMult: 0.65 },
+  },
 }
 
 /** All boon ids in catalog order — useful for seeding. */

@@ -26,6 +26,25 @@ import { jinglesHit04Sound } from './jingles-hit-04'
 import { jinglesHit12Sound } from './jingles-hit-12'
 import { mDeathImpactLargeStoneASound } from './m-death-impact-large-stone-a'
 import type { SoundAsset } from './sound-types'
+// v12 — soundcn variation packs. Sibling samples of the originals so each
+// hit/crit/boom picks a different take → kills the "every swing sounds
+// identical" repetition. (Same CC0 soundcn registry the originals came from.)
+import { impactMetalHeavy000Sound } from './sounds/impact-metal-heavy-000'
+import { impactMetalHeavy002Sound } from './sounds/impact-metal-heavy-002'
+import { impactMetalHeavy003Sound } from './sounds/impact-metal-heavy-003'
+import { impactMetalLight000Sound } from './sounds/impact-metal-light-000'
+import { impactMetalLight001Sound } from './sounds/impact-metal-light-001'
+import { impactMetalLight003Sound } from './sounds/impact-metal-light-003'
+import { impactMetalMedium001Sound } from './sounds/impact-metal-medium-001'
+import { impactMetalMedium003Sound } from './sounds/impact-metal-medium-003'
+import { impactGenericLight000Sound } from './sounds/impact-generic-light-000'
+import { impactGenericLight001Sound } from './sounds/impact-generic-light-001'
+import { impactGenericLight002Sound } from './sounds/impact-generic-light-002'
+import { impactGlassLight001Sound } from './sounds/impact-glass-light-001'
+import { impactGlassLight003Sound } from './sounds/impact-glass-light-003'
+import { explosionCrunch000Sound } from './sounds/explosion-crunch-000'
+import { explosionCrunch001Sound } from './sounds/explosion-crunch-001'
+import { explosionCrunch003Sound } from './sounds/explosion-crunch-003'
 
 /** Fire-and-forget soundcn sample. Returns immediately; the play call is
  * async but we don't await it — audio errors must never propagate. */
@@ -36,6 +55,49 @@ function sample(asset: SoundAsset, volume = 0.6, playbackRate = 1) {
     // swallow — no AudioContext, locked autoplay, etc.
   }
 }
+
+/**
+ * v12 — play a RANDOM sample from a pool with a touch of pitch jitter.
+ * Two layers of variation (which take + slight rate) mean the same combat
+ * event almost never sounds twice the same. Falls back to plain `sample`.
+ */
+function pickSample(pool: SoundAsset[], volume = 0.6, jitter = 0.06) {
+  if (pool.length === 0) return
+  const asset = pool[Math.floor(Math.random() * pool.length)] ?? pool[0]
+  const rate = 1 + (Math.random() * 2 - 1) * jitter
+  sample(asset, volume, rate)
+}
+
+/* ---- Variation pools (soundcn sibling takes) ---- */
+const HEAVY_HITS: SoundAsset[] = [
+  impactMetalHeavy000Sound,
+  impactMetalHeavy001Sound,
+  impactMetalHeavy002Sound,
+  impactMetalHeavy003Sound,
+]
+const LIGHT_HITS: SoundAsset[] = [
+  impactMetalLight000Sound,
+  impactMetalLight001Sound,
+  impactMetalLight002Sound,
+  impactMetalLight003Sound,
+  impactMetalMedium001Sound,
+  impactMetalMedium003Sound,
+]
+const RANGED_HITS: SoundAsset[] = [
+  impactGenericLight000Sound,
+  impactGenericLight001Sound,
+  impactGenericLight002Sound,
+]
+const GLASS_HITS: SoundAsset[] = [
+  impactGlassLight001Sound,
+  impactGlassLight003Sound,
+]
+const BOOMS: SoundAsset[] = [
+  explosionCrunch000Sound,
+  explosionCrunch001Sound,
+  explosionCrunch002Sound,
+  explosionCrunch003Sound,
+]
 
 let ctx: AudioContext | null = null
 
@@ -192,23 +254,27 @@ export const sfx = {
   }),
   damage: wrap(() => {
     // Light metal hit on top of the tone — gives every minor strike weight.
-    sample(impactMetalLight002Sound, 0.55)
+    // v12: random sibling take + pitch jitter so chip damage never repeats.
+    pickSample(LIGHT_HITS, 0.55)
     noise(0.12, 0.18)
     tone({ freq: 180, duration: 0.12, type: 'square', volume: 0.14, sweepTo: 60 })
   }),
   /** Heavy melee — used by the engine for crits & boss strikes. */
   heavyHit: wrap(() => {
-    sample(impactMetalHeavy001Sound, 0.7)
+    pickSample(HEAVY_HITS, 0.7, 0.05)
     tone({ freq: 140, duration: 0.16, type: 'square', volume: 0.16, sweepTo: 50 })
   }),
   /** Lighter ranged hit — used by the engine for arrow/bolt impacts. */
   rangedHit: wrap(() => {
-    sample(jinglesHit04Sound, 0.5)
+    // Alternate the jingle with generic-light impacts for variety.
+    if (Math.random() < 0.5) pickSample(RANGED_HITS, 0.5)
+    else sample(jinglesHit04Sound, 0.5)
     tone({ freq: 1200, duration: 0.05, type: 'triangle', volume: 0.1 })
   }),
   /** Magic / curse impact — used for splash and curse archetypes. */
   magicHit: wrap(() => {
-    sample(jinglesHit12Sound, 0.55)
+    if (Math.random() < 0.45) pickSample(GLASS_HITS, 0.5)
+    else sample(jinglesHit12Sound, 0.55)
     tone({ freq: 880, duration: 0.1, type: 'sine', volume: 0.12, sweepTo: 660 })
   }),
   powerup: wrap(() => {
@@ -221,8 +287,8 @@ export const sfx = {
     tone({ freq: 1760, duration: 0.18, type: 'sine', volume: 0.16, delay: 0.1 })
   }),
   bomb: wrap(() => {
-    // Real explosion sample + the original lo-fi rumble = wide spectrum boom.
-    sample(explosionCrunch002Sound, 0.75)
+    // Real explosion sample (random take) + the original lo-fi rumble.
+    pickSample(BOOMS, 0.75, 0.05)
     noise(0.4, 0.22)
     tone({ freq: 120, duration: 0.4, type: 'sawtooth', volume: 0.2, sweepTo: 30 })
   }),

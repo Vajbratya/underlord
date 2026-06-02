@@ -167,6 +167,10 @@ export const REGIONS: Region[] = [
     x: 14,
     y: 50,
     links: ['midgrove', 'wraith-fen', 'plague-pulpit'],
+    // v12 — hold-out. The cursed orchard's branches snap shut and Vexanna
+    // just has to outlast you. Two rounds of endurance breaks the early
+    // monotony without overwhelming a stage-3 squad.
+    objective: { kind: 'survive', rounds: 2 },
     lore: 'Toda macieira aqui foi rezada por um padre diferente. As maçãs falam várias línguas mortas.',
     goldReward: 310,
     heroIds: ['vexanna'],
@@ -217,6 +221,10 @@ export const REGIONS: Region[] = [
     x: 44,
     y: 82,
     links: ['drowned-warden', 'tideglass', 'sea-lord'],
+    // v12 — overwhelm. The crab tide keeps climbing the beach; if you grind
+    // too slow the carapaces drown you. A six-round clock teaches aggressive
+    // tempo before the harder iron stages.
+    objective: { kind: 'overwhelm', rounds: 6 },
     lore: 'Não andam pra trás como você imaginava. Andam direto. Pra você.',
     goldReward: 340,
     heroIds: ['daggor'],
@@ -230,7 +238,7 @@ export const REGIONS: Region[] = [
     biome: 'iron',
     x: 58,
     y: 70,
-    links: ['bog-cathedral', 'sermon-fork', 'pilgrim-pass'],
+    links: ['bog-cathedral', 'sermon-fork', 'pilgrim-pass', 'kelpwall', 'pyre-quay'],
     lore: 'A pavimentação é todo escudo de soldado tombado em batalha antiga. Pisa devagar, eles ainda escutam.',
     goldReward: 350,
     heroIds: ['kevin'],
@@ -246,6 +254,9 @@ export const REGIONS: Region[] = [
     y: 74,
     links: ['ironreach', 'sermon-fork', 'flesh-foundry', 'forge-spire'],
     mapId: 'the-gauntlet',
+    // v12 — surgical strike. Gregórius leads the procession; drop the
+    // preacher and the whole pilgrim line loses its nerve and disperses.
+    objective: { kind: 'assassinate', targetHeroId: 'gregorius' },
     lore: 'Os peregrinos rezam em fila indiana. Caem em fila indiana. Vão pro mesmo céu, do mesmo jeito.',
     goldReward: 370,
     heroIds: ['gregorius'],
@@ -291,6 +302,10 @@ export const REGIONS: Region[] = [
     y: 44,
     links: ['hex-orchard', 'thorn-arena', 'sap-altar'],
     mapId: 'buried-archive',
+    // v12 — assassination. Vexanna is the pathfinder; without her the
+    // forest scrambles the route and Gandolfini wanders off lost. Kill
+    // her and the encounter ends regardless of the apprentice.
+    objective: { kind: 'assassinate', targetHeroId: 'vexanna' },
     lore: 'Entrou três vezes. Saiu três vezes. Esqueceu duas das três. Os heróis chamam isso de "exploração".',
     goldReward: 420,
     heroIds: ['vexanna', 'gandolfini'],
@@ -306,6 +321,10 @@ export const REGIONS: Region[] = [
     y: 38,
     links: ['midgrove', 'cracked-prophecy'],
     mapId: 'convoy-ambush',
+    // v12 — assassination. Tyrella is the one filing complaints to the
+    // Conselho dos Deuses; silence her and Daggor loses his audience and
+    // bails to find better lighting. Target only Tyrella.
+    objective: { kind: 'assassinate', targetHeroId: 'tyrella' },
     lore: 'A torcida é de cipó. A arquibancada é de espinho. Quando você morre, eles aplaudem mordendo.',
     goldReward: 440,
     heroIds: ['daggor', 'tyrella'],
@@ -319,7 +338,11 @@ export const REGIONS: Region[] = [
     biome: 'ash',
     x: 58,
     y: 60,
-    links: ['cinder-grove', 'sun-pyre'],
+    links: ['cinder-grove', 'sun-pyre', 'frostmarch', 'kingreach', 'mint-vault', 'pyre-of-ice'],
+    // v12 — overwhelm. The black-ash tide keeps washing fresh corpses
+    // ashore, so dawdling just refreshes the enemy line. Seven rounds to
+    // clear the beach before the surf reinforces them.
+    objective: { kind: 'overwhelm', rounds: 7 },
     lore: 'Daggor faz lives de surf. Gandolfini estuda pra prova. Sangue na areia. Engajamento alto.',
     goldReward: 450,
     heroIds: ['daggor', 'gandolfini'],
@@ -410,6 +433,10 @@ export const REGIONS: Region[] = [
     x: 70,
     y: 38,
     links: ['gilded-rookery', 'royal-archives'],
+    // v12 — assassination. Midas is the chancellor whose audit keeps the
+    // capital's purse open; cut him down and Baldrik and Gregórius can't
+    // afford to keep fighting. Target only Midas.
+    objective: { kind: 'assassinate', targetHeroId: 'midas' },
     lore: 'Baldrik patenteou a lei. Midas auditou seu CNPJ. Gregórius está mandando áudio.',
     goldReward: 580,
     heroIds: ['baldrik', 'gregorius', 'midas'],
@@ -423,7 +450,7 @@ export const REGIONS: Region[] = [
     biome: 'ash',
     x: 74,
     y: 50,
-    links: ['gallows-square', 'ember-isthmus', 'volcan-temple'],
+    links: ['gallows-square', 'ember-isthmus', 'volcan-temple', 'gilded-rookery', 'royal-archives', 'forge-vein', 'caravan-gallows'],
     lore: 'Sacerdotes-solar acreditam que queimar é abençoar. Vão te abençoar muito. Por muito tempo.',
     goldReward: 560,
     heroIds: ['heliarch'],
@@ -527,7 +554,11 @@ export const REGIONS: Region[] = [
     biome: 'tundra',
     x: 24,
     y: 12,
-    links: ['inverse-monastery', 'hollow-belfry'],
+    links: ['inverse-monastery', 'hollow-belfry', 'sky-stable', 'frozen-confessional'],
+    // v12 — hold-out. The archive shelves rearrange to trap you while the
+    // scholars catalogue your memories. Outlast four rounds and the room
+    // forgets you long enough to leave.
+    objective: { kind: 'survive', rounds: 4 },
     lore: 'Tem uma estante reservada pra você. Os outros Underlords pediram pra ler primeiro.',
     goldReward: 640,
     heroIds: ['gandolfini', 'midas'],
@@ -603,6 +634,10 @@ export const REGIONS: Region[] = [
     x: 50,
     y: 58,
     links: ['wyrm-shelf', 'inverse-monastery'],
+    // v12 — overwhelm. The narrow isthmus burns hotter every round; stall
+    // and the twin firewalls close in. Eight rounds to push through before
+    // you become fuel for both seas.
+    objective: { kind: 'overwhelm', rounds: 8 },
     lore: 'Dois mares de fogo. Um caminho. Quem para, vira combustível pros dois lados.',
     goldReward: 730,
     heroIds: ['blazborn', 'vexanna'],
@@ -954,6 +989,10 @@ export const REGIONS: Region[] = [
     x: 42,
     y: 28,
     links: ['choir-pit', 'thorn-arena'],
+    // v12 — hold-out. The sap-contract binds you in place while Vexanna
+    // "manifests" your defeat. Survive three rounds and the forest releases
+    // the lien before she finishes the paperwork.
+    objective: { kind: 'survive', rounds: 3 },
     lore: 'Você assina com o dedo. A floresta te lê. Devolve um contrato em látex e nomes mortos.',
     goldReward: 530,
     heroIds: ['vexanna'],
@@ -1418,16 +1457,245 @@ export const REGIONS: Region[] = [
     subtitle: 'O verdadeiro vilão — quem segura o controle',
     stage: 34,
     biome: 'void',
-    // Terminal region of the entire campaign. No outgoing links — beating
-    // THE READER is 100% completion. The fourth-wall final boss.
+    // v12 — beating THE READER no longer closes the campaign. The torn
+    // page spills into A SÉTIMA TEMPORADA: a renewed-for-another-season
+    // boss act that drags the dead heroes back as franchise IP. The first
+    // rung is `merger-atrium`.
     x: 10,
     y: 78,
-    links: [],
+    links: ['merger-atrium'],
     mapId: 'void-end',
     lore: 'No fundo do fundo do Vazio não há monstro nenhum. Há VOCÊ — não o Underlord, mas você, do outro lado da tela, segurando o controle, lendo isto exatamente agora. O verdadeiro vilão desta história, que moveu o Underlord como peça por quatorze anos e folheou o sofrimento dele por puro entretenimento. Você reinicia, você tenta de novo, e o Leitor só assiste de novo, perguntando quem é o monstro aqui. Ele vira a página e o turno do Underlord simplesmente para de existir. Mas por um instante, no golpe final, a tela treme — e o Underlord encara de volta quem o controla. Pela primeira vez em catorze anos, é o Leitor quem sente medo.',
     goldReward: 9000,
     heroIds: ['boss-the-reader'],
     eliteHeroes: [{ id: 'boss-the-reader', kind: 'boss', passiveId: 'time-stop' }],
+    dropsLoot: true,
+  }),
+
+  /* ============================================================================
+   * v12 — boss act / A SÉTIMA TEMPORADA
+   *
+   * O Leitor virou a última página — e a editora renovou a série por mais uma
+   * temporada. A torre, agora propriedade intelectual, é repovoada de chefões
+   * "novos" que são velhos vícios da indústria do entretenimento vestidos de
+   * monstro: fusões corporativas, deuses de patch notes, algoritmos, betas,
+   * localizadores, e os próprios créditos finais.
+   *
+   * GRAFO: `merger-atrium` é puxado pelos links de `void-the-reader` (acima).
+   * Os doze cenários formam uma cadeia forward, com dois ramos curtos que
+   * reconvergem, sem dead end exceto o SUPERBOSS final `the-credits-roll`
+   * (links: []), que fecha a temporada. Estágios 25-40, ouro 4000-12000.
+   * Biomas misturam void, crown, iron e ash. Todos dropsLoot:true.
+   * ============================================================================ */
+
+  r({
+    id: 'merger-atrium',
+    name: 'O ÁTRIO DA FUSÃO',
+    subtitle: 'Lobby corporativo onde três guildas viraram uma',
+    stage: 25,
+    biome: 'iron',
+    x: 22,
+    y: 64,
+    links: ['patchnote-sanctum'],
+    mapId: 'coronation-hall',
+    lore: 'A página rasgada do Leitor te cospe num saguão de mármore corporativo, todo logotipo e nenhum coração. Aqui o Conselho de Sinergia te aguarda: três heróis de guildas rivais que se fundiram numa só armadura pra "agregar valor ao acionista" e dividir a culpa por três. Eles aprovaram sua liquidação em reunião e ninguém assinou a ata. Cada um aponta pro outro quando você pergunta de quem foi a ideia, e os três ficam mais fortes quanto mais perto estão um do outro — porque sinergia, no fim, é só multidão de mãos lavadas batendo em você ao mesmo tempo.',
+    goldReward: 4000,
+    heroIds: ['mb-synergy-board', 'baldrik', 'midas'],
+    eliteHeroes: [{ id: 'mb-synergy-board', kind: 'miniboss', passiveId: 'aura-rage' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'patchnote-sanctum',
+    name: 'O SANTUÁRIO DAS NOTAS',
+    subtitle: 'Templo onde a realidade é rebalanceada toda terça',
+    stage: 26,
+    biome: 'crown',
+    x: 32,
+    y: 58,
+    links: ['has-been-keep'],
+    mapId: 'hall-of-mirrors',
+    // Survive: the Patch Saint shields up every round and rewrites the
+    // arena mid-fight. Outlasting four rounds beats him faster than trying
+    // to burst through a hotfix wall that keeps regenerating its plating.
+    objective: { kind: 'survive', rounds: 4 },
+    lore: 'O Santuário cheira a manutenção. No altar reina o Santo das Notas, divindade menor que reescreve as leis do mundo a cada terça-feira e nerfou a sua dignidade no último ciclo "por motivos de equilíbrio". O changelog dele dá duas voltas no pescoço e nunca menciona os próprios buffs. A cada round ele veste um escudo de hotfix e jura que conserta na próxima atualização — não conserta. Você tá listado em "problemas conhecidos", vilão, e o melhor jeito de derrubar uma divindade de patch notes é sobreviver até a janela de manutenção fechar sozinha.',
+    goldReward: 4400,
+    heroIds: ['mb-patchsaint', 'profecia'],
+    eliteHeroes: [{ id: 'mb-patchsaint', kind: 'miniboss', passiveId: 'warding' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'has-been-keep',
+    name: 'O FORTE DO SAUDOSISMO',
+    subtitle: 'Onde uma lenda foi arrancada da aposentadoria',
+    stage: 27,
+    biome: 'iron',
+    x: 42,
+    y: 52,
+    links: ['improv-table'],
+    lore: 'Um forte mofado de troféus empoeirados e contratos de saudosismo. Aqui mora Sir Thorgrim, o Aposentado, lenda da geração passada que assinou de volta por uma mala de ouro e rancor. Ele reclama que no tempo dele vilão respeitava o pacing, range as juntas como portão velho, e mesmo lento é insuportavelmente eficiente: cada pancada que toma o faz lembrar de quando isso doía menos, e a lembrança vira fúria de veterano. Não subestime o velho — ele já enterrou Underlords que ainda nem tinham nome, e saiu da aposentadoria só pra adicionar você à coleção.',
+    goldReward: 4900,
+    heroIds: ['mb-legacy-knight', 'baldrik', 'gregorius'],
+    eliteHeroes: [{ id: 'mb-legacy-knight', kind: 'miniboss', passiveId: 'enrage' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'improv-table',
+    name: 'A MESA DA IMPROVISAÇÃO',
+    subtitle: 'Onde o Mestre rola dados e inventa seu sofrimento',
+    stage: 28,
+    biome: 'void',
+    x: 52,
+    y: 46,
+    links: ['ratio-arena'],
+    mapId: 'void-archive',
+    // Overwhelm: the Dungeon Master improvises an extra encounter every
+    // round (summon), so the spawn count only grows. Racing the clock
+    // beats him before the table fills with improvised horrors.
+    objective: { kind: 'overwhelm', rounds: 9 },
+    lore: 'Há uma mesa flutuando no escuro, coberta de mapas rabiscados e dados de osso, e atrás dela uma inteligência que dirige o calabouço inteiro narrando suas derrotas em terceira pessoa. O Mestre-de-Masmorra rolou um dado mental e decidiu que hoje você sofre roteiro improvisado: a cada round ele "introduz mais um inimigo, que coincidência narrativa" e a sala enche de encontros que ele inventa na hora. Não dá pra esperar a campanha dele acabar — ela nunca acaba. Você tem que derrubar o narrador antes que a mesa lote, ou vira NPC permanente de uma aventura que só ele acha divertida.',
+    goldReward: 5500,
+    heroIds: ['mb-dungeon-master', 'profecia'],
+    eliteHeroes: [{ id: 'mb-dungeon-master', kind: 'miniboss', passiveId: 'summon' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'ratio-arena',
+    name: 'A ARENA DO ENGAJAMENTO',
+    subtitle: 'Raid de guilda transmitida ao vivo pra três mil viewers',
+    stage: 29,
+    biome: 'crown',
+    x: 62,
+    y: 40,
+    links: ['ghost-of-self'],
+    mapId: 'broken-coliseum',
+    // Assassinate: the raid leader is the only target that matters. Killing
+    // XX_RAINHA_DARKZ_XX ends the stream — her followers scatter the moment
+    // the influencer drops, before her frenzy stacks snowball out of hand.
+    objective: { kind: 'assassinate', targetHeroId: 'mb-raidlead' },
+    lore: 'Uma arena lotada que é metade coliseu, metade estúdio de transmissão, com luzes de anel onde deviam estar tochas. XX_RAINHA_DARKZ_XX arrastou trezentos seguidores pra fazer raid na sua torre por conteúdo, e cada mod que cai ela "agrega o público restante" e fica mais forte — engajamento é só a soma de quem sobrou olhando. Tentar matar a horda inteira só alimenta a fúria dela. O segredo é cirúrgico: derruba a influencer e a stream encerra, os seguidores migram pra ver outro vilão morrer, e a arena esvazia mais rápido do que um live sem clipe bom. Não esquece de não seguir antes de ir embora.',
+    goldReward: 6200,
+    heroIds: ['mb-raidlead', 'daggor', 'vexanna'],
+    eliteHeroes: [{ id: 'mb-raidlead', kind: 'miniboss', passiveId: 'frenzy' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'ghost-of-self',
+    name: 'O CORREDOR DO FANTASMA',
+    subtitle: 'Onde o seu próprio cansaço ainda anda',
+    stage: 31,
+    biome: 'void',
+    x: 70,
+    y: 34,
+    links: ['ad-break-abyss'],
+    mapId: 'void-mirror',
+    lore: 'Um corredor sem fim que ecoa o som de passos que não são os seus — são os de antes, os de quando você quase parou. O Fantasma do Underlord te espera: não o seu corpo, o seu cansaço de catorze anos vagando pela torre desde a noite em que você pensou em desistir. Cada golpe que você desfere nele acerta a parte de você que queria ter largado tudo, e ela revida com o mesmo peso, rindo da sua teimosia, porque ferir o próprio desânimo sempre foi recíproco. Ele lembra de cada vez que você fraquejou. Você só lembra de hoje. Vence quem aguentar mais — e, dessa vez, você decidiu continuar.',
+    goldReward: 7000,
+    heroIds: ['boss-revenant-underlord'],
+    eliteHeroes: [{ id: 'boss-revenant-underlord', kind: 'boss', passiveId: 'thorns' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'ad-break-abyss',
+    name: 'O ABISMO DO PATROCÍNIO',
+    subtitle: 'Onde toda morte abre um slot publicitário',
+    stage: 33,
+    biome: 'ash',
+    x: 78,
+    y: 28,
+    links: ['cancelled-too-soon'],
+    mapId: 'volcan-temple',
+    lore: 'Um vão de fogo onde outdoors flamejantes anunciam o seu próprio fim como oferta por tempo limitado. Baalmarkt, o Patrocinador, não luta — terceiriza. Demônio de contrato que financia heróis em troca de exposição de marca na alma deles, ele converte cada aliado tombado em "verba publicitária" e despeja essa receita como aura nos vizinhos, ficando mais forte a cada slot de patrocínio que vaga. Você não tem patrocinador, vilão, então vai ter que vencer em silêncio comercial, derrubando a diretoria antes que o ROI da carnificina feche no azul. Este golpe é oferecido a você por ninguém — e é o único intervalo que ele não controla.',
+    goldReward: 7800,
+    heroIds: ['boss-sponsor-demon', 'midas'],
+    eliteHeroes: [{ id: 'boss-sponsor-demon', kind: 'boss', passiveId: 'siphon-aura' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'cancelled-too-soon',
+    name: 'O GANCHO QUE NÃO FECHOU',
+    subtitle: 'Vilão que o roteiro insiste em manter respirando',
+    stage: 35,
+    biome: 'void',
+    x: 84,
+    y: 34,
+    links: ['the-algorithm-core'],
+    mapId: 'void-throne',
+    lore: 'Uma sala em loop, cheia de finais que nunca terminam de acontecer. Aqui mora O Que Não Morreu Direito: um vilão que você jurou ter enterrado três campanhas atrás, mas que o roteiro deixou respirando "pro caso de dar audiência". Toda vez que cai, ele se reergue com uma cicatriz nova e uma fala enigmática prometendo que da próxima é sério — não é, nunca é. O público pediu o retorno dele, dizem, mas o público é o Autor, e o Autor lhe deve aluguel. Mata que ele volta; é meio o lance dele. A única forma de acabar é não deixar gancho — cortar o roteiro fora antes que a cena pós-créditos comece.',
+    goldReward: 8600,
+    heroIds: ['boss-sequel-bait', 'profecia'],
+    eliteHeroes: [{ id: 'boss-sequel-bait', kind: 'boss', passiveId: 'revive' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'the-algorithm-core',
+    name: 'O NÚCLEO DO ALGORITMO',
+    subtitle: 'A entidade invisível que decide quem some',
+    stage: 37,
+    biome: 'void',
+    x: 90,
+    y: 42,
+    links: ['beta-branch'],
+    mapId: 'void-end',
+    // Overwhelm: the Algorithm recalibrates the fight every round to
+    // optimize your suffering and acts again on each minion kill (time-stop).
+    // A clock forces you to delete it before it finishes A/B-testing you.
+    objective: { kind: 'overwhelm', rounds: 10 },
+    lore: 'No fundo da temporada não há trono, há um servidor pulsando no escuro: O Algoritmo, a entidade invisível que decide quem ascende e quem some, recomendado pra você por ninguém que você queira agradecer. Não tem corpo, tem alcance. Ele recalibra a batalha em tempo real pra otimizar o seu sofrimento como métrica, recompensa quem o agrada e enterra quem o ignora, e cada turno seu vira dado que o deixa melhor em te derrotar. Você não joga contra ele — você é o conteúdo que ele está testando, A/B, até desistir. Apague o Núcleo antes que ele te classifique como "baixo engajamento", porque despriorizado, na língua dele, quer dizer apagado.',
+    goldReward: 9400,
+    heroIds: ['boss-the-algorithm'],
+    eliteHeroes: [{ id: 'boss-the-algorithm', kind: 'boss', passiveId: 'time-stop' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'beta-branch',
+    name: 'A BUILD INSTÁVEL',
+    subtitle: 'Onde alguém jogou esta torre antes de ela existir',
+    stage: 38,
+    biome: 'void',
+    x: 84,
+    y: 50,
+    links: ['localization-vault'],
+    mapId: 'void-press',
+    lore: 'Um corredor que pisca entre versões: meio renderizado, meio placeholder, com texturas que ainda não carregaram. Aqui anda o Beta Tester, que jogou esta torre antes de ela ficar pronta e conhece todos os seus bugs, exploits e falas antes de você dizê-las. Ele não te enfrenta — te debuga, reproduzindo o "problema" que é você a cada round, meio fora de fase porque metade dele ainda roda numa build mais antiga e quebrada que faz seus golpes atravessarem. Já viu seu padrão no acesso antecipado e anotou tudo no bug report. O único jeito de fechar o ticket é crashá-lo antes que ele te marque como "não reproduzível" e feche você como funcionando.',
+    goldReward: 10200,
+    heroIds: ['boss-beta-tester'],
+    eliteHeroes: [{ id: 'boss-beta-tester', kind: 'boss', passiveId: 'phase' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'localization-vault',
+    name: 'O COFRE DA TRADUÇÃO',
+    subtitle: 'Onde toda ferida é adaptada pro público local',
+    stage: 39,
+    biome: 'crown',
+    x: 76,
+    y: 56,
+    links: ['the-credits-roll'],
+    mapId: 'coronation-hall',
+    lore: 'Uma câmara forrada de glossários flutuantes e legendas que se reescrevem no ar. O Localizador reina aqui, tradutor onipotente que reescreve o significado de tudo em tempo real: suas ameaças chegam até ele e saem como nota de rodapé, suas palavras de ódio viram "que pena" sem impacto. Cada golpe que recebe ele "adapta para o público local" — sangra, se regenera, e reaparece com a ferida traduzida pra outra parte do corpo que ainda não doía. No original você venceria, mas ele localiza, e na versão dele você perde com classe. Derrube-o antes que ele adapte a própria morte pra outro mercado e escape sem deixar legenda.',
+    goldReward: 11000,
+    heroIds: ['boss-the-localizer', 'gregorius'],
+    eliteHeroes: [{ id: 'boss-the-localizer', kind: 'boss', passiveId: 'regenerate' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'the-credits-roll',
+    name: 'OS CRÉDITOS FINAIS',
+    subtitle: 'O superboss — todos os nomes que te moldaram pra perder',
+    stage: 40,
+    biome: 'void',
+    // v12 — true terminal node of A SÉTIMA TEMPORADA. No outgoing links:
+    // surviving the credits is the absolute end of the franchise. The
+    // post-game superboss, harder than THE READER, with the steepest loot.
+    x: 64,
+    y: 62,
+    links: [],
+    mapId: 'void-end',
+    lore: 'A última sala não tem chão, tem rolagem: uma maré vertical de letras douradas subindo sem parar — roteiro, arte, trilha, marketing, dublagem, todos os nomes que escreveram, animaram, sonorizaram e venderam o seu sofrimento por catorze anos. Os Créditos Finais são o último inimigo porque depois deles não existe inimigo nenhum, só a tela escura e você ainda de pé. Cada nome que sobe é mais uma mão que te moldou pra perder, e elas esmagam quem ousa não terminar o jogo. Role com eles até o fim, vilão. Quando o último crédito sumir e a tela ficar preta, pela primeira vez em catorze anos não haverá próximo — só você, o trono e o silêncio que você sempre quis. (Há uma cena pós-créditos. O vilão dela é você.)',
+    goldReward: 12000,
+    heroIds: ['boss-the-credits'],
+    eliteHeroes: [{ id: 'boss-the-credits', kind: 'boss', passiveId: 'colossal' }],
     dropsLoot: true,
   }),
 ]
