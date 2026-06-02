@@ -398,7 +398,10 @@ export function LootScreen({
                     {loot.map((item, i) => (
                       <li
                         key={`${item.id}-${i}`}
-                        className="rounded-md border border-border bg-card/60 p-2.5 sm:p-3"
+                        className={cn(
+                          "relative rounded-md border border-border bg-card/60 p-2.5 sm:p-3",
+                          item.rarity === "mythic" && "holo-mythic",
+                        )}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <p

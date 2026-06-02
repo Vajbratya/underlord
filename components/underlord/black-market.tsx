@@ -156,8 +156,9 @@ export function BlackMarket({
                   <div
                     key={item.id}
                     className={cn(
-                      "flex items-center justify-between gap-3 rounded-md border-2 px-3 py-2.5",
+                      "relative flex items-center justify-between gap-3 rounded-md border-2 px-3 py-2.5",
                       TONE_CLASS[tone],
+                      item.rarity === "mythic" && "holo-mythic",
                       owned && "opacity-50",
                     )}
                   >
@@ -245,8 +246,9 @@ export function BlackMarket({
                         onDismantle(item.id)
                       }}
                       className={cn(
-                        "flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left transition active:scale-[0.98]",
+                        "relative flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left transition active:scale-[0.98]",
                         TONE_CLASS[tone],
+                        item.rarity === "mythic" && "holo-mythic",
                       )}
                     >
                       <div className="min-w-0 flex-1">

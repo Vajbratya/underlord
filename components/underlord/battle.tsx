@@ -4,9 +4,11 @@ import Image from "next/image"
 import { useEffect, useMemo, useReducer, useRef, useState } from "react"
 import {
   Crown,
+  Droplet,
   Flame,
   Heart,
   RotateCcw,
+  Shield,
   ShieldAlert,
   Skull,
   Sparkles,
@@ -56,7 +58,11 @@ import {
 } from "@/lib/underlord/units"
 import { SPECIALS } from "@/lib/underlord/specials"
 import { aggregateBoons } from "@/lib/underlord/boons"
-import { ascensionMods } from "@/lib/underlord/ascension"
+import {
+  ascensionMods,
+  ascensionLabel,
+  ascensionActive,
+} from "@/lib/underlord/ascension"
 import {
   OVERLORD_SKILLS,
   type SkillDef,
@@ -446,6 +452,10 @@ export function BattleScreen({
   const [taunt, setTaunt] = useState<{ from: string; text: string } | null>(null)
   const [combo, setCombo] = useState(0)
   const [comboFlash, setComboFlash] = useState(false)
+  // v11 — transient combo milestone overlay (purely visual; derived from the
+  // `combo` state via an effect, never touches the reducer / bumpCombo).
+  const [comboMilestone, setComboMilestone] = useState<number | null>(null)
+  const lastMilestoneRef = useRef(0)
   const [hint, setHint] = useState<string | null>(null)
   /** Special-targeting mode. When set, the next hex tap routes to the special. */
   const [specialMode, setSpecialMode] = useState<null | {
@@ -514,6 +524,22 @@ export function BattleScreen({
       lastRoundRef.current = state.round
     }
   }, [state.turn, state.round])
+
+  // v11 — combo MILESTONE pop. Purely derived from the `combo` state: when
+  // the streak crosses a fixed threshold (3/5/7/10) we punch a transient
+  // centered overlay. Read-only on game state — fires no reducer actions.
+  useEffect(() => {
+    const milestones = [3, 5, 7, 10]
+    const hit = milestones.includes(combo) ? combo : 0
+    if (hit && hit > lastMilestoneRef.current) {
+      lastMilestoneRef.current = hit
+      setComboMilestone(hit)
+      const t = window.setTimeout(() => setComboMilestone(null), 1100)
+      return () => window.clearTimeout(t)
+    }
+    // Streak broke / reset — clear the gate so the next run pops again.
+    if (combo < 3) lastMilestoneRef.current = 0
+  }, [combo])
 
   // v9 — death detection. Whenever the count of dead units climbs we
   // play a low thud once. Uses a ref so a single death frame never
@@ -1267,6 +1293,22 @@ export function BattleScreen({
               {region.name}
             </h1>
           </div>
+          {/* v11 — Ascension HUD chip: tier label + curse count. */}
+          {ascensionActive(ascension, curses) ? (
+            <div
+              title={`${ascensionLabel(ascension)}${
+                curses.length > 0 ? ` · ${curses.length} maldição(ões)` : ""
+              }`}
+              className="flex shrink-0 items-center gap-1 rounded-md border border-primary bg-primary/15 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-primary"
+            >
+              <span className="leading-none">{ascensionLabel(ascension)}</span>
+              {curses.length > 0 ? (
+                <span className="leading-none tabular-nums opacity-80">
+                  +{curses.length}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           {combo >= 2 ? (
             <div
               className={cn(
@@ -1790,6 +1832,33 @@ export function BattleScreen({
                       <Sparkle className="size-2.5" />
                     </span>
                   ) : null}
+                  {/* v11 — absorb shield (cyan) + active bleed (crimson) chips. */}
+                  {u.shieldHp && u.shieldHp > 0 ? (
+                    <span
+                      aria-hidden
+                      title={`Escudo (${u.shieldHp})`}
+                      className="status-shield absolute -left-1 -bottom-3 grid h-4 min-w-4 place-items-center gap-0.5 rounded-full border border-sky-300/80 bg-sky-500/30 px-0.5 text-sky-100 shadow"
+                    >
+                      <Shield className="size-2.5" />
+                      <span className="font-mono text-[7px] font-black leading-none tabular-nums">
+                        {u.shieldHp}
+                      </span>
+                    </span>
+                  ) : null}
+                  {u.bleedStacks && u.bleedStacks > 0 ? (
+                    <span
+                      aria-hidden
+                      title={`Sangramento (${u.bleedStacks})`}
+                      className="status-bleed absolute -left-1 top-3 grid h-4 min-w-4 place-items-center gap-0.5 rounded-full border border-rose-400/80 bg-rose-600/40 px-0.5 text-rose-100 shadow"
+                    >
+                      <Droplet className="size-2.5" />
+                      {u.bleedStacks > 1 ? (
+                        <span className="font-mono text-[7px] font-black leading-none tabular-nums">
+                          {u.bleedStacks}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
                   <span
                     aria-hidden
                     className="absolute -bottom-1.5 left-1/2 h-1.5 w-[115%] -translate-x-1/2 overflow-hidden rounded-sm border border-border/80 bg-background/90"
@@ -1903,6 +1972,25 @@ export function BattleScreen({
           <div className="slam-in rounded-md border-2 border-destructive/70 bg-card/95 px-4 py-2 backdrop-blur shadow-[0_8px_24px_oklch(0.55_0.21_22/0.5)]">
             <p className="font-display text-sm font-black uppercase tracking-[0.18em] text-destructive">
               {hint}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {/* v11 — combo milestone pop. The `combo-milestone` keyframe already
+          carries the centering transform, so we anchor at the viewport
+          center without an extra translate utility. */}
+      {comboMilestone ? (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed left-1/2 top-1/2 z-40 text-center"
+        >
+          <div className="combo-milestone">
+            <p
+              className="font-display text-5xl font-black uppercase leading-none tracking-tight text-gold sm:text-6xl"
+              style={{ textShadow: "0 0 40px oklch(0.78 0.16 78 / 0.7)" }}
+            >
+              COMBO ×{comboMilestone}
             </p>
           </div>
         </div>
