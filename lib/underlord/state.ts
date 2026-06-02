@@ -35,6 +35,7 @@ import {
   todayKey as economyTodayKey,
   winRewardShards,
 } from './economy'
+import { ascensionMods, CURSES, MAX_ASCENSION } from './ascension'
 
 const STORAGE_KEY = 'underlord-save-v5'
 const LEGACY_KEY_V4 = 'underlord-save-v4'
@@ -112,6 +113,12 @@ export function freshSave(name: string): SaveState {
     soulshards: 0,
     lastShardClaimDay: '',
     blackMarketBought: [],
+    // Ascension (v11) — base game until the player opts into difficulty.
+    ascension: 0,
+    ascensionUnlocked: 0,
+    curses: [],
+    lastTrialDay: '',
+    trialBest: 0,
   }
 }
 
@@ -292,6 +299,9 @@ export type Action =
    * item to inventory, and marks the offer as spent so it can't be
    * re-bought today. */
   | { type: 'bm-buy'; itemId: string; price: number; item: LootItem }
+  /** v11 — set the Ascension tier + active Maldições (curses). The tier is
+   * clamped to what the player has unlocked; curse ids are validated. */
+  | { type: 'set-ascension'; tier: number; curses: string[] }
   | { type: 'reset' }
   /** v8 — Replace the entire game state with a fresh hydration from
    * persistence. Used by the Title screen's "CONTINUAR" button so we can
@@ -406,6 +416,13 @@ export function reduce(state: GameState, action: Action): GameState {
       // Boon-derived multipliers stack with perk-derived ones.
       const boonBag = aggregateBoons(save.boons ?? [])
 
+      // Ascension reward multiplier — folds into gold, xp, and shards so
+      // ramping difficulty pays off. Base game (tier 0, no curses) = 1.0.
+      const ascReward = ascensionMods(
+        save.ascension ?? 0,
+        save.curses ?? [],
+      ).reward
+
       // XP: scaled by perk × boon
       const baseXp = xpForBattle({
         victory: result.victory,
@@ -415,7 +432,7 @@ export function reduce(state: GameState, action: Action): GameState {
       })
       const xpEarned = Math.max(
         0,
-        Math.floor(baseXp * xpMult(save.perks) * boonBag.xpMult),
+        Math.floor(baseXp * xpMult(save.perks) * boonBag.xpMult * ascReward),
       )
 
       const oldLevel = levelFromXP(save.xp)
@@ -460,16 +477,20 @@ export function reduce(state: GameState, action: Action): GameState {
       // Gold: scaled by perk × boon
       const goldFinal = Math.max(
         0,
-        Math.floor(goldEarned * goldMult(save.perks) * boonBag.goldMult),
+        Math.floor(
+          goldEarned * goldMult(save.perks) * boonBag.goldMult * ascReward,
+        ),
       )
 
       // Soulshard rewards. Wins pay full freight, losses get a small
       // consolation drip so wipes still feel like progress. Counted
       // BEFORE the rest of the win/loss bookkeeping so both branches
       // can read the same value cleanly.
-      const shardsEarned = result.victory
-        ? winRewardShards(region.stage)
-        : lossConsolationShards(region.stage)
+      const shardsEarned = Math.round(
+        (result.victory
+          ? winRewardShards(region.stage)
+          : lossConsolationShards(region.stage)) * ascReward,
+      )
       save.soulshards = (save.soulshards ?? 0) + shardsEarned
 
       if (result.victory) {
@@ -494,6 +515,14 @@ export function reduce(state: GameState, action: Action): GameState {
           if (regions[linkId] === 'locked') regions[linkId] = 'available'
         }
         save.regions = regions
+
+        // Ascension: winning at your frontier tier unlocks the next one.
+        if ((save.ascension ?? 0) >= (save.ascensionUnlocked ?? 0)) {
+          save.ascensionUnlocked = Math.min(
+            MAX_ASCENSION,
+            (save.ascension ?? 0) + 1,
+          )
+        }
       } else {
         save.battlesLost += 1
         save.battlesSinceRare = save.battlesSinceRare + 1
@@ -511,11 +540,29 @@ export function reduce(state: GameState, action: Action): GameState {
       if (result.victory && result.flawless) candidateAchievements.push('flawless')
       if (save.heroesKilled.length >= 5) candidateAchievements.push('hero_slayer_5')
       if (save.heroesKilled.length >= 14) candidateAchievements.push('hero_slayer_all')
+      if (save.heroesKilled.length >= 20) candidateAchievements.push('hero_slayer_20')
+      if (save.heroesKilled.length >= 30) candidateAchievements.push('hero_slayer_30')
+      if (save.heroesKilled.length >= 50) candidateAchievements.push('hero_slayer_50')
       if (save.dailyStreak >= 3) candidateAchievements.push('streak_3')
       if (save.dailyStreak >= 7) candidateAchievements.push('streak_7')
+      if (save.dailyStreak >= 14) candidateAchievements.push('streak_14')
+      if (save.dailyStreak >= 30) candidateAchievements.push('streak_30')
+      if (save.battlesWon >= 10) candidateAchievements.push('veteran_10')
+      if (save.battlesWon >= 50) candidateAchievements.push('veteran_50')
+      if (save.battlesWon >= 100) candidateAchievements.push('veteran_100')
+      if (result.comboHigh >= 7) candidateAchievements.push('combo_7')
+      if (result.comboHigh >= 10) candidateAchievements.push('combo_10')
       if (loot.some((l) => l.rarity === 'relic')) candidateAchievements.push('first_relic')
-      if (save.taint + loot.reduce((acc, l) => acc + l.taint, 0) >= 5) {
-        candidateAchievements.push('tainted')
+      if (loot.some((l) => l.rarity === 'mythic')) candidateAchievements.push('mythic_bearer')
+      const taintTotal = save.taint + loot.reduce((acc, l) => acc + l.taint, 0)
+      if (taintTotal >= 5) candidateAchievements.push('tainted')
+      if (taintTotal >= 20) candidateAchievements.push('tainted_20')
+      // Ascension achievements.
+      if (result.victory && (save.ascension ?? 0) >= 1) {
+        candidateAchievements.push('ascendant_1')
+      }
+      if (result.killedHeroIds.includes('boss-the-reader')) {
+        candidateAchievements.push('void_conqueror')
       }
 
       const { achievements, unlocked, bonusGold } = unlockNew(save, candidateAchievements)
@@ -661,6 +708,15 @@ export function reduce(state: GameState, action: Action): GameState {
             action.itemId,
           ],
         },
+      }
+    }
+    case 'set-ascension': {
+      const unlocked = state.save.ascensionUnlocked ?? 0
+      const tier = Math.max(0, Math.min(unlocked, Math.floor(action.tier || 0)))
+      const curses = (action.curses ?? []).filter((id) => !!CURSES[id])
+      return {
+        ...state,
+        save: { ...state.save, ascension: tier, curses },
       }
     }
     case 'reset':

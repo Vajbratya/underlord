@@ -19,6 +19,7 @@ import {
   Skull,
   Sparkles,
   Swords,
+  TrendingUp,
   Users,
   Wand2,
   X,
@@ -82,6 +83,7 @@ export function WarRoom({
   onOpenSkillMap,
   onOpenBoons,
   onOpenMarket,
+  onOpenAscension,
   streakBonus,
 }: {
   save: SaveState
@@ -91,6 +93,7 @@ export function WarRoom({
   onOpenSkillMap: () => void
   onOpenBoons: () => void
   onOpenMarket: () => void
+  onOpenAscension: () => void
   streakBonus?: number | null
 }) {
   const xp = xpProgress(save.xp)
@@ -284,6 +287,31 @@ export function WarRoom({
                 <Gem className="size-2.5" />
                 {save.soulshards ?? 0}
               </span>
+            </button>
+            {/* Ascensão — difficulty/replayability dial. Glows when an
+                Ascension tier or any Maldição is active. */}
+            <button
+              type="button"
+              onClick={() => {
+                haptic.panelOpen()
+                onOpenAscension()
+              }}
+              aria-label="Ascensão"
+              title="Ascensão — suba a dificuldade por mais espólio"
+              className={cn(
+                "relative flex h-7 shrink-0 items-center gap-1 rounded-sm border px-2 font-mono text-[9px] font-black uppercase tracking-[0.18em] transition active:scale-95",
+                (save.ascension ?? 0) > 0 || (save.curses?.length ?? 0) > 0
+                  ? "border-primary bg-primary/15 text-primary ready-pulse"
+                  : "border-border bg-card/70 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <TrendingUp className="size-3" />
+              <span className="hidden sm:inline">ASCENSÃO</span>
+              {(save.ascension ?? 0) > 0 ? (
+                <span className="rounded bg-primary px-1 font-display text-[10px] leading-none tabular-nums text-primary-foreground">
+                  {save.ascension}
+                </span>
+              ) : null}
             </button>
           </div>
         </div>

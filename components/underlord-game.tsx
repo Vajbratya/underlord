@@ -12,6 +12,7 @@ import { Forge } from "@/components/underlord/forge"
 import { SkillMap } from "@/components/underlord/skill-map"
 import { BoonsPanel } from "@/components/underlord/boons-panel"
 import { BlackMarket } from "@/components/underlord/black-market"
+import { AscensionPanel } from "@/components/underlord/ascension-panel"
 import {
   AchievementToaster,
   fireAchievement,
@@ -42,6 +43,7 @@ export function UnderlordGame() {
   const [showSkillMap, setShowSkillMap] = useState(false)
   const [showBoons, setShowBoons] = useState(false)
   const [showMarket, setShowMarket] = useState(false)
+  const [showAscension, setShowAscension] = useState(false)
   const [streakBonusToShow, setStreakBonusToShow] = useState<number | null>(null)
   const dailyCheckedToday = useRef<string>("")
 
@@ -158,6 +160,7 @@ export function UnderlordGame() {
           onOpenSkillMap={() => setShowSkillMap(true)}
           onOpenBoons={() => setShowBoons(true)}
           onOpenMarket={() => setShowMarket(true)}
+          onOpenAscension={() => setShowAscension(true)}
           streakBonus={streakBonusToShow}
         />
         {showSquadPicker ? (
@@ -201,6 +204,15 @@ export function UnderlordGame() {
               dispatch({ type: "dismantle-loot", lootId })
             }
             onClose={() => setShowMarket(false)}
+          />
+        ) : null}
+        {showAscension ? (
+          <AscensionPanel
+            save={state.save}
+            onSet={(tier, curses) =>
+              dispatch({ type: "set-ascension", tier, curses })
+            }
+            onClose={() => setShowAscension(false)}
           />
         ) : null}
         <AchievementToaster />
@@ -247,9 +259,15 @@ export function UnderlordGame() {
           overlordName={state.save.underlordName}
           equippedSkills={state.save.equippedSkills}
           boons={state.save.boons ?? []}
+          ascension={state.save.ascension ?? 0}
+          curses={state.save.curses ?? []}
           onComplete={(result) => {
             const goldEarned = result.victory ? region.goldReward : 0
-            const forceRare = shouldForceRare(state.save) && result.victory
+            // Ascension guarantees a rare-or-better drop on every win, on
+            // top of the normal pity timer.
+            const forceRare =
+              (shouldForceRare(state.save) || (state.save.ascension ?? 0) > 0) &&
+              result.victory
             // Only loot-bearing regions actually drop equipment. Other wins
             // still pay gold + XP, so true loot becomes a campaign milestone.
             const loot =

@@ -56,6 +56,7 @@ import {
 } from "@/lib/underlord/units"
 import { SPECIALS } from "@/lib/underlord/specials"
 import { aggregateBoons } from "@/lib/underlord/boons"
+import { ascensionMods } from "@/lib/underlord/ascension"
 import {
   OVERLORD_SKILLS,
   type SkillDef,
@@ -131,6 +132,7 @@ function buildBattle(
   overlordLevel: number,
   overlordName: string,
   boons: string[] = [],
+  ascMods: { hp: number; atk: number; move: number } = { hp: 1, atk: 1, move: 0 },
 ): BattleState {
   // Boon multipliers that apply at unit-creation time (Overlord stats,
   // starting attack bonus, special CD reduction). Per-action effects
@@ -322,8 +324,25 @@ function buildBattle(
     }
   }
 
+  // v11 — Ascension scaling. Toughen every enemy by the active tier +
+  // curses. Applied here (post-spawn) so it stacks cleanly on top of the
+  // stage/elite scaling already baked into makeHero / makeHeroMinion.
+  const scaledHeroUnits =
+    ascMods.hp === 1 && ascMods.atk === 1 && ascMods.move === 0
+      ? heroUnits
+      : heroUnits.map((u) => {
+          const hpMax = Math.max(1, Math.round(u.hpMax * ascMods.hp))
+          return {
+            ...u,
+            hpMax,
+            hp: hpMax,
+            atk: Math.max(1, Math.round(u.atk * ascMods.atk)),
+            move: u.move + ascMods.move,
+          }
+        })
+
   return initBattle(
-    [...placedSquad, overlord, ...heroUnits],
+    [...placedSquad, overlord, ...scaledHeroUnits],
     cols,
     rows,
     layout.obstacles.map((o) => ({ pos: o.pos, kind: o.kind })),
@@ -360,6 +379,8 @@ export function BattleScreen({
   overlordName = "UNDERLORD",
   equippedSkills = [],
   boons = [],
+  ascension = 0,
+  curses = [],
   onComplete,
 }: {
   squad: Unit[]
@@ -374,6 +395,10 @@ export function BattleScreen({
   equippedSkills?: string[]
   /** Owned boon ids — drive crit/lifesteal/regen/dmg-taken at runtime. */
   boons?: string[]
+  /** v11 — Ascension tier (0 = base). Scales enemy HP/ATK/move + rewards. */
+  ascension?: number
+  /** v11 — active Maldição (curse) ids. */
+  curses?: string[]
   onComplete: (result: {
     victory: boolean
     fallenIds: string[]
@@ -393,9 +418,15 @@ export function BattleScreen({
   const comboBonusExtra = comboBonusPerStack(perks)
   const healBonus = healMultiplier(perks)
   const layout = useMemo(() => pickMapLayout(region), [region])
+  const ascMods = useMemo(() => ascensionMods(ascension, curses), [ascension, curses])
   const initialBattle = useMemo(
-    () => buildBattle(squad, region, overlordLevel, overlordName, boons),
-    [squad, region, overlordLevel, overlordName, boons],
+    () =>
+      buildBattle(squad, region, overlordLevel, overlordName, boons, {
+        hp: ascMods.hp,
+        atk: ascMods.atk,
+        move: ascMods.move,
+      }),
+    [squad, region, overlordLevel, overlordName, boons, ascMods],
   )
   const [local, dispatch] = useReducer(reducer, {
     state: initialBattle,
