@@ -242,6 +242,94 @@ function bansheeVoice() {
   sfx.magicHit() // debuff impact
 }
 
+/* v11 — ASCENSION roster voices. Compose existing `sfx` primitives only. */
+
+function warhoundVoice() {
+  // Pack snarl into a quick double-snap — fast melee cleave.
+  sfx.rangedHit()
+  sfx.heavyHit()
+}
+
+function revenantVoice() {
+  // Wet tear + lingering rot hiss (bleed).
+  sfx.heavyHit()
+  sfx.damage()
+}
+
+function stormcallerVoice() {
+  // Crack of thunder arcing — magic peal + secondary tick (the arc).
+  sfx.magicHit()
+  sfx.tick()
+}
+
+function wispVoice() {
+  // Tiny shimmer mend — light chime trio.
+  sfx.heal()
+  sfx.tap()
+}
+
+function dunestalkerVoice() {
+  // Sand-hiss reveal into a sharp finisher stab.
+  sfx.reveal()
+  sfx.damage()
+}
+
+function ironmaidenVoice() {
+  // Spiked slam — heavy thud with a metallic tick.
+  sfx.heavyHit()
+  sfx.shake()
+  sfx.tick()
+}
+
+function seraphageVoice() {
+  // Holy detonation — bomb plus an arcane peal.
+  sfx.bomb()
+  sfx.powerup()
+}
+
+function gravewitherVoice() {
+  // Withering curse-bolt + a draining rasp (ranged bleed).
+  sfx.magicHit()
+  sfx.damage()
+}
+
+function mawmotherVoice() {
+  // Gulping devour — heavy chomp + lifesteal chime.
+  sfx.heavyHit()
+  sfx.heal()
+}
+
+function thunderbirdVoice() {
+  // Wing-clap storm arc — magic crack with a high tap (the arc).
+  sfx.magicHit()
+  sfx.tap()
+}
+
+function voidlingVoice() {
+  // Void collapse — eerie magic shimmer into a sharp hit.
+  sfx.magicHit()
+  sfx.damage()
+}
+
+function dreadnoughtVoice() {
+  // Siege artillery — long whistle, deep boom, ground shake.
+  sfx.tick()
+  sfx.bomb()
+  sfx.shake()
+}
+
+function plaguelordVoice() {
+  // Plague cloud bursting wide — magic peal + soft cough puff.
+  sfx.magicHit()
+  sfx.bomb()
+}
+
+function riftcallerVoice() {
+  // Rift tearing open + a void crackle arc.
+  sfx.magicHit()
+  sfx.reveal()
+}
+
 const VOICE: Record<MinionArchetype, () => void> = {
   brown: brownVoice,
   red: redVoice,
@@ -277,6 +365,21 @@ const VOICE: Record<MinionArchetype, () => void> = {
   shade: shadeVoice,
   colossus: colossusVoice,
   banshee: bansheeVoice,
+  /* v11 — ASCENSION roster */
+  warhound: warhoundVoice,
+  revenant: revenantVoice,
+  stormcaller: stormcallerVoice,
+  wisp: wispVoice,
+  dunestalker: dunestalkerVoice,
+  ironmaiden: ironmaidenVoice,
+  seraphage: seraphageVoice,
+  gravewither: gravewitherVoice,
+  mawmother: mawmotherVoice,
+  thunderbird: thunderbirdVoice,
+  voidling: voidlingVoice,
+  dreadnought: dreadnoughtVoice,
+  plaguelord: plaguelordVoice,
+  riftcaller: riftcallerVoice,
 }
 
 /** Special voice for the Underlord — louder, deeper, throne-room. */
@@ -359,6 +462,28 @@ const FLASH: Record<MinionArchetype, FlashSpec> = {
   shade:    { color: 'oklch(0.35 0.08 280)', scale: 1.0, ms: 160, shape: 'ring' },
   colossus: { color: 'oklch(0.45 0.03 60)',  scale: 2.0, ms: 500, shape: 'burst' },
   banshee:  { color: 'oklch(0.70 0.14 300)', scale: 1.3, ms: 320, shape: 'ring' },
+  /* v11 — ASCENSION roster. Distinct hues that don't collide with the set. */
+  // Warhound: feral red. Revenant: grave-rot ochre (bleed). Stormcaller:
+  // electric cyan. Wisp: pale healing mint. Dunestalker: sun-bleached gold.
+  warhound:    { color: 'oklch(0.58 0.19 28)',  scale: 1.1, ms: 220, shape: 'ring'  },
+  revenant:    { color: 'oklch(0.52 0.14 40)',  scale: 1.3, ms: 320, shape: 'burst' },
+  stormcaller: { color: 'oklch(0.80 0.17 195)', scale: 1.4, ms: 300, shape: 'ring'  },
+  wisp:        { color: 'oklch(0.88 0.12 160)', scale: 0.9, ms: 240, shape: 'ring'  },
+  dunestalker: { color: 'oklch(0.82 0.13 85)',  scale: 1.1, ms: 200, shape: 'ring'  },
+  // Ironmaiden: cold iron slate. Seraphage: divine pale-gold burst.
+  // Gravewither: sickly green bleed. Mawmother: deep visceral crimson.
+  ironmaiden:  { color: 'oklch(0.55 0.03 250)', scale: 1.6, ms: 360, shape: 'burst' },
+  seraphage:   { color: 'oklch(0.90 0.13 95)',  scale: 1.5, ms: 360, shape: 'burst' },
+  gravewither: { color: 'oklch(0.58 0.13 130)', scale: 1.2, ms: 320, shape: 'burst' },
+  mawmother:   { color: 'oklch(0.48 0.20 15)',  scale: 1.6, ms: 360, shape: 'burst' },
+  // Thunderbird: bright storm-violet. Voidling: near-black void purple.
+  // Dreadnought: gun-metal grey, huge. Plaguelord: virulent bile-green.
+  // Riftcaller: searing rift magenta.
+  thunderbird: { color: 'oklch(0.74 0.16 280)', scale: 1.4, ms: 300, shape: 'ring'  },
+  voidling:    { color: 'oklch(0.30 0.10 300)', scale: 1.1, ms: 200, shape: 'burst' },
+  dreadnought: { color: 'oklch(0.42 0.03 240)', scale: 1.9, ms: 460, shape: 'burst' },
+  plaguelord:  { color: 'oklch(0.70 0.18 135)', scale: 1.6, ms: 380, shape: 'burst' },
+  riftcaller:  { color: 'oklch(0.62 0.22 330)', scale: 1.5, ms: 360, shape: 'burst' },
 }
 
 const OVERLORD_FLASH: FlashSpec = {

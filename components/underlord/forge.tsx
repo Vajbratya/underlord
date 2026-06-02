@@ -63,6 +63,14 @@ const PERK_ICON: Record<PerkId, React.ReactNode> = {
   gancho: <Skull className="size-4" />,
   cartel: <Coins className="size-4" />,
   passe_livre: <Crown className="size-4" />,
+  // v11 — ASCENSION perks
+  blindagem: <Shield className="size-4" />,
+  sede_sangue: <Sword className="size-4" />,
+  transfusao: <Heart className="size-4" />,
+  legiao: <Users className="size-4" />,
+  execucao: <Skull className="size-4" />,
+  engrenagem: <Zap className="size-4" />,
+  dizimo: <Coins className="size-4" />,
 }
 
 export function Forge({

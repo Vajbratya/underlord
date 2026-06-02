@@ -127,6 +127,12 @@ const BIOME: Record<
     halo: "oklch(0.42 0.10 220 / 0.12)",
     label: "ABISMO",
   },
+  // v11 — the Void: violet-black starless dark for the final act.
+  void: {
+    core: "oklch(0.55 0.18 300)",
+    halo: "oklch(0.55 0.18 300 / 0.14)",
+    label: "VAZIO",
+  },
 }
 
 export function WorldMap({

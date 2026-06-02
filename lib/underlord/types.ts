@@ -57,6 +57,27 @@ export type MinionArchetype =
   | 'shade'    // melee execute, glass cannon stealth assassin
   | 'colossus' // melee basic, ultra-tank, slowest in game
   | 'banshee'  // ranged curse, debuffer with AOE fear
+  // ============================================================
+  // v11 — ASCENSION roster. Fourteen new archetypes (→ 41 total).
+  // Most introduce the new `rend` (bleed) and `chain` (lightning)
+  // attack kinds; the rest fill late-game power fantasies. Each
+  // registers in MINION_TEMPLATES, RECRUIT_NAMES, archMinionTitle
+  // (units.ts) and VOICE + FLASH (sfx-archetype.ts).
+  // ============================================================
+  | 'warhound'    // melee cleave — fast pack hunter
+  | 'revenant'    // melee rend — bleeding undead bruiser
+  | 'stormcaller' // ranged chain — lightning that arcs
+  | 'wisp'        // ranged heal — flying mender
+  | 'dunestalker' // melee execute — fast desert finisher
+  | 'ironmaiden'  // melee cleave — spiked tank
+  | 'seraphage'   // ranged splash — fallen-angel bomber (flying)
+  | 'gravewither' // ranged rend — ranged bleeder
+  | 'mawmother'   // melee siphon — devouring matron tank
+  | 'thunderbird' // ranged chain — flying storm-arc (flying)
+  | 'voidling'    // melee execute — void glass-cannon
+  | 'dreadnought' // ranged pierce — colossal siege artillery
+  | 'plaguelord'  // ranged volley — wide plague caster
+  | 'riftcaller'  // ranged chain — long-range void lightning
 
 /**
  * Each archetype has a single distinguishing attack rule:
@@ -286,6 +307,9 @@ export type Region = {
     | 'tundra'
     | 'dunes'
     | 'abyss'
+    // v11 — the bottom of the Subtower / the Author's blank page. A
+    // starless dark where the campaign's final act unfolds.
+    | 'void'
   x: number
   y: number
   links: string[]

@@ -58,6 +58,8 @@ const BIOME_COLOR: Record<Region["biome"], string> = {
   tundra: "oklch(0.85 0.04 220)",
   dunes: "oklch(0.78 0.14 90)",
   abyss: "oklch(0.30 0.08 220)",
+  // v11 — the Void: a violet-black starless dark for the final act.
+  void: "oklch(0.42 0.16 300)",
 }
 
 const BIOME_LABEL: Record<Region["biome"], string> = {
@@ -69,6 +71,7 @@ const BIOME_LABEL: Record<Region["biome"], string> = {
   tundra: "TUNDRA",
   dunes: "DUNAS",
   abyss: "ABISMO",
+  void: "VAZIO",
 }
 
 export function WarRoom({

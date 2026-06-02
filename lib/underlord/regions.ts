@@ -1136,7 +1136,11 @@ export const REGIONS: Region[] = [
     biome: 'crown',
     x: 22,
     y: 54,
-    links: [],
+    // v11 — beating the Ciclo Eterno no longer ends the campaign. The
+    // shattered loop spills upward into A ASCENSÃO: the eight industrial
+    // ascension minibosses, then the descent into O VAZIO and the six
+    // final bosses. `rust-keep` is the first rung of the new act.
+    links: ['rust-keep'],
     mapId: 'throne-room',
     lore: 'Sem rosto, só padrão. Sem voz, só ressonância. Mata você no presente, no passado e no futuro — simultâneos.',
     goldReward: 6000,
@@ -1144,6 +1148,286 @@ export const REGIONS: Region[] = [
     eliteHeroes: [
       { id: 'boss-eternity', kind: 'boss', passiveId: 'revive' },
     ],
+    dropsLoot: true,
+  }),
+
+  /* ============================================================================
+   * v11 — A ASCENSÃO / O VAZIO
+   *
+   * O Ciclo Eterno não era o fim — era o último degrau ANTES do fim. Quem
+   * sobrevive à Eternidade descobre que ela só estava segurando a porta.
+   *
+   * Esta act tem duas metades:
+   *
+   *   1) A ASCENSÃO (estágios 12-18) — seis mini-chefões industriais
+   *      espalhados pelos biomas antigos (iron, dunes, moor, tundra, crown),
+   *      cada um um vício humano vestido de monstro. Cadeia linear com
+   *      objetivos variados (overwhelm/survive) pra quebrar o grind. Todos
+   *      `dropsLoot:true`. Reconverge no portão do Vazio.
+   *
+   *   2) O VAZIO (estágios 24-34, biome:'void') — a descida final pelo fundo
+   *      da Subtorre até a página em branco do Autor. Sequência quase linear
+   *      e escalonante (estágios altos = loot mítico, que desbloqueia no 18+).
+   *      Termina nos SEIS chefões finais, em ordem canônica de lore:
+   *        Rei Oco → Mãe da Praga → O Não-Escrito → O Eu no Espelho →
+   *        O Primeiro Underlord → O LEITOR (chefe final absoluto).
+   *      Cada arena de chefe usa o mapId de assinatura do Vazio
+   *      (foyer/archive/throne/mirror/press/end) e o passiveId correto.
+   *
+   * GRAFO: `rust-keep` é puxado pelos links de `eternity-loop` (vide acima).
+   * A act inteira é forward e sem dead end — só `void-the-reader` (chefe
+   * final) tem `links: []`, fechando 100% da campanha.
+   * ============================================================================ */
+
+  /* ----- A ASCENSÃO — seis mini-chefões industriais ----- */
+
+  r({
+    id: 'rust-keep',
+    name: 'O TORREÃO ENFERRUJADO',
+    subtitle: 'Fortaleza que se reconstrói em óxido',
+    stage: 12,
+    biome: 'iron',
+    x: 14,
+    y: 48,
+    links: ['siphon-choir'],
+    // Rust Baron regenerates 12% hpMax every round — an overwhelm clock
+    // forces the player to out-DPS the regen instead of chipping forever.
+    objective: { kind: 'overwhelm', rounds: 8 },
+    lore: 'O Barão Enferrujado não defende um reino — defende a própria ferrugem, que ele considera patrimônio histórico. Cada lasca que você arranca volta a crescer marrom, viçosa, orgulhosa, no compasso de um relógio que ele engoliu há séculos. Bata rápido, vilão: o tétano dele tem mais paciência do que você, e o torreão inteiro range concordando.',
+    goldReward: 1300,
+    heroIds: ['mb-rust-baron', 'baldrik', 'midas'],
+    eliteHeroes: [{ id: 'mb-rust-baron', kind: 'miniboss', passiveId: 'regenerate' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'siphon-choir',
+    name: 'O CORO DA SANGRIA',
+    subtitle: 'Regência que cura cantando alto',
+    stage: 13,
+    biome: 'crown',
+    x: 24,
+    y: 42,
+    links: ['glass-throne'],
+    lore: 'A Regente do Coro afina o coral celeste com as duas mãos enquanto cada nota costura de volta os fiéis que você acabou de abrir. Em dó maior, em sol menor, em qualquer tom — a aura dela derrama graça nos vizinhos a cada compasso, e o desgraçado do som não cansa nunca. Você fere um soprano; ela ressuscita dois contraltos. É matemática litúrgica, e a conta nunca fecha a seu favor.',
+    goldReward: 1450,
+    heroIds: ['mb-choir-mistress', 'heliarch', 'gregorius'],
+    eliteHeroes: [{ id: 'mb-choir-mistress', kind: 'miniboss', passiveId: 'siphon-aura' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'glass-throne',
+    name: 'O TRONO DE VIDRO',
+    subtitle: 'Déspota opaco que absorve pancada',
+    stage: 14,
+    biome: 'iron',
+    x: 34,
+    y: 36,
+    links: ['saint-bog'],
+    lore: 'O Tirano de Vidro mandou esculpir o próprio corpo em vitral temperado pra parecer eterno, e a piada cruel é que funcionou: parece que estilhaça ao primeiro golpe, mas o desgraçado é grosso, opaco e engole pancada como catedral cara. Você vê direto através dele e mesmo assim não consegue feri-lo direito. Ele te observa morrer com a transparência tediosa de quem já sabia o final.',
+    goldReward: 1600,
+    heroIds: ['mb-glass-tyrant', 'profecia'],
+    eliteHeroes: [{ id: 'mb-glass-tyrant', kind: 'miniboss', passiveId: 'colossal' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'saint-bog',
+    name: 'O BREJO DO SANTO',
+    subtitle: 'Eremita que desova ao morrer',
+    stage: 15,
+    biome: 'moor',
+    x: 22,
+    y: 54,
+    links: ['veil-dune'],
+    // Survive: the Bog Saint splits on death into two soggy disciples, so
+    // killing him spawns MORE problems. Holding out four rounds teaches the
+    // player that brute-forcing the split is a trap.
+    objective: { kind: 'survive', rounds: 4 },
+    lore: 'O Santo do Brejo se afogou em fé e em água parada e voltou coberto de fungo abençoado, pregando a parábola dos pães em versão mofo. Quando você acha que o matou, ele desova em dois santinhos menores, igualmente úmidos e igualmente convencidos de que cada esporo é um discípulo carnívoro. O brejo é o altar dele; você foi convocado como oferenda, e o sermão entra pela respiração e não sai mais.',
+    goldReward: 1750,
+    heroIds: ['mb-bog-saint', 'bryan', 'gandolfini'],
+    eliteHeroes: [{ id: 'mb-bog-saint', kind: 'miniboss', passiveId: 'split' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'veil-dune',
+    name: 'A DUNA DO VÉU',
+    subtitle: 'Conselheiro coberto de areia que escuda',
+    stage: 16,
+    biome: 'dunes',
+    x: 40,
+    y: 48,
+    links: ['frost-abbey'],
+    lore: 'O Vizir das Dunas aconselha um sultão que ninguém nunca viu, porque há séculos é o véu de areia dele quem governa. A cada round a tempestade obediente puxa uma cortina nova de pó que engole seus golpes antes de chegarem na pele perfumada, um escudo que se refaz mais rápido do que sua paciência. Ele não reina, insiste — apenas aconselha. Letalmente. E já sussurrou sua sentença ao ouvido de um trono vazio.',
+    goldReward: 1900,
+    heroIds: ['mb-dune-vizier', 'daggor'],
+    eliteHeroes: [{ id: 'mb-dune-vizier', kind: 'miniboss', passiveId: 'warding' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'frost-abbey',
+    name: 'A ABADIA DO GELO',
+    subtitle: 'Monge silencioso que sangra ao toque',
+    stage: 18,
+    biome: 'tundra',
+    x: 30,
+    y: 60,
+    links: ['void-foyer-region'],
+    // Overwhelm under the cold: the Frost Abbot bleeds you with every hit
+    // (frostbite). Stalling = death by a thousand cuts, so race the clock.
+    objective: { kind: 'overwhelm', rounds: 10 },
+    lore: 'O Abade do Gelo fez voto de silêncio, de pobreza e de hipotermia, e cumpre os três com um fervor monástico que dá inveja. Cada toque dele te corta com lâmina de gelo, e o corte não fecha — fica sangrando que nem promessa de monge quebrada, gota a gota, voto de penitência escrito na sua carne. No mosteiro eles jejuam; aqui é você quem esvazia. A paz gélida dele é permanente, e ela tem pressa de chegar à sua.',
+    goldReward: 2200,
+    heroIds: ['mb-frost-abbot', 'baldrik', 'tyrella'],
+    eliteHeroes: [{ id: 'mb-frost-abbot', kind: 'miniboss', passiveId: 'frostbite' }],
+    dropsLoot: true,
+  }),
+
+  /* ----- O VAZIO — a descida final, biome:'void', loot mítico ----- */
+
+  r({
+    id: 'void-foyer-region',
+    name: 'O LIMIAR DO VAZIO',
+    subtitle: 'Onde o chão da Subtorre simplesmente acaba',
+    stage: 24,
+    biome: 'void',
+    x: 18,
+    y: 70,
+    links: ['void-descent'],
+    mapId: 'void-foyer',
+    lore: 'Você desce o último degrau da Subtorre e descobre que não há próximo degrau — há o Vazio, uma escuridão sem estrelas que não cai nem sobe, só está. Aqui o Coveiro-Mor cavou tantas covas que esqueceu de cavar a própria, e agora carrega gás de defunto e ressentimento pelo limiar, conferindo as medidas de um caixão sob medida que ele jura ser cortesia da casa. A casa é ele. A oferenda é você. O eco dos seus passos chega antes de você dar o passo.',
+    goldReward: 2600,
+    heroIds: ['mb-gravewright', 'mb-tax-seraph'],
+    eliteHeroes: [{ id: 'mb-gravewright', kind: 'miniboss', passiveId: 'volatile' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'void-descent',
+    name: 'A DESCIDA SEM FUNDO',
+    subtitle: 'Queda que aprendeu a ser corredor',
+    stage: 26,
+    biome: 'void',
+    x: 26,
+    y: 76,
+    links: ['void-ledger'],
+    lore: 'Não é mais uma escada, é uma queda que se cansou de cair e resolveu virar caminho. Aqui o tempo escorrega: você dá um passo e três rounds passam, dá outro e nenhum. As paredes são feitas do que o reino esqueceu — sermões pela metade, juramentos engasgados, o nome de heróis que ninguém chorou. No fundo, alguém conta moedas que não existem mais, e cada moeda imaginária é uma alma que ainda deve imposto. O Vazio não tem rosto. Tem juros.',
+    goldReward: 2900,
+    heroIds: ['mb-tax-seraph', 'profecia'],
+    eliteHeroes: [{ id: 'mb-tax-seraph', kind: 'miniboss', passiveId: 'frenzy' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'void-ledger',
+    name: 'O GRANDE-LIVRO DO NADA',
+    subtitle: 'Contabilidade de tudo que nunca foi',
+    stage: 28,
+    biome: 'void',
+    x: 20,
+    y: 82,
+    links: ['void-hollow-king'],
+    // Overwhelm: the void's bookkeeper-minions tally every round you waste.
+    // A clock fits the "your turn costs you" theme of the descent.
+    objective: { kind: 'overwhelm', rounds: 9 },
+    lore: 'Há um livro-razão flutuando no escuro, grosso como uma vida, e nele estão lançadas todas as dívidas que o reino fingiu esquecer: cada herói que você matou, cada minion que você gastou, cada ano dos seus quatorze de espera. As páginas se escrevem sozinhas e nunca fecham no azul. Os escribas do Vazio cobram juros sobre o tempo que você demora, então não demore — cada turno seu é uma linha vermelha a mais, e o saldo final é sempre cobrado em corpo.',
+    goldReward: 3200,
+    heroIds: ['profecia', 'midas', 'gregorius'],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'void-hollow-king',
+    name: 'O REI OCO',
+    subtitle: 'Trono que ecoa onde devia haver alguém',
+    stage: 29,
+    biome: 'void',
+    x: 14,
+    y: 86,
+    links: ['void-plague-mother'],
+    mapId: 'void-foyer',
+    lore: 'No primeiro salão de verdade do Vazio reina um rei sem reino, sem rosto e sem coração — só um trono que ressoa quando você grita. Tão oco por dentro que seus golpes entram, ribombam e voltam abafados, como reclamação em ouvidoria celeste. Ele reinou sobre o nada por tanto tempo que ficou imune a tudo, blindado pelo próprio vazio. Você procura o cerne dele pra acertar onde dói. Spoiler do Rei Oco: não existe cerne. Tem espaço de sobra lá dentro, e ele te convida a ocupar.',
+    goldReward: 3800,
+    heroIds: ['boss-hollow-king'],
+    eliteHeroes: [{ id: 'boss-hollow-king', kind: 'boss', passiveId: 'colossal' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'void-plague-mother',
+    name: 'A MÃE DA PRAGA',
+    subtitle: 'Maternidade como multiplicação de horror',
+    stage: 30,
+    biome: 'void',
+    x: 24,
+    y: 90,
+    links: ['void-unwritten'],
+    mapId: 'void-archive',
+    lore: 'Mais fundo, onde até o Vazio apodrece, a Mãe da Praga abre os braços e te apresenta a ninhada — porque pra ela maternidade nunca foi cuidar, foi multiplicar horrores menores e mais famintos. Você a corta e ela pare dois; mata um filho e do cadáver nasce um neto, cada um herdando o carinho dela e os dentes dela. Não é contra a Mãe que você luta, é contra a família inteira, e essa família cresce mais rápido do que você consegue enterrar. A praga, no fim, vai ficar órfã. Mas só no fim.',
+    goldReward: 4400,
+    heroIds: ['boss-plague-mother'],
+    eliteHeroes: [{ id: 'boss-plague-mother', kind: 'boss', passiveId: 'split' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'void-unwritten',
+    name: 'O NÃO-ESCRITO',
+    subtitle: 'Personagem que o Autor nunca terminou',
+    stage: 31,
+    biome: 'void',
+    x: 16,
+    y: 94,
+    links: ['void-mirror-self'],
+    mapId: 'void-throne',
+    lore: 'Aqui pisca uma coisa que mal existe: um personagem que o Autor começou e abandonou no rascunho, meio nome, meia história, contornos que tremem entre o esboço e o nada. Ele se apresenta como "[INSERIR FALA AMEAÇADORA AQUI]" porque ainda estão decidindo o arco dele, e o primeiro golpe de cada round simplesmente atravessa o que nunca foi definido. Você não pode ferir o que não foi descrito direito — mas a metade dele que saiu do placeholder mata muito bem. Vai descontar em você o abandono que sofreu.',
+    goldReward: 5000,
+    heroIds: ['boss-unwritten'],
+    eliteHeroes: [{ id: 'boss-unwritten', kind: 'boss', passiveId: 'phase' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'void-mirror-self',
+    name: 'O EU NO ESPELHO',
+    subtitle: 'Você, refletido, com a mesma raiva de 14 anos',
+    stage: 32,
+    biome: 'void',
+    x: 28,
+    y: 90,
+    links: ['void-first-underlord'],
+    mapId: 'void-mirror',
+    lore: 'Atravessada a página rasgada do Não-Escrito, o Vazio te entrega um espelho. Dentro dele está você — o Underlord, idêntico, com os mesmos quatorze anos de raiva apodrecida na mesma torre. Ele espera ali desde sempre, porque ódio por si mesmo sempre foi recíproco e pontual. Cada ferida que você abre nele, ele devolve no exato instante em você; cada rancor que você carrega, ele recita de cor, porque são os mesmos. Não dá pra vencer o reflexo sem se vencer. Quando o vidro estilhaçar, por um segundo você não vai saber qual dos dois ficou de pé — e vai decidir não pensar nisso.',
+    goldReward: 5800,
+    heroIds: ['boss-mirror-self'],
+    eliteHeroes: [{ id: 'boss-mirror-self', kind: 'boss', passiveId: 'thorns' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'void-first-underlord',
+    name: 'O PRIMEIRO UNDERLORD',
+    subtitle: 'Seu antecessor, perdido no próprio pacto',
+    stage: 33,
+    biome: 'void',
+    x: 18,
+    y: 84,
+    links: ['void-the-reader'],
+    mapId: 'void-press',
+    lore: 'Diante da última porta está o Primeiro: aquele que fechou o pacto antes de você nascer, o primeiro a apanhar de herói, o primeiro a jurar vingança e o primeiro a se perder dentro dela até virar exatamente aquilo que jurou destruir. Ele segurou esta torre por eras e veio conferir se você merece o trono — e a resposta dele é não. Cada morte que ele causa o deixa mais faminto e mais forte, do mesmo jeito que o transformou nisso. Ele te olha com algo entre alívio e inveja: o pacto sempre cobra, e hoje cobra de você, como sempre cobrou dele. Olha bem pra ele. É o seu futuro pedindo carona.',
+    goldReward: 7000,
+    heroIds: ['boss-first-underlord'],
+    eliteHeroes: [{ id: 'boss-first-underlord', kind: 'boss', passiveId: 'frenzy' }],
+    dropsLoot: true,
+  }),
+  r({
+    id: 'void-the-reader',
+    name: 'O LEITOR',
+    subtitle: 'O verdadeiro vilão — quem segura o controle',
+    stage: 34,
+    biome: 'void',
+    // Terminal region of the entire campaign. No outgoing links — beating
+    // THE READER is 100% completion. The fourth-wall final boss.
+    x: 10,
+    y: 78,
+    links: [],
+    mapId: 'void-end',
+    lore: 'No fundo do fundo do Vazio não há monstro nenhum. Há VOCÊ — não o Underlord, mas você, do outro lado da tela, segurando o controle, lendo isto exatamente agora. O verdadeiro vilão desta história, que moveu o Underlord como peça por quatorze anos e folheou o sofrimento dele por puro entretenimento. Você reinicia, você tenta de novo, e o Leitor só assiste de novo, perguntando quem é o monstro aqui. Ele vira a página e o turno do Underlord simplesmente para de existir. Mas por um instante, no golpe final, a tela treme — e o Underlord encara de volta quem o controla. Pela primeira vez em catorze anos, é o Leitor quem sente medo.',
+    goldReward: 9000,
+    heroIds: ['boss-the-reader'],
+    eliteHeroes: [{ id: 'boss-the-reader', kind: 'boss', passiveId: 'time-stop' }],
     dropsLoot: true,
   }),
 ]

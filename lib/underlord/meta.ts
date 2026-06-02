@@ -105,6 +105,21 @@ export type AchievementId =
   | 'streak_7'
   | 'first_relic'
   | 'tainted'
+  /* v11 — ASCENSION achievements */
+  | 'hero_slayer_20'
+  | 'hero_slayer_30'
+  | 'hero_slayer_50'
+  | 'veteran_10'
+  | 'veteran_50'
+  | 'veteran_100'
+  | 'combo_7'
+  | 'combo_10'
+  | 'streak_14'
+  | 'streak_30'
+  | 'tainted_20'
+  | 'mythic_bearer'
+  | 'ascendant_1'
+  | 'void_conqueror'
 
 export type AchievementDef = {
   id: AchievementId
@@ -185,6 +200,91 @@ export const ACHIEVEMENTS: Record<AchievementId, AchievementDef> = {
     title: 'CORROMPIDO',
     desc: 'Acumulou Taint 5+. Os minions começaram a falar dormindo.',
     reward: 300,
+  },
+  /* v11 — ASCENSION achievements */
+  hero_slayer_20: {
+    id: 'hero_slayer_20',
+    title: 'COVEIRO DE PLANTÃO',
+    desc: '20 heróis enterrados. A guilda já parou de mandar flores.',
+    reward: 900,
+  },
+  hero_slayer_30: {
+    id: 'hero_slayer_30',
+    title: 'EPIDEMIA DE HERÓIS',
+    desc: '30 abatidos. As tavernas trocaram as canções por obituários.',
+    reward: 1400,
+  },
+  hero_slayer_50: {
+    id: 'hero_slayer_50',
+    title: 'EXTERMINADOR DE LENDAS',
+    desc: '50 heróis. O reino agora contrata estagiários sem garantia de retorno.',
+    reward: 2500,
+  },
+  veteran_10: {
+    id: 'veteran_10',
+    title: 'RECRUTA SANGRENTO',
+    desc: '10 batalhas vencidas. Já sabe limpar a masmorra antes das visitas.',
+    reward: 500,
+  },
+  veteran_50: {
+    id: 'veteran_50',
+    title: 'GENERAL DAS TREVAS',
+    desc: '50 vitórias. Seus minions juram lealdade e umas faltas justificadas.',
+    reward: 1800,
+  },
+  veteran_100: {
+    id: 'veteran_100',
+    title: 'TIRANO IMORTAL',
+    desc: '100 batalhas vencidas. A própria morte pede autógrafo.',
+    reward: 4000,
+  },
+  combo_7: {
+    id: 'combo_7',
+    title: 'SÉTIMO CÉU',
+    desc: 'Combo x7. Os heróis caem em ritmo de coreografia.',
+    reward: 900,
+  },
+  combo_10: {
+    id: 'combo_10',
+    title: 'PERFEIÇÃO ESCROTA',
+    desc: 'Combo x10 num só turno. Isso já não é jogo, é assédio.',
+    reward: 1600,
+  },
+  streak_14: {
+    id: 'streak_14',
+    title: 'DUAS SEMANAS DE PECADO',
+    desc: '14 dias seguidos. Seu terapeuta abandonou o caso.',
+    reward: 2200,
+  },
+  streak_30: {
+    id: 'streak_30',
+    title: 'UM MÊS DE RUÍNA',
+    desc: '30 dias consecutivos. Você é o vilão E o vício.',
+    reward: 4000,
+  },
+  tainted_20: {
+    id: 'tainted_20',
+    title: 'PURAMENTE PODRE',
+    desc: 'Taint 20+. Os minions agora sussurram seu nome com carinho doentio.',
+    reward: 1200,
+  },
+  mythic_bearer: {
+    id: 'mythic_bearer',
+    title: 'PORTADOR DO MITO',
+    desc: 'Equipou um item Mítico. Até o item finge não saber de onde veio.',
+    reward: 1500,
+  },
+  ascendant_1: {
+    id: 'ascendant_1',
+    title: 'O PRIMEIRO DEGRAU',
+    desc: 'Limpou um nível de Ascensão. A realidade range, mas obedece.',
+    reward: 3000,
+  },
+  void_conqueror: {
+    id: 'void_conqueror',
+    title: 'CARRASCO DO LEITOR',
+    desc: 'Derrotou O LEITOR, o chefe final do vazio. Quem narrava, agora cala.',
+    reward: 6000,
   },
 }
 

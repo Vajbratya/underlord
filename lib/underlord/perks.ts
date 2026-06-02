@@ -26,6 +26,14 @@ export type PerkId =
   | 'gancho'
   | 'cartel'
   | 'passe_livre'
+  // v11 — ASCENSION perks
+  | 'blindagem'
+  | 'sede_sangue'
+  | 'legiao'
+  | 'execucao'
+  | 'engrenagem'
+  | 'dizimo'
+  | 'transfusao'
 
 export type PerkDef = {
   id: PerkId
@@ -151,6 +159,84 @@ export const PERKS: Record<PerkId, PerkDef> = {
     branch: 'economy',
     effect: '+20% XP por batalha, por rank',
   },
+
+  /* v11 — ASCENSION perks */
+
+  // ---------- Minion stat branch ----------
+  blindagem: {
+    id: 'blindagem',
+    name: 'BLINDAGEM',
+    short: 'BLIND',
+    text: 'Você reveste TODA a horda em chapas de osso fundido. A Luz que venha rachar uma de cada vez.',
+    maxRank: 3,
+    tierLevel: 4,
+    branch: 'minion',
+    effect: '+20 HP a TODOS os minions por rank',
+  },
+  sede_sangue: {
+    id: 'sede_sangue',
+    name: 'SEDE DE SANGUE',
+    short: 'SEDE',
+    text: 'A fome do Underlord vaza pra cada garra da legião. Todos batem com mais raiva.',
+    maxRank: 3,
+    tierLevel: 5,
+    branch: 'minion',
+    effect: '+6 ATK a TODOS os minions por rank',
+  },
+
+  // ---------- Underlord branch ----------
+  legiao: {
+    id: 'legiao',
+    name: 'LEGIÃO',
+    short: 'LEGIÃO',
+    text: 'A torre cospe mais corpos do que a Luz consegue contar. Capacidade é só rumor.',
+    maxRank: 2,
+    tierLevel: 6,
+    branch: 'underlord',
+    effect: '+1 vaga de esquadrão por rank',
+  },
+  execucao: {
+    id: 'execucao',
+    name: 'EXECUÇÃO',
+    short: 'CRIT+',
+    text: 'Você marca a jugular antes do golpe sair. Quando crava, crava fundo.',
+    maxRank: 3,
+    tierLevel: 6,
+    branch: 'underlord',
+    effect: '+7% chance de crítico por rank',
+  },
+  engrenagem: {
+    id: 'engrenagem',
+    name: 'ENGRENAGEM',
+    short: 'COMBO+',
+    text: 'A máquina de moer carne ganha mais dentes. Cada elo do combo morde mais forte.',
+    maxRank: 2,
+    tierLevel: 7,
+    branch: 'underlord',
+    effect: '+8% dano por stack de combo, por rank',
+  },
+
+  // ---------- Economy branch ----------
+  dizimo: {
+    id: 'dizimo',
+    name: 'DÍZIMO',
+    short: 'OURO++',
+    text: 'A Coroa Submersa exige sua parte — e repassa a maior fatia pra você. Burocracia compensa.',
+    maxRank: 3,
+    tierLevel: 6,
+    branch: 'economy',
+    effect: '+25% ouro por vitória, por rank',
+  },
+  transfusao: {
+    id: 'transfusao',
+    name: 'TRANSFUSÃO',
+    short: 'CURA+',
+    text: 'O Underlord sangra sua própria fé direto nas feridas. Cada cura puxa mais vida de volta.',
+    maxRank: 2,
+    tierLevel: 7,
+    branch: 'minion',
+    effect: '+6% cura por rank (sobre o HP máx do alvo)',
+  },
 }
 
 export const PERK_LIST: PerkDef[] = Object.values(PERKS)
@@ -197,7 +283,8 @@ export function squadCap(
   level = 1,
 ): number {
   const lvl = Math.max(1, Math.floor(level))
-  const total = 3 + (lvl - 1) * 2 + rankOf(perks, 'exercito')
+  const total =
+    3 + (lvl - 1) * 2 + rankOf(perks, 'exercito') + rankOf(perks, 'legiao')
   return Math.min(SQUAD_CAP_LIMIT, total)
 }
 
@@ -205,19 +292,19 @@ export function squadCap(
 export function critChanceBonus(
   perks: Record<string, number> | undefined,
 ): number {
-  return rankOf(perks, 'sangue_frio') * 0.05
+  return rankOf(perks, 'sangue_frio') * 0.05 + rankOf(perks, 'execucao') * 0.07
 }
 
 /** Combo damage per stack — added to base 0.15. */
 export function comboBonusPerStack(
   perks: Record<string, number> | undefined,
 ): number {
-  return rankOf(perks, 'gancho') * 0.05
+  return rankOf(perks, 'gancho') * 0.05 + rankOf(perks, 'engrenagem') * 0.08
 }
 
 /** Gold multiplier (1.0 = no bonus). */
 export function goldMult(perks: Record<string, number> | undefined): number {
-  return 1 + rankOf(perks, 'cartel') * 0.2
+  return 1 + rankOf(perks, 'cartel') * 0.2 + rankOf(perks, 'dizimo') * 0.25
 }
 
 /** XP multiplier (1.0 = no bonus). */
@@ -229,9 +316,13 @@ export function xpMult(perks: Record<string, number> | undefined): number {
 export function healMultiplier(
   perks: Record<string, number> | undefined,
 ): number {
-  return 1 + rankOf(perks, 'milagre_blue') * (0.05 / 0.3)
-  // We express the +5% as a fraction of the 30% base, so adding rank gives
-  // +5%/+10%/+15% absolute hpMax, equivalent to 1.166x / 1.333x / 1.5x of base.
+  return (
+    1 +
+    rankOf(perks, 'milagre_blue') * (0.05 / 0.3) +
+    rankOf(perks, 'transfusao') * (0.06 / 0.3)
+  )
+  // We express each +X% as a fraction of the 30% base, so adding rank gives
+  // absolute hpMax bonus. MILAGRE: +5%/+10%/+15%. TRANSFUSÃO: +6%/+12% on top.
 }
 
 /* ------------------------------------------------------------------ */
@@ -266,6 +357,9 @@ export function statBuffsFor(
   perks: Record<string, number> | undefined,
 ): { hp: number; atk: number; move: number; range: number } {
   const out = { hp: 0, atk: 0, move: 0, range: 0 }
+  // Global minion perks — apply to EVERY archetype.
+  out.hp += rankOf(perks, 'blindagem') * 20
+  out.atk += rankOf(perks, 'sede_sangue') * 6
   if (archetype === 'brown') {
     out.hp += rankOf(perks, 'vigor_brown') * 30
   }

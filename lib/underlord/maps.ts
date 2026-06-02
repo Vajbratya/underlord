@@ -51,6 +51,11 @@ export type TerrainKind =
   | 'ice'
   | 'dune'
   | 'coral'
+  // v11 — THE VOID. Two new kinds for the starless biome: a torn seam
+  // in reality (rift) and the black standing stones that mark the
+  // Author's unwritten pages (obelisk).
+  | 'rift'
+  | 'obelisk'
 
 /**
  * v9 — interactive, WALKABLE tile features. Unlike obstacles (which
@@ -100,6 +105,8 @@ export type MapLayout = {
     | 'tundra'
     | 'dunes'
     | 'abyss'
+    // v11 — THE VOID
+    | 'void'
   /** Display label shown on the briefing screen. */
   label: string
   /** One-liner about why the terrain is annoying. */
@@ -239,6 +246,27 @@ const MOOR_PATTERNS: MapLayout[] = [
     ground: 'moor',
     label: 'Ponte do Afogamento',
     hint: 'Funil estreito no centro. O ídolo no meio bloqueia tiro reto.',
+  },
+  {
+    // v11 — extra moor layout for variety.
+    cols: 12,
+    rows: 16,
+    obstacles: [
+      // Turfeira das tumbas — montículos de pedra e ossadas espalhados
+      // em xadrez frouxo. Cobertura por toda parte, mas nada de muralhas.
+      { pos: tile(3, 5), kind: 'rock' },
+      { pos: tile(8, 5), kind: 'bones' },
+      { pos: tile(5, 7), kind: 'bones' },
+      { pos: tile(7, 7), kind: 'rock' },
+      { pos: tile(2, 9), kind: 'rock' },
+      { pos: tile(9, 9), kind: 'bones' },
+      { pos: tile(4, 10), kind: 'bones' },
+      { pos: tile(6, 10), kind: 'rock' },
+    ],
+    prelitFires: [],
+    ground: 'moor',
+    label: 'Turfeira das Tumbas',
+    hint: 'Montículos em xadrez frouxo. Cobertura espalhada, mas nenhuma muralha.',
   },
 ]
 
@@ -817,6 +845,27 @@ const TUNDRA_PATTERNS: MapLayout[] = [
     label: 'Costela do Dragão Branco',
     hint: 'Carcaça de dragão como muralha. As brechas custam caro.',
   },
+  {
+    // v11 — extra tundra layout for variety.
+    cols: 11,
+    rows: 16,
+    obstacles: [
+      // Campo de menires gelados — quincôncio de espinhos de gelo com
+      // uma rocha refúgio em cada flanco. Lado leste mais denso.
+      { pos: tile(3, 5), kind: 'ice' },
+      { pos: tile(7, 5), kind: 'ice' },
+      { pos: tile(5, 7), kind: 'ice' },
+      { pos: tile(7, 8), kind: 'ice' },
+      { pos: tile(8, 9), kind: 'ice' },
+      { pos: tile(3, 10), kind: 'ice' },
+      { pos: tile(2, 7), kind: 'rock' },
+      { pos: tile(9, 7), kind: 'rock' },
+    ],
+    prelitFires: [],
+    ground: 'tundra',
+    label: 'Campo de Menires Gelados',
+    hint: 'Espinhos de gelo em quincôncio. Lado leste mais fechado; voadores ignoram.',
+  },
 ]
 
 // Patch the dragon-rib map — drill the gaps. Simpler to mutate after
@@ -929,6 +978,28 @@ const DUNES_PATTERNS: MapLayout[] = [
     label: 'Tempestade de Areia',
     hint: 'Dunas fecham os flancos. Corredor estreito, ídolos no caminho.',
   },
+  {
+    // v11 — extra dunes layout for variety.
+    cols: 12,
+    rows: 17,
+    obstacles: [
+      // Necrópole soterrada — fileira de ídolos meio enterrados com
+      // cristas de duna avançando pelo norte. Sul é arena aberta.
+      { pos: tile(4, 6), kind: 'idol' },
+      { pos: tile(6, 6), kind: 'idol' },
+      { pos: tile(8, 6), kind: 'idol' },
+      { pos: tile(3, 5), kind: 'dune' },
+      { pos: tile(5, 5), kind: 'dune' },
+      { pos: tile(7, 5), kind: 'dune' },
+      { pos: tile(9, 5), kind: 'dune' },
+      { pos: tile(2, 7), kind: 'dune' },
+      { pos: tile(10, 7), kind: 'dune' },
+    ],
+    prelitFires: [],
+    ground: 'dunes',
+    label: 'Necrópole Soterrada',
+    hint: 'Fileira de ídolos sob as dunas ao norte. O sul é arena aberta.',
+  },
 ]
 
 /* ------------------------------------------------------------------ */
@@ -1031,6 +1102,116 @@ const ABYSS_PATTERNS: MapLayout[] = [
     ground: 'abyss',
     label: 'Trono Submerso',
     hint: 'Ídolo cercado de coral em anel. Fogo no eixo vertical.',
+  },
+]
+
+/* ------------------------------------------------------------------ */
+/* v11 — THE VOID — starless margins, torn pages, the Author's obelisks */
+/* The biome past the last written region: nothing but black violet,    */
+/* seams of light where reality is coming apart, and the blank standing  */
+/* stones the Author left behind. Rifts let fliers slip through; the     */
+/* obelisks are absolute walls. Spike-pits read as "torn page" gaps and  */
+/* vents as breathing tears in the dark.                                 */
+/* ------------------------------------------------------------------ */
+
+const VOID_PATTERNS: MapLayout[] = [
+  {
+    cols: 11,
+    rows: 15,
+    obstacles: [
+      // Margem em branco — quase nada. Dois obeliscos solitários
+      // ancoram o vazio; o resto é página não escrita.
+      { pos: tile(3, 6), kind: 'obelisk' },
+      { pos: tile(7, 8), kind: 'obelisk' },
+      { pos: tile(5, 7), kind: 'rift' },
+    ],
+    prelitFires: [],
+    ground: 'void',
+    label: 'Margem em Branco',
+    hint: 'Vazio quase total. Dois obeliscos e uma fenda — quem tem alcance reina.',
+  },
+  {
+    cols: 12,
+    rows: 16,
+    obstacles: [
+      // Costura do real — diagonal de fendas rasgando o tabuleiro do
+      // noroeste ao sudeste. Voadores atravessam a costura; o resto
+      // tem que escolher um lado.
+      ...diagOf(2, 5, 7, 'rift'),
+      // Obeliscos guardando as duas pontas da costura.
+      { pos: tile(1, 5), kind: 'obelisk' },
+      { pos: tile(9, 12), kind: 'obelisk' },
+    ],
+    prelitFires: [],
+    ground: 'void',
+    label: 'Costura do Real',
+    hint: 'Diagonal de fendas racha o vazio. Voadores cruzam; o chão escolhe um lado.',
+  },
+  {
+    cols: 11,
+    rows: 16,
+    obstacles: [
+      // Círculo de pedras — sete obeliscos em arco assimétrico ao redor
+      // de uma fenda central. O oeste é mais aberto que o leste.
+      { pos: tile(4, 4), kind: 'obelisk' },
+      { pos: tile(6, 4), kind: 'obelisk' },
+      { pos: tile(3, 6), kind: 'obelisk' },
+      { pos: tile(8, 6), kind: 'obelisk' },
+      { pos: tile(8, 9), kind: 'obelisk' },
+      { pos: tile(6, 11), kind: 'obelisk' },
+      { pos: tile(4, 11), kind: 'obelisk' },
+      // Fenda no coração do círculo.
+      { pos: tile(5, 7), kind: 'rift' },
+      { pos: tile(5, 8), kind: 'rift' },
+    ],
+    prelitFires: [],
+    ground: 'void',
+    label: 'Círculo dos Obeliscos',
+    hint: 'Arco de pedras em branco em volta de uma fenda. Lado oeste é o mais fraco.',
+  },
+  {
+    cols: 13,
+    rows: 17,
+    obstacles: [
+      // Página rasgada — duas muralhas de obeliscos com brechas
+      // desalinhadas; rasgões (spike-pits) onde a folha foi arrancada.
+      ...rowOf(7, 1, 4, 'obelisk'),
+      ...rowOf(7, 8, 11, 'obelisk'),
+      { pos: tile(6, 9), kind: 'rift' },
+    ],
+    prelitFires: [],
+    ground: 'void',
+    features: [
+      // Os rasgões caem no nada — terminar o turno em cima dói.
+      { pos: tile(5, 7), kind: 'spike-pit' },
+      { pos: tile(7, 7), kind: 'spike-pit' },
+      { pos: tile(6, 8), kind: 'spike-pit' },
+    ],
+    label: 'Página Rasgada',
+    hint: 'Duas muralhas com brecha estreita. Os rasgões caem no nada — não pare neles.',
+  },
+  {
+    cols: 12,
+    rows: 16,
+    obstacles: [
+      // Respiradouros do abismo — campo aberto pontilhado por fendas
+      // e obeliscos, com bocas que respiram (vents) abrindo o centro
+      // em ritmo. O vazio inala e exala.
+      { pos: tile(3, 6), kind: 'obelisk' },
+      { pos: tile(8, 6), kind: 'obelisk' },
+      { pos: tile(3, 10), kind: 'obelisk' },
+      { pos: tile(8, 10), kind: 'obelisk' },
+      { pos: tile(5, 8), kind: 'rift' },
+      { pos: tile(6, 8), kind: 'rift' },
+    ],
+    prelitFires: [],
+    ground: 'void',
+    features: [
+      { pos: tile(5, 7), kind: 'vent' },
+      { pos: tile(6, 9), kind: 'vent' },
+    ],
+    label: 'Respiradouros do Abismo',
+    hint: 'Bocas que respiram fogo no centro a cada dois turnos. Cronometra o avanço.',
   },
 ]
 
@@ -1278,6 +1459,196 @@ const SIGNATURE_MAPS: Record<string, MapLayout> = {
     label: 'TEMPLO VULCÂNICO',
     hint: 'Octógono incompleto. Sol-ídolo central rodeado de cristais.',
   },
+
+  /* ---------------------------------------------------------------- */
+  /* v11 — THE VOID — the six chambers past the last written page.    */
+  /* The Author waits at the end of the book; these arenas escalate   */
+  /* from the quiet foyer to the climactic final page.                */
+  /* ---------------------------------------------------------------- */
+
+  /* VOID-FOYER — the threshold. You step off the edge of the story
+     and into the margin. Almost empty: two obelisks like doorposts
+     and a single rift you can feel humming. Calm before the descent. */
+  'void-foyer': {
+    cols: 11,
+    rows: 15,
+    obstacles: [
+      // Os batentes da porta para o vazio.
+      { pos: tile(3, 5), kind: 'obelisk' },
+      { pos: tile(7, 5), kind: 'obelisk' },
+      // Fenda solitária respirando no centro.
+      { pos: tile(5, 7), kind: 'rift' },
+      // Ossadas dos que entraram antes.
+      { pos: tile(2, 9), kind: 'bones' },
+      { pos: tile(8, 9), kind: 'bones' },
+    ],
+    prelitFires: [],
+    ground: 'void',
+    label: 'VESTÍBULO DO VAZIO',
+    hint: 'O limiar. Dois obeliscos como batentes, uma fenda que zune. A calmaria.',
+  },
+
+  /* VOID-ARCHIVE — the unwritten library. Rows of blank obelisks like
+     bookshelves with narrow aisles; spike-pits where pages were torn
+     loose. Funnels the fight into the central nave. */
+  'void-archive': {
+    cols: 12,
+    rows: 17,
+    obstacles: [
+      // Estantes de obeliscos em branco — quatro fileiras formando
+      // duas naves laterais e uma central.
+      ...rowOf(6, 1, 3, 'obelisk'),
+      ...rowOf(6, 8, 10, 'obelisk'),
+      ...rowOf(10, 1, 3, 'obelisk'),
+      ...rowOf(10, 8, 10, 'obelisk'),
+      // Fenda iluminando a nave central.
+      { pos: tile(5, 8), kind: 'rift' },
+      { pos: tile(6, 8), kind: 'rift' },
+    ],
+    prelitFires: [],
+    ground: 'void',
+    features: [
+      // Páginas arrancadas das estantes — buracos nas naves laterais.
+      { pos: tile(2, 8), kind: 'spike-pit' },
+      { pos: tile(9, 8), kind: 'spike-pit' },
+    ],
+    label: 'ARQUIVO NÃO ESCRITO',
+    hint: 'Estantes de obeliscos em branco. Naves estreitas, buracos onde rasgaram páginas.',
+  },
+
+  /* VOID-THRONE — the Author's seat. A raised dais of obelisks with a
+     central rift-throne; rifts radiate outward forcing an approach lane.
+     The big set-piece chamber. */
+  'void-throne': {
+    cols: 13,
+    rows: 18,
+    obstacles: [
+      // Obeliscos cercando o estrado em U (lado norte fechado).
+      { pos: tile(3, 5), kind: 'obelisk' },
+      { pos: tile(6, 4), kind: 'obelisk' },
+      { pos: tile(9, 5), kind: 'obelisk' },
+      { pos: tile(2, 8), kind: 'obelisk' },
+      { pos: tile(10, 8), kind: 'obelisk' },
+      { pos: tile(3, 11), kind: 'obelisk' },
+      { pos: tile(9, 11), kind: 'obelisk' },
+      // Trono do Autor — ídolo no estrado, fendas como degraus.
+      { pos: tile(6, 6), kind: 'idol' },
+      { pos: tile(5, 7), kind: 'rift' },
+      { pos: tile(6, 7), kind: 'rift' },
+      { pos: tile(7, 7), kind: 'rift' },
+    ],
+    prelitFires: [
+      // O vazio sangra luz pelos eixos que levam ao trono.
+      tile(6, 9), tile(6, 10), tile(6, 11),
+      tile(4, 8), tile(8, 8),
+    ],
+    ground: 'void',
+    label: 'TRONO DO AUTOR',
+    hint: 'Estrado em U. Trono de fendas no alto; os eixos até ele sangram luz.',
+  },
+
+  /* VOID-MIRROR — the mirror chamber. Perfectly SYMMETRIC about the
+     central column: whatever the player builds on one side, the void
+     answers on the other. A duel against your own reflection. */
+  'void-mirror': {
+    cols: 13,
+    rows: 17,
+    obstacles: [
+      // Eixo de espelhamento na coluna 6. Tudo é reflexo perfeito
+      // esquerda↔direita.
+      { pos: tile(2, 6), kind: 'obelisk' },
+      { pos: tile(10, 6), kind: 'obelisk' },
+      { pos: tile(2, 10), kind: 'obelisk' },
+      { pos: tile(10, 10), kind: 'obelisk' },
+      { pos: tile(4, 5), kind: 'rift' },
+      { pos: tile(8, 5), kind: 'rift' },
+      { pos: tile(4, 11), kind: 'rift' },
+      { pos: tile(8, 11), kind: 'rift' },
+      { pos: tile(4, 8), kind: 'obelisk' },
+      { pos: tile(8, 8), kind: 'obelisk' },
+      // A linha-espelho central: um par de fendas no eixo exato.
+      { pos: tile(6, 7), kind: 'rift' },
+      { pos: tile(6, 9), kind: 'rift' },
+    ],
+    prelitFires: [
+      // Luz espelhada nos dois flancos.
+      tile(1, 8), tile(11, 8),
+    ],
+    ground: 'void',
+    label: 'CÂMARA DO ESPELHO',
+    hint: 'Tudo é reflexo perfeito. O vazio responde do outro lado a cada jogada.',
+  },
+
+  /* VOID-PRESS — the Author's blank press. Two heavy obelisk plates
+     close the central lane like a printing press; the gap between them
+     is the only seam, and it breathes fire (vents). Pure pressure. */
+  'void-press': {
+    cols: 12,
+    rows: 16,
+    obstacles: [
+      // Placa superior do prelo.
+      ...rowOf(6, 2, 9, 'obelisk'),
+      // Placa inferior do prelo.
+      ...rowOf(9, 2, 9, 'obelisk'),
+      // A costura entre as placas — fendas que separam as placas.
+      { pos: tile(2, 7), kind: 'rift' },
+      { pos: tile(9, 8), kind: 'rift' },
+    ],
+    prelitFires: [],
+    ground: 'void',
+    features: [
+      // A boca do prelo respira fogo no único corredor que sobra.
+      { pos: tile(5, 7), kind: 'vent' },
+      { pos: tile(6, 8), kind: 'vent' },
+      { pos: tile(7, 7), kind: 'vent' },
+    ],
+    label: 'O PRELO EM BRANCO',
+    hint: 'Duas placas de obelisco fecham o centro. A costura respira fogo — passa rápido.',
+  },
+
+  /* VOID-END — the final page. The climactic arena: a great rift-throne
+     of the Author at the top, concentric rings of obelisks, and light
+     bleeding from every seam. The book ends here. */
+  'void-end': {
+    cols: 13,
+    rows: 18,
+    obstacles: [
+      // Anel externo de obeliscos (a capa do livro fechando).
+      { pos: tile(2, 5), kind: 'obelisk' },
+      { pos: tile(10, 5), kind: 'obelisk' },
+      { pos: tile(1, 9), kind: 'obelisk' },
+      { pos: tile(11, 9), kind: 'obelisk' },
+      { pos: tile(2, 13), kind: 'obelisk' },
+      { pos: tile(10, 13), kind: 'obelisk' },
+      // Anel interno de fendas (as últimas linhas se desfazendo).
+      { pos: tile(5, 6), kind: 'rift' },
+      { pos: tile(7, 6), kind: 'rift' },
+      { pos: tile(4, 9), kind: 'rift' },
+      { pos: tile(8, 9), kind: 'rift' },
+      { pos: tile(5, 12), kind: 'rift' },
+      { pos: tile(7, 12), kind: 'rift' },
+      // O Autor — ídolo trono no centro, ladeado por obeliscos.
+      { pos: tile(5, 8), kind: 'idol' },
+      { pos: tile(6, 8), kind: 'idol' },
+      { pos: tile(7, 8), kind: 'idol' },
+      // A última palavra: ossadas de toda a história a seus pés.
+      { pos: tile(6, 9), kind: 'bones' },
+    ],
+    prelitFires: [
+      // A página inteira pega luz nos dois eixos — o fim do livro.
+      tile(6, 5), tile(6, 6), tile(6, 11), tile(6, 12),
+      tile(3, 8), tile(4, 8), tile(8, 8), tile(9, 8),
+    ],
+    ground: 'void',
+    features: [
+      // Onde a história se rasga de vez — terminar aqui dói.
+      { pos: tile(4, 7), kind: 'spike-pit' },
+      { pos: tile(8, 7), kind: 'spike-pit' },
+      { pos: tile(6, 10), kind: 'vent' },
+    ],
+    label: 'A PÁGINA FINAL',
+    hint: 'O fim do livro. Anéis de obeliscos e fendas, o Autor no centro, tudo em luz.',
+  },
 }
 
 /* ------------------------------------------------------------------ */
@@ -1294,13 +1665,21 @@ const PATTERNS_BY_BIOME: Record<Biome, MapLayout[]> = {
   tundra: TUNDRA_PATTERNS,
   dunes: DUNES_PATTERNS,
   abyss: ABYSS_PATTERNS,
+  // v11 — THE VOID.
+  void: VOID_PATTERNS,
 }
 
 /** Pick a layout for a region. Deterministic — same region → same map.
  *  - Signature regions get their bespoke map first (boss missions).
  *  - Otherwise the biome pool cycles by stage so reruns vary. */
 export function pickMapLayout(region: Region): MapLayout {
-  const sig = SIGNATURE_MAPS[region.id]
+  // Prefer an explicit `mapId` override (the documented bespoke-arena
+  // field), then a signature map keyed by the region's own id, then the
+  // biome pool. Backward-compatible: regions whose id IS a signature key
+  // still resolve, and regions that set `mapId` now correctly use it.
+  const sig =
+    (region.mapId ? SIGNATURE_MAPS[region.mapId] : undefined) ??
+    SIGNATURE_MAPS[region.id]
   if (sig) return sig
   const pool = PATTERNS_BY_BIOME[region.biome] ?? MOOR_PATTERNS
   const idx = region.stage % pool.length
@@ -1353,6 +1732,13 @@ export const GROUND_TONES: Record<
     fillEnd: 'oklch(0.08 0.020 220 / 0.70)',
     stroke: 'oklch(0.30 0.040 220 / 0.55)',
   },
+  // v11 — THE VOID. Starless violet-black: the unwritten margin of the
+  // book. Almost no light, a single bruised glow at the seams.
+  void: {
+    fillStart: 'oklch(0.16 0.060 300 / 0.65)',
+    fillEnd: 'oklch(0.10 0.030 300 / 0.75)',
+    stroke: 'oklch(0.45 0.160 300 / 0.55)',
+  },
 }
 
 /** Glyph rendered on impassable obstacle tiles. */
@@ -1368,6 +1754,9 @@ export const TERRAIN_GLYPH: Record<TerrainKind, string> = {
   ice: '❄',
   dune: '⌬',
   coral: '※',
+  // v11 — THE VOID
+  rift: '⟁',
+  obelisk: '⛤',
 }
 
 /** Tooltip text per terrain kind. */
@@ -1383,4 +1772,7 @@ export const TERRAIN_LABEL: Record<TerrainKind, string> = {
   ice: 'Espinho de gelo — bloqueia movimento.',
   dune: 'Crista de duna — bloqueia movimento.',
   coral: 'Coral abissal — bloqueia movimento.',
+  // v11 — THE VOID
+  rift: 'Fenda no real — bloqueia movimento. Voadores passam por cima.',
+  obelisk: 'Obelisco em branco — bloqueia movimento.',
 }

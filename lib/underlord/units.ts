@@ -680,6 +680,313 @@ export const MINION_TEMPLATES: Record<MinionArchetype, UnitTemplate> = {
     unlockTier: 16,
     hasActiveSpecial: false,
   },
+
+  /* ------------------------------------------------------------------ */
+  /* v11 — ASCENSION roster                                              */
+  /* Fourteen new archetypes. Two new mechanics carry the batch:         */
+  /*   'rend'  → dano cheio + SANGRAMENTO (dano fixo nos próximos 3      */
+  /*             turnos da vítima, ignora armadura, não mata).           */
+  /*   'chain' → dano cheio no alvo + ARCO de 50% no inimigo mais        */
+  /*             próximo dentro de 3 hex.                                 */
+  /* Tudo o mais reusa AttackKinds já existentes; só stat-curve + voz.   */
+  /* ------------------------------------------------------------------ */
+
+  warhound: {
+    archetype: 'warhound',
+    name: 'WARHOUND',
+    glyph: '𓃥',
+    role: 'Caçador de matilha veloz',
+    hp: 120,
+    move: 6,
+    atk: 48,
+    range: 1,
+    spd: 11,
+    tone: 'destructive',
+    flavor:
+      'Late uma vez. Da segunda já está mordendo. Caça em grupo porque sozinho fica entediado.',
+    attackKind: 'cleave',
+    abilityTag: 'MATILHA',
+    abilityText:
+      'Cleave veloz — atinge alvo + adjacente (50%). Move 6, SPD 11: fecha distância antes do uivo terminar.',
+    unlockTier: 6,
+    hasActiveSpecial: false,
+  },
+
+  revenant: {
+    archetype: 'revenant',
+    name: 'REVENANT',
+    glyph: '☗',
+    role: 'Brutamontes morto-vivo sangrento',
+    hp: 175,
+    move: 3,
+    atk: 52,
+    range: 1,
+    spd: 5,
+    tone: 'foreground',
+    flavor:
+      'Já morreu uma vez e achou ruim. Voltou de mau humor e com a garra mais afiada.',
+    attackKind: 'rend',
+    abilityTag: 'SANGRA',
+    abilityText:
+      'Dilacera: dano cheio + SANGRAMENTO por 3 turnos (dano fixo, ignora armadura, não finaliza). O herói esvai.',
+    unlockTier: 5,
+    hasActiveSpecial: false,
+  },
+
+  stormcaller: {
+    archetype: 'stormcaller',
+    name: 'STORMCALLER',
+    glyph: '⚡',
+    role: 'Conjurador de raios em cadeia',
+    hp: 100,
+    move: 3,
+    atk: 58,
+    range: 4,
+    spd: 7,
+    tone: 'primary',
+    flavor:
+      'Aponta o cajado pro céu e reclama do clima. O céu obedece com um RAIO bem na cara do herói.',
+    attackKind: 'chain',
+    abilityTag: 'CADEIA',
+    abilityText:
+      'Raio a 4 hex: dano cheio no alvo + ARCO de 50% no inimigo mais próximo em 3 hex. Pula em multidão.',
+    unlockTier: 7,
+    hasActiveSpecial: false,
+  },
+
+  wisp: {
+    archetype: 'wisp',
+    name: 'WISP',
+    glyph: '✲',
+    role: 'Faísca curandeira voadora',
+    hp: 65,
+    move: 5,
+    atk: 20,
+    range: 4,
+    spd: 9,
+    tone: 'accent',
+    flavor:
+      'Pequena, brilhante, irritantemente otimista. Cura aliados e foge antes de levar dano.',
+    attackKind: 'heal',
+    abilityTag: 'FAGULHA',
+    abilityText:
+      'Cura 30% do hpMax de um aliado em até 4 hex. Voa sobre obstáculos — chega onde a maca não chega.',
+    unlockTier: 8,
+    flying: true,
+    hasActiveSpecial: false,
+  },
+
+  dunestalker: {
+    archetype: 'dunestalker',
+    name: 'DUNESTALKER',
+    glyph: '⩘',
+    role: 'Finalizador do deserto veloz',
+    hp: 90,
+    move: 6,
+    atk: 72,
+    range: 1,
+    spd: 11,
+    tone: 'gold',
+    flavor:
+      'Emerge da areia no exato segundo em que o herói pensa "acho que estou seguro". Não estava.',
+    attackKind: 'execute',
+    abilityTag: 'EMBOSCA',
+    abilityText:
+      'Execute do deserto: +50% dano em alvos <40% HP. Move 6 pra cruzar a duna e cravar a cimitarra.',
+    unlockTier: 9,
+    hasActiveSpecial: false,
+  },
+
+  ironmaiden: {
+    archetype: 'ironmaiden',
+    name: 'IRONMAIDEN',
+    glyph: '⛨',
+    role: 'Tanque de espinhos',
+    hp: 270,
+    move: 2,
+    atk: 38,
+    range: 1,
+    spd: 3,
+    tone: 'foreground',
+    flavor:
+      'Abraça de braços abertos. Os espinhos cuidam do resto. Heróis aprendem a manter distância — tarde demais.',
+    attackKind: 'cleave',
+    abilityTag: 'ESPINHOS',
+    abilityText:
+      'HP brutal (270) em CLIVA: alvo + adjacente (50%). Encosta uma rodada inteira sem ceder terreno.',
+    unlockTier: 10,
+    hasActiveSpecial: false,
+  },
+
+  seraphage: {
+    archetype: 'seraphage',
+    name: 'SERAPHAGE',
+    glyph: '✟',
+    role: 'Anjo caído bombardeiro',
+    hp: 130,
+    move: 4,
+    atk: 68,
+    range: 3,
+    spd: 7,
+    tone: 'gold',
+    flavor:
+      'Caiu do céu, perdeu a auréola, manteve a artilharia. Agora abençoa em forma de cratera.',
+    attackKind: 'splash',
+    abilityTag: 'JUÍZO',
+    abilityText:
+      'Bomba sagrada a 3 hex. Atinge alvo + adjacentes em 1 hex (50% colateral). Voa sobre tudo.',
+    unlockTier: 10,
+    flying: true,
+    hasActiveSpecial: false,
+  },
+
+  gravewither: {
+    archetype: 'gravewither',
+    name: 'GRAVEWITHER',
+    glyph: '⚰',
+    role: 'Sangrador a distância',
+    hp: 90,
+    move: 3,
+    atk: 50,
+    range: 3,
+    spd: 6,
+    tone: 'primary',
+    flavor:
+      'Aponta o dedo seco e o herói começa a apodrecer de longe. Educado: avisa antes de você sangrar.',
+    attackKind: 'rend',
+    abilityTag: 'SANGRA',
+    abilityText:
+      'Maldição-corte a 3 hex: dano cheio + SANGRAMENTO por 3 turnos (fixo, ignora armadura). Sangra sem chegar perto.',
+    unlockTier: 9,
+    hasActiveSpecial: false,
+  },
+
+  mawmother: {
+    archetype: 'mawmother',
+    name: 'MAWMOTHER',
+    glyph: '⬮',
+    role: 'Matrona devoradora tanque',
+    hp: 290,
+    move: 2,
+    atk: 58,
+    range: 1,
+    spd: 4,
+    tone: 'destructive',
+    flavor:
+      'Tem mil bocas e fome por todas. Chama o herói de "lanchinho" enquanto o engole inteiro.',
+    attackKind: 'siphon',
+    abilityTag: 'DEVORA',
+    abilityText:
+      'Bocada absorvente: cura no próprio HP 30% do dano causado. HP colossal — engorda enquanto luta.',
+    unlockTier: 12,
+    hasActiveSpecial: false,
+  },
+
+  thunderbird: {
+    archetype: 'thunderbird',
+    name: 'THUNDERBIRD',
+    glyph: '𓅃',
+    role: 'Ave-tempestade em cadeia',
+    hp: 115,
+    move: 6,
+    atk: 60,
+    range: 3,
+    spd: 10,
+    tone: 'primary',
+    flavor:
+      'Bate as asas e troveja. A cada rasante deixa um RAIO de cortesia pulando entre os heróis.',
+    attackKind: 'chain',
+    abilityTag: 'ARCO',
+    abilityText:
+      'Rasante elétrico a 3 hex: dano cheio + ARCO de 50% no inimigo mais próximo em 3 hex. Voa, esquiva fácil.',
+    unlockTier: 11,
+    flying: true,
+    hasActiveSpecial: false,
+  },
+
+  voidling: {
+    archetype: 'voidling',
+    name: 'VOIDLING',
+    glyph: '◍',
+    role: 'Glass cannon do vazio',
+    hp: 60,
+    move: 5,
+    atk: 88,
+    range: 1,
+    spd: 10,
+    tone: 'accent',
+    flavor:
+      'Um buraco com vontade própria. Toca e o herói some um pedacinho de cada vez. Frágil como promessa.',
+    attackKind: 'execute',
+    abilityTag: 'COLAPSO',
+    abilityText:
+      'Execute do vazio: +50% dano em alvos <40% HP. ATK 88, HP 60 — mata depressa ou morre depressa.',
+    unlockTier: 12,
+    hasActiveSpecial: false,
+  },
+
+  dreadnought: {
+    archetype: 'dreadnought',
+    name: 'DREADNOUGHT',
+    glyph: '⊟',
+    role: 'Artilharia de cerco colossal',
+    hp: 340,
+    move: 1,
+    atk: 80,
+    range: 2,
+    spd: 2,
+    tone: 'foreground',
+    flavor:
+      'Anda um passo por era geológica e atira como o fim de uma. Os heróis não morrem: são reformulados.',
+    attackKind: 'pierce',
+    abilityTag: 'BOMBARDEIO',
+    abilityText:
+      'Canhão perfurante a 2 hex: alvo + tile atrás (50%). HP descomunal (340), move 1 — posicione e esqueça.',
+    unlockTier: 14,
+    hasActiveSpecial: false,
+  },
+
+  plaguelord: {
+    archetype: 'plaguelord',
+    name: 'PLAGUELORD',
+    glyph: '☣',
+    role: 'Praga de área ampla',
+    hp: 120,
+    move: 2,
+    atk: 65,
+    range: 5,
+    spd: 5,
+    tone: 'destructive',
+    flavor:
+      'Espalha epidemia como quem distribui panfleto. Não discrimina: contamina o pelotão herói inteiro.',
+    attackKind: 'volley',
+    abilityTag: 'PESTE',
+    abilityText:
+      'Nuvem pestilenta a 5 hex. Atinge o alvo + todo inimigo em 2 hex dele (50% colateral). Range absurdo.',
+    unlockTier: 13,
+    hasActiveSpecial: false,
+  },
+
+  riftcaller: {
+    archetype: 'riftcaller',
+    name: 'RIFTCALLER',
+    glyph: '✴',
+    role: 'Raio do vazio de longo alcance',
+    hp: 105,
+    move: 2,
+    atk: 70,
+    range: 5,
+    spd: 6,
+    tone: 'primary',
+    flavor:
+      'Rasga uma fenda no real e enfia um RAIO pela costura. O eco arca pro herói do lado de graça.',
+    attackKind: 'chain',
+    abilityTag: 'CADEIA',
+    abilityText:
+      'Raio do vazio a 5 hex: dano cheio no alvo + ARCO de 50% no inimigo mais próximo em 3 hex. Atira do outro lado do mapa.',
+    unlockTier: 15,
+    hasActiveSpecial: false,
+  },
 }
 
 let unitIdCounter = 0
@@ -896,6 +1203,35 @@ function archMinionTitle(arch: MinionArchetype): string {
       return 'TITÃ'
     case 'banshee':
       return 'LAMENTO'
+    /* v11 — ASCENSION roster */
+    case 'warhound':
+      return 'CÃO'
+    case 'revenant':
+      return 'MORTO'
+    case 'stormcaller':
+      return 'TROVÃO'
+    case 'wisp':
+      return 'FAGULHA'
+    case 'dunestalker':
+      return 'AREIA'
+    case 'ironmaiden':
+      return 'FERRO'
+    case 'seraphage':
+      return 'CAÍDO'
+    case 'gravewither':
+      return 'COVA'
+    case 'mawmother':
+      return 'MATRONA'
+    case 'thunderbird':
+      return 'AVE'
+    case 'voidling':
+      return 'VAZIO'
+    case 'dreadnought':
+      return 'COURAÇADO'
+    case 'plaguelord':
+      return 'PESTE'
+    case 'riftcaller':
+      return 'FENDA'
   }
 }
 
@@ -965,6 +1301,21 @@ const RECRUIT_NAMES: Record<MinionArchetype, string[]> = {
   shade: ['UMBR', 'VEIL', 'NYX', 'DUSK'],
   colossus: ['ATLAS', 'TITAN', 'MONOL', 'GRAV'],
   banshee: ['WAIL', 'KEEN', 'MOURNE', 'LIRA'],
+  /* v11 — ASCENSION roster */
+  warhound: ['FANG', 'GNAR', 'RIPP', 'HOWL'],
+  revenant: ['MORTIS', 'GRYM', 'SEPUL', 'VAULT'],
+  stormcaller: ['VOLT', 'ZAPP', 'RAYJ', 'TESLA'],
+  wisp: ['GLIM', 'SPARK', 'FAYE', 'LUME'],
+  dunestalker: ['SIROC', 'DUNA', 'KHAMS', 'SANDR'],
+  ironmaiden: ['SPIKE', 'BRANK', 'GIBB', 'TORM'],
+  seraphage: ['NEPHA', 'LUMEN', 'AZRAH', 'FALN'],
+  gravewither: ['ROTT', 'CRYPT', 'MORN', 'WYTHE'],
+  mawmother: ['GORMA', 'BROOD', 'MAWA', 'GLUTT'],
+  thunderbird: ['ROC', 'STRYX', 'BORA', 'PEAL'],
+  voidling: ['NULL', 'OBLI', 'ABYSM', 'VOI'],
+  dreadnought: ['BREAKR', 'SIEGE', 'BARRA', 'MORT'],
+  plaguelord: ['NURG', 'BUBO', 'FESTR', 'MIASM'],
+  riftcaller: ['RIVN', 'TEAR', 'WARP', 'SEAM'],
 }
 
 let recruitCounter = 0
