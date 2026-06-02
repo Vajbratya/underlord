@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.vajbratya.underlord",
+      "sha256_cert_fingerprints": ["14:64:6F:55:2D:94:24:66:2E:9F:70:97:FC:12:91:72:58:E6:0B:5C:83:6F:BC:60:3D:52:0E:9C:2A:DF:FE:8F"]
+    }
+  }
+]

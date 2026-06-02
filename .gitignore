@@ -18,3 +18,6 @@ node_modules
 
 # local image-gen secrets
 .env.local.imagegen
+
+# Android TWA signing
+android-twa/
