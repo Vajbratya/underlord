@@ -130,11 +130,11 @@ export function BountiesPanel({
           <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
             Diários
           </p>
-          <div className="grid gap-2">{daily.map(row)}</div>
+          <div className="grid grid-cols-1 gap-2">{daily.map(row)}</div>
           <p className="mb-2 mt-5 font-mono text-[10px] uppercase tracking-[0.3em] text-gold">
             Semanais
           </p>
-          <div className="grid gap-2">{weekly.map(row)}</div>
+          <div className="grid grid-cols-1 gap-2">{weekly.map(row)}</div>
         </div>
       </div>
     </div>

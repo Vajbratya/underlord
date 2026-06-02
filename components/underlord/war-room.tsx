@@ -421,53 +421,67 @@ export function WarRoom({
         </div>
       </main>
 
-      {/* Bottom squad bar */}
-      <div className="sticky bottom-0 z-10 border-t border-border/60 bg-background/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-4 py-3 sm:px-6">
-          <button
-            type="button"
-            onClick={() => {
-              haptic.select()
-              onOpenSquad()
-            }}
-            className="flex h-12 shrink-0 items-center gap-2 rounded-md border-2 border-border bg-card px-3 font-mono text-[10px] uppercase tracking-[0.24em] text-foreground transition active:scale-[0.97] hover:border-accent/60"
-          >
+      {/* Bottom squad bar — the WHOLE bar is one obvious tap target so the
+          player always knows they can build/arrange their horde here. */}
+      <div className="sticky bottom-0 z-10 border-t-2 border-accent/40 bg-background/92 backdrop-blur">
+        <button
+          type="button"
+          onClick={() => {
+            haptic.select()
+            onOpenSquad()
+          }}
+          aria-label="Montar e arranjar sua horda"
+          className={cn(
+            "mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-2.5 text-left transition active:scale-[0.99] sm:px-6",
+            save.squad.length === 0 && "ready-pulse",
+          )}
+        >
+          <span className="flex h-12 shrink-0 items-center gap-2 rounded-md border-2 border-accent/70 bg-accent/15 px-3 font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
             <Users className="size-4" />
             <span className="font-black tabular-nums">
               {save.squad.length}/{cap}
             </span>
-          </button>
-          <div className="flex flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar">
-            {save.squad.length === 0 ? (
-              <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                monte o esquadrão →
-              </span>
-            ) : (
-              save.squad.map((id) => {
-                const u = save.roster.find((x) => x.id === id)
-                if (!u) return null
-                const tpl = MINION_TEMPLATES[u.templateId]
-                const tone = TONE_TO_VAR[tpl.tone]
-                return (
-                  <span
-                    key={id}
-                    className="relative size-10 shrink-0 overflow-hidden rounded-full border-2"
-                    style={{ borderColor: tone }}
-                    title={u.name}
-                  >
-                    <Image
-                      src={`/images/minions/${u.templateId}.jpg`}
-                      alt={tpl.name}
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                    />
-                  </span>
-                )
-              })
-            )}
-          </div>
-        </div>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-mono text-[9px] font-black uppercase tracking-[0.24em] text-accent/90">
+              Sua Horda
+            </span>
+            <span className="mt-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {save.squad.length === 0 ? (
+                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  toque para recrutar e montar →
+                </span>
+              ) : (
+                save.squad.map((id) => {
+                  const u = save.roster.find((x) => x.id === id)
+                  if (!u) return null
+                  const tpl = MINION_TEMPLATES[u.templateId]
+                  const tone = TONE_TO_VAR[tpl.tone]
+                  return (
+                    <span
+                      key={id}
+                      className="relative size-9 shrink-0 overflow-hidden rounded-full border-2"
+                      style={{ borderColor: tone }}
+                      title={u.name}
+                    >
+                      <Image
+                        src={`/images/minions/${u.templateId}.jpg`}
+                        alt={tpl.name}
+                        fill
+                        sizes="36px"
+                        className="object-cover"
+                      />
+                    </span>
+                  )
+                })
+              )}
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1 rounded-md border border-accent/50 bg-accent/10 px-2.5 py-2 font-mono text-[9px] font-black uppercase tracking-[0.18em] text-accent">
+            Montar
+            <ChevronRight className="size-3.5" />
+          </span>
+        </button>
       </div>
 
       {/* Region detail drawer */}

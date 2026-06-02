@@ -79,8 +79,8 @@ export function MerchantPanel({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          <div className="grid gap-2.5">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
+          <div className="grid grid-cols-1 gap-2.5">
             {offer.items.map((it) => {
               const price = offer.prices[it.id] ?? 0
               const isBought = bought.includes(it.id)
@@ -89,7 +89,7 @@ export function MerchantPanel({
                 <div
                   key={it.id}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl border bg-card/60 p-2.5",
+                    "flex min-w-0 items-center gap-3 rounded-xl border bg-card/60 p-2.5",
                     it.rarity === "mythic"
                       ? "border-gold/60"
                       : it.rarity === "legendary" || it.rarity === "relic"

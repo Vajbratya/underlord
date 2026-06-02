@@ -142,7 +142,9 @@ function tone(opts: ToneOptions) {
     const duration = isFinitePositive(opts.duration) ? Math.min(opts.duration, 4) : 0.1
     const volume = (() => {
       const v = safeFinite(opts.volume, 0.15)
-      return Math.min(0.5, Math.max(0.001, v))
+      // v13 — drop the synth layer well under the real recorded samples so
+      // it warms/bodies them instead of beeping over them like a 2-bit toy.
+      return Math.min(0.16, Math.max(0.001, v * 0.55))
     })()
     const delay = Math.max(0, safeFinite(opts.delay, 0))
     const sweepToRaw = opts.sweepTo
@@ -150,7 +152,12 @@ function tone(opts: ToneOptions) {
       typeof sweepToRaw === 'number' && Number.isFinite(sweepToRaw)
         ? Math.max(1, sweepToRaw)
         : undefined
-    const type: OscillatorType = opts.type ?? 'sine'
+    // v13 — kill the chiptune timbre: the buzzy square/sawtooth waveforms
+    // are what read as "2-bit". Fold them down to a soft triangle; sine
+    // stays sine. A lowpass below rounds off the remaining harsh harmonics.
+    const reqType = opts.type ?? 'sine'
+    const type: OscillatorType =
+      reqType === 'square' || reqType === 'sawtooth' ? 'triangle' : reqType
 
     const start = now + delay
     const attack = Math.min(0.01, duration * 0.5)
@@ -167,7 +174,14 @@ function tone(opts: ToneOptions) {
     gain.gain.setValueAtTime(0.0001, start)
     gain.gain.exponentialRampToValueAtTime(volume, peakAt)
     gain.gain.exponentialRampToValueAtTime(0.0001, endAt)
-    osc.connect(gain)
+    // Lowpass to warm the tone — strips the brittle high harmonics that
+    // make synth blips sound cheap.
+    const lp = c.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.setValueAtTime(Math.max(600, Math.min(3200, freq * 3 + 400)), start)
+    lp.Q.setValueAtTime(0.4, start)
+    osc.connect(lp)
+    lp.connect(gain)
     gain.connect(c.destination)
     osc.start(start)
     osc.stop(endAt + 0.05)
