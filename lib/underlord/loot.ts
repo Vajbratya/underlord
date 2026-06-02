@@ -414,21 +414,30 @@ export function rollLoot(
   // 5-tier ladder. Stage 14+ unlocks legendaries (boss-tier regions).
   // Earlier stages cap at relic so legendaries feel like a real milestone.
   const tier =
-    stage >= 14
-      ? ['cursed', 'relic', 'relic', 'legendary']
-      : stage >= 12
-        ? ['cursed', 'cursed', 'relic']
-        : stage >= 8
-          ? ['uncommon', 'cursed', 'cursed']
-          : stage >= 4
-            ? ['common', 'uncommon', 'cursed']
-            : ['common', 'common', 'uncommon']
+    stage >= 18
+      ? ['relic', 'legendary', 'legendary', 'mythic']
+      : stage >= 14
+        ? ['cursed', 'relic', 'relic', 'legendary']
+        : stage >= 12
+          ? ['cursed', 'cursed', 'relic']
+          : stage >= 8
+            ? ['uncommon', 'cursed', 'cursed']
+            : stage >= 4
+              ? ['common', 'uncommon', 'cursed']
+              : ['common', 'common', 'uncommon']
   const out: LootItem[] = []
   for (let i = 0; i < count; i++) {
     let want: LootRarity
     if (forceRare && i === 0) {
       // Pity timer: scale guaranteed rarity with stage tier.
-      want = stage >= 14 ? 'legendary' : stage >= 8 ? 'relic' : 'cursed'
+      want =
+        stage >= 18
+          ? 'mythic'
+          : stage >= 14
+            ? 'legendary'
+            : stage >= 8
+              ? 'relic'
+              : 'cursed'
     } else {
       want = tier[Math.floor(Math.random() * tier.length)] as LootRarity
     }
@@ -445,6 +454,7 @@ export const RARITY_LABEL: Record<LootRarity, string> = {
   cursed: 'AMALDIÇOADO',
   relic: 'RELÍQUIA',
   legendary: 'LENDÁRIO',
+  mythic: 'MÍTICO',
 }
 
 export const RARITY_TONE: Record<
@@ -458,4 +468,8 @@ export const RARITY_TONE: Record<
   // Legendaries reuse the gold tone for now — they stand out via the
   // "LENDÁRIO" label + a holo border in the loot/inventory UI.
   legendary: 'gold',
+  // Mythics also use gold for the chip color but get a prismatic
+  // animated holo border (see `.rarity-mythic` in globals.css) so they
+  // read as a whole tier above legendary at a glance.
+  mythic: 'gold',
 }

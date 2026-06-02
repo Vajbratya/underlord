@@ -23,6 +23,7 @@ import { SPECIALS } from './specials'
 import { OVERLORD_SKILLS } from './overlord-skills'
 import { makeBarrier, makeHeroMinion } from './units'
 import {
+  applyRoundStartElite,
   onDealDamage,
   onPostDamage,
   onTakeDamage,
@@ -315,12 +316,32 @@ export function attackUnit(
     eliteOutMult
   const rawDmg = applyDamageMod(s, tgt, baseDmg)
 
-  // Elite incoming hooks (PHASE absorbs to 1, THORNS schedules a reflect).
+  // Elite incoming hooks (PHASE absorbs to 1, THORNS schedules a reflect,
+  // COLOSSAL flat-reduces).
   const incoming = onTakeDamage(tgt, att, rawDmg)
   const dmg = incoming.damage
 
-  const newHp = Math.max(0, tgt.hp - dmg)
+  // Absorb shield (v11) — temp HP eats the blow before real HP. Tracks the
+  // leftover so we can write it back onto the unit. Only the primary
+  // target's shield participates; collateral always hits HP directly.
+  let shieldAfter = tgt.shieldHp ?? 0
+  let hpDmg = dmg
+  if (shieldAfter > 0) {
+    const absorbed = Math.min(shieldAfter, hpDmg)
+    shieldAfter -= absorbed
+    hpDmg -= absorbed
+  }
+
+  const newHp = Math.max(0, tgt.hp - hpDmg)
   const killed = newHp === 0
+
+  // BLEED application (v11) — `rend` attacks always bleed; the `frostbite`
+  // elite passive makes every one of that unit's hits bleed too. Refreshes
+  // to 3 ticks and keeps the higher per-tick damage if already bleeding.
+  const appliesBleed =
+    att.attackKind === 'rend' ||
+    (!!att.eliteKind && att.passiveId === 'frostbite')
+  const newBleedDmg = Math.max(3, Math.round(att.atk * 0.2))
 
   const collateral: AttackOutcome['splashHits'] = []
   const splashDmg = Math.max(1, Math.round(dmg * SPLASH_RATIO))
@@ -379,9 +400,33 @@ export function attackUnit(
         collateral.push({ unitId: u.id, damage: d, killed: false, pos: u.pos })
       }
     }
+  } else if (att.attackKind === 'chain') {
+    // CHAIN — the strike arcs to the single NEAREST other enemy within 3
+    // hexes of the primary target for 50%. Distance-based, not adjacency:
+    // it's lightning seeking a second mark, not a cleave.
+    let nearest: Unit | null = null
+    let nd = Infinity
+    for (const u of s.units) {
+      if (u.dead || u.id === tgt.id) continue
+      if (u.faction !== tgt.faction || u.isBarrier) continue
+      const d = hexDistance(u.pos, tgt.pos)
+      if (d <= 3 && d < nd) {
+        nd = d
+        nearest = u
+      }
+    }
+    if (nearest) {
+      const d = applyDamageMod(s, nearest, splashDmg)
+      collateral.push({
+        unitId: nearest.id,
+        damage: d,
+        killed: false,
+        pos: nearest.pos,
+      })
+    }
   }
-  // Curse + siphon don't generate collateral; their effects ride on the
-  // primary hit and the post-attack mutation pass below.
+  // Curse, siphon and rend don't generate collateral; their effects ride
+  // on the primary hit and the post-attack mutation pass below.
 
   // Curse: target takes +50% damage for the next round (cleared at round end).
   const curseMod =
@@ -394,6 +439,14 @@ export function attackUnit(
     if (u.id === tgt.id) {
       const after: Unit = { ...u, hp: newHp, dead: killed }
       if (curseMod !== null) after.damageTakenMod = curseMod
+      // Write back the post-absorb shield (undefined when fully spent so
+      // the HUD badge disappears).
+      after.shieldHp = shieldAfter > 0 ? shieldAfter : undefined
+      // Apply / refresh bleed on a survivor.
+      if (appliesBleed && !killed) {
+        after.bleedStacks = Math.max(after.bleedStacks ?? 0, 3)
+        after.bleedDmg = Math.max(after.bleedDmg ?? 0, newBleedDmg)
+      }
       return after
     }
     if (u.id === att.id) {
@@ -460,6 +513,16 @@ export function attackUnit(
     )
     if (dealPatch.log) passiveLogs.push(dealPatch.log)
   }
+  if (dealPatch.atkStack && dealPatch.atkStack !== 1) {
+    // Frenzy: compound the stack onto the attacker's permanent enrageMult
+    // (which `outgoingMult` already reads), so kills snowball its damage.
+    nextUnits = nextUnits.map((u) =>
+      u.id === att.id
+        ? { ...u, enrageMult: (u.enrageMult ?? 1) * dealPatch.atkStack! }
+        : u,
+    )
+    if (dealPatch.log) passiveLogs.push(dealPatch.log)
+  }
 
   // 3. Post-damage on the target — revive/enrage/summon.
   const tgtPost = onPostDamage(
@@ -518,11 +581,15 @@ export function attackUnit(
               ? ' MALDIÇÃO'
               : att.attackKind === 'siphon'
                 ? ` SIFÃO +${siphonHeal}`
-                : executed
-                  ? ' EXECUTA'
-                  : sombraBonus > 1
-                    ? ' SOMBRA'
-                    : ''
+                : att.attackKind === 'rend'
+                  ? ' SANGRA'
+                  : att.attackKind === 'chain'
+                    ? ' RAIO'
+                    : executed
+                      ? ' EXECUTA'
+                      : sombraBonus > 1
+                        ? ' SOMBRA'
+                        : ''
   const log = [
     ...s.log,
     `${att.name} → ${tgt.name}: -${dmg}${crit ? ' CRIT' : ''}${tag}${
@@ -1031,6 +1098,61 @@ export function castOverlordSkill(
       const log = [...s.log, `${u.name} invoca ${skill.name}!`].slice(-6)
       return { state: { ...s, units: next, log }, ok: true, reason: skill.short, fxAt: target, fxKind: 'fire' }
     }
+
+    case 'ward-ally': {
+      // Grant a living ally an absorb shield equal to a fraction of the
+      // Overlord's ATK (atkMult), stacking onto any existing shield.
+      if (!targetUnitId) return fail(s, 'sem alvo')
+      const ally = s.units.find((x) => x.id === targetUnitId)
+      if (!ally || ally.dead || ally.isBarrier) return fail(s, 'alvo inválido')
+      if (ally.faction !== 'minion') return fail(s, 'alvo precisa ser aliado')
+      if (hexDistance(u.pos, ally.pos) > skill.range) return fail(s, 'fora de alcance')
+      const shield = Math.max(10, Math.round(u.atk * (skill.atkMult || 1)))
+      const next = s.units.map((x) => {
+        if (x.id === u.id) return consume(x)
+        if (x.id === ally.id) {
+          return { ...x, shieldHp: (x.shieldHp ?? 0) + shield }
+        }
+        return x
+      })
+      const log = [
+        ...s.log,
+        `${u.name} envolve ${ally.name} em ÉGIDE (+${shield} escudo).`,
+      ].slice(-6)
+      return { state: { ...s, units: next, log }, ok: true, reason: 'Égide.', fxAt: ally.pos, fxKind: 'wall' }
+    }
+
+    case 'hex-bleed': {
+      // Ranged curse that opens a wound — light hit + BLEED stacks that
+      // tick down the target over its next few turns.
+      if (!targetUnitId) return fail(s, 'sem alvo')
+      const enemy = s.units.find((x) => x.id === targetUnitId)
+      if (!enemy || enemy.dead || enemy.faction !== 'hero') return fail(s, 'alvo inválido')
+      if (hexDistance(u.pos, enemy.pos) > skill.range) return fail(s, 'fora de alcance')
+      const raw = Math.round(u.atk * (skill.atkMult || 0.5))
+      const dmg = applyDamageMod(s, enemy, raw)
+      const newHp = Math.max(0, enemy.hp - dmg)
+      const killed = newHp === 0
+      const bleed = Math.max(4, Math.round(u.atk * 0.25))
+      const next = s.units.map((x) => {
+        if (x.id === u.id) return consume(x)
+        if (x.id === enemy.id) {
+          return {
+            ...x,
+            hp: newHp,
+            dead: killed,
+            bleedStacks: killed ? undefined : Math.max(x.bleedStacks ?? 0, 3),
+            bleedDmg: killed ? undefined : Math.max(x.bleedDmg ?? 0, bleed),
+          }
+        }
+        return x
+      })
+      const log = [
+        ...s.log,
+        `${u.name} abre uma ferida em ${enemy.name}: -${dmg} + SANGRA.`,
+      ].slice(-6)
+      return { state: { ...s, units: next, log }, ok: true, reason: skill.short, fxAt: enemy.pos, fxKind: 'shadow' }
+    }
   }
 }
 
@@ -1051,18 +1173,51 @@ function inBoardBounds(s: BattleState, p: Axial): boolean {
 function applyStartOfTurnEffects(s: BattleState): BattleState {
   const cur = activeUnit(s)
   if (!cur || cur.dead || cur.isBarrier) return s
+
+  let hp = cur.hp
+  let killed = false
+  const logs: string[] = []
+
+  // Fire tick — can kill.
   const fire = s.fires.find((f) => axialEqual(f.pos, cur.pos))
-  if (!fire) return s
-  const dmg = applyDamageMod(s, cur, fire.damage)
-  const newHp = Math.max(0, cur.hp - dmg)
-  const killed = newHp === 0
+  if (fire) {
+    const dmg = applyDamageMod(s, cur, fire.damage)
+    hp = Math.max(0, hp - dmg)
+    killed = hp === 0
+    logs.push(
+      `${cur.name} queima no inferno: -${dmg}${killed ? ' (abatido)' : ''}.`,
+    )
+  }
+
+  // Bleed tick (v11) — flat, ignores resist, decrements its stack count,
+  // and is incapable of landing the killing blow (floors HP at 1). It's
+  // attrition pressure, not a finisher.
+  let bleedStacks = cur.bleedStacks ?? 0
+  let bleedDmg: number | undefined = cur.bleedDmg
+  if (!killed && bleedStacks > 0 && (cur.bleedDmg ?? 0) > 0) {
+    const tick = hp > 1 ? Math.min(cur.bleedDmg!, hp - 1) : 0
+    hp -= tick
+    bleedStacks -= 1
+    if (bleedStacks <= 0) {
+      bleedStacks = 0
+      bleedDmg = undefined
+    }
+    logs.push(`${cur.name} sangra: -${tick} (${bleedStacks}r restante).`)
+  }
+
+  if (logs.length === 0) return s
   const nextUnits = s.units.map((u) =>
-    u.id === cur.id ? { ...u, hp: newHp, dead: killed } : u,
+    u.id === cur.id
+      ? {
+          ...u,
+          hp,
+          dead: killed,
+          bleedStacks: bleedStacks > 0 ? bleedStacks : undefined,
+          bleedDmg,
+        }
+      : u,
   )
-  const log = [
-    ...s.log,
-    `${cur.name} queima no inferno: -${dmg}${killed ? ' (abatido)' : ''}.`,
-  ].slice(-6)
+  const log = [...s.log, ...logs].slice(-6)
   return { ...s, units: nextUnits, log }
 }
 
@@ -1173,6 +1328,15 @@ export function endTurn(s: BattleState): BattleState {
       // absorbed. Other one-shot passives (revive, summon, enrage)
       // intentionally stay fired for the rest of the battle.
       units = rearmPhasePassives(units)
+      // v11 — resolve round-start elite passives (REGENERATE, WARDING,
+      // SIPHON-AURA) and surface their log lines.
+      {
+        const rs = applyRoundStartElite(units)
+        units = rs.units
+        if (rs.logs.length > 0) {
+          s = { ...s, log: [...s.log, ...rs.logs].slice(-8) }
+        }
+      }
       nextOrder = sortInitiative(units)
       next = 0
       round += 1
@@ -1259,6 +1423,14 @@ function computeDone(state: BattleState): BattleState['done'] {
       )
       if (ward && ward.dead) return 'defeat'
       return heroesAlive ? null : 'victory'
+    }
+    case 'overwhelm': {
+      // Blitz — rout them all before the clock runs out. Win the instant
+      // the field is clear; lose if the round counter passes the limit
+      // with heroes still standing.
+      if (!heroesAlive) return 'victory'
+      if (state.round > obj.rounds) return 'defeat'
+      return null
     }
     default: {
       // Exhaustive fallthrough — if a new objective lands without a

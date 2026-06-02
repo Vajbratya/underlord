@@ -40,6 +40,10 @@ export type SkillKind =
   | 'revive-ally'
   /** Single-target heavy strike: atkMult vs one enemy. */
   | 'smite-enemy'
+  /** Grant a living ally a temporary absorb shield (v11). */
+  | 'ward-ally'
+  /** Bleed an enemy: applies BLEED stacks at range (v11). */
+  | 'hex-bleed'
 
 export type SkillDef = {
   /** Stable id used in the save state slots. */
@@ -204,6 +208,36 @@ export const OVERLORD_SKILLS: Record<string, SkillDef> = {
     atkMult: 2,
     unlockLevel: 13,
     text: 'Tempestade arcana a 8 hex. 200% ATK + AOE raio 3 (50% colateral). 1×.',
+  },
+
+  // ---------- v11 — status-effect skills ----------
+  ward: {
+    id: 'ward',
+    name: 'ÉGIDE PARTILHADA',
+    short: 'ESCUDO',
+    kind: 'ward-ally',
+    target: 'ally',
+    range: 4,
+    cooldown: 3,
+    uses: 0,
+    aoeRadius: 0,
+    atkMult: 1.0,
+    unlockLevel: 7,
+    text: 'Envolve um aliado em alc 4 num escudo de absorção igual ao teu ATK.',
+  },
+  rupture: {
+    id: 'rupture',
+    name: 'RUPTURA',
+    short: 'SANGRA',
+    kind: 'hex-bleed',
+    target: 'enemy',
+    range: 5,
+    cooldown: 2,
+    uses: 0,
+    aoeRadius: 0,
+    atkMult: 0.5,
+    unlockLevel: 9,
+    text: 'Abre uma ferida a 5 hex: 50% ATK imediato + SANGRA por 3 turnos.',
   },
 }
 

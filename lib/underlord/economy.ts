@@ -53,6 +53,8 @@ export function dismantleValue(rarity: LootRarity): number {
       return 30
     case 'legendary':
       return 80
+    case 'mythic':
+      return 180
   }
 }
 
@@ -87,6 +89,7 @@ export const BM_PRICES: Partial<Record<LootRarity, number>> = {
   cursed: 40,
   relic: 110,
   legendary: 300,
+  mythic: 750,
 }
 
 /** Daily shop offer — five slots curated from the loot pool. The seed
@@ -137,17 +140,25 @@ function hashSeed(str: string): number {
  */
 export function buildBlackMarket(day: string): BlackMarketOffer {
   const rand = mulberry32(hashSeed(day))
-  const pickFrom = (rarity: LootRarity): LootItem => {
+  /** Pick a random item of a rarity, or null if the pool is empty (lets
+   * the mythic slot degrade gracefully before any mythic loot exists). */
+  const pickFrom = (rarity: LootRarity): LootItem | null => {
     const candidates = LOOT_POOL.filter((p) => p.rarity === rarity)
+    if (candidates.length === 0) return null
     return candidates[Math.floor(rand() * candidates.length)]!
   }
+  // The sixth slot rotates the apex tier: a mythic when the catalog has
+  // them, otherwise a second legendary. Either way the daily shop now
+  // dangles a true endgame carrot.
+  const apex = pickFrom('mythic') ?? pickFrom('legendary')
   const items = [
     pickFrom('uncommon'),
     pickFrom('cursed'),
     pickFrom('cursed'),
     pickFrom('relic'),
     pickFrom('legendary'),
-  ]
+    apex,
+  ].filter((it): it is LootItem => it != null)
   const prices: Record<string, number> = {}
   for (const it of items) {
     prices[it.id] = BM_PRICES[it.rarity] ?? 0

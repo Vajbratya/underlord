@@ -108,6 +108,13 @@ export function onTakeDamage(
     }
   }
 
+  // COLOSSAL — flat 30% damage reduction on every single hit. No re-arm,
+  // no per-round limit: this boss is just built like a mountain.
+  if (passive === 'colossal') {
+    const reduced = Math.max(1, Math.round(rawDamage * 0.7))
+    return { damage: reduced, reflect: 0 }
+  }
+
   return { damage: rawDamage, reflect: 0 }
 }
 
@@ -194,6 +201,48 @@ export function onPostDamage(
     }
   }
 
+  // VOLATILE — on death, detonate. Every ENEMY of the elite (i.e. the
+  // player's minions/Overlord) adjacent to the corpse eats a flat blast.
+  // The blast can't be reflected and ignores the standard resist chain —
+  // it's a parting gift, not an attack.
+  if (passive === 'volatile' && !target.passiveFired && target.hp <= 0) {
+    sfx.bomb()
+    const blast = Math.max(8, Math.round(target.atk * 1.4))
+    let anyHit = false
+    const next = allUnits.map((u) => {
+      if (u.id === target.id) return { ...u, passiveFired: true }
+      if (u.dead || u.isBarrier) return u
+      if (u.faction === target.faction) return u
+      if (!isAdjacent(u.pos, target.pos)) return u
+      anyHit = true
+      const hp = Math.max(0, u.hp - blast)
+      return { ...u, hp, dead: hp === 0 }
+    })
+    return {
+      units: next,
+      log: anyHit
+        ? `${target.name} DETONA ao cair — ${blast} de dano em volta.`
+        : `${target.name} detona no vazio.`,
+    }
+  }
+
+  // SPLIT — on death, the corpse births two archetype minions. Reuses the
+  // summon pipeline so the caller materializes them next to the corpse.
+  if (passive === 'split' && !target.passiveFired && target.hp <= 0) {
+    sfx.bossIntro()
+    const next = allUnits.map((u) =>
+      u.id === target.id ? { ...u, passiveFired: true } : u,
+    )
+    return {
+      units: next,
+      summons: [
+        { archetype: 'spore', near: target.pos },
+        { archetype: 'spore', near: target.pos },
+      ],
+      log: `${target.name} se PARTE — dois rebentos emergem do cadáver.`,
+    }
+  }
+
   return { units: null }
 }
 
@@ -206,6 +255,10 @@ export type DealPatch = {
   selfHeal: number
   /** True if the attacker should act AGAIN this turn (time-stop). */
   bonusAction: boolean
+  /** Multiplier to fold into the attacker's permanent `enrageMult` stack
+   * (frenzy). 1 = no change. The engine compounds it onto whatever the
+   * unit already carries, so kills snowball. */
+  atkStack?: number
   log?: string
 }
 
@@ -236,6 +289,16 @@ export function onDealDamage(
     }
   }
 
+  // FRENZY — every kill grants a permanent +20% ATK stack that compounds.
+  if (passive === 'frenzy' && killed) {
+    return {
+      selfHeal: 0,
+      bonusAction: false,
+      atkStack: 1.2,
+      log: `${attacker.name} entra em FRENESI — ATK +20% (acumulável).`,
+    }
+  }
+
   return { selfHeal: 0, bonusAction: false }
 }
 
@@ -250,6 +313,70 @@ export function rearmPhasePassives(units: readonly Unit[]): Unit[] {
       ? { ...u, passiveFired: false }
       : (u as Unit),
   )
+}
+
+/* -------------------------------------------------------------- */
+/* applyRoundStartElite — engine calls this once per new round.     */
+/* Houses every passive that ticks on the round boundary so the     */
+/* battle loop has a single, well-typed insertion point.            */
+/* -------------------------------------------------------------- */
+
+/**
+ * Resolve all start-of-round elite passives (REGENERATE, WARDING,
+ * SIPHON-AURA) over the full unit list. Returns the patched units plus
+ * any log lines to surface. Pure — never mutates its input. Dead units,
+ * barriers, and non-elites are skipped.
+ */
+export function applyRoundStartElite(units: readonly Unit[]): {
+  units: Unit[]
+  logs: string[]
+} {
+  const logs: string[] = []
+  let next = units.map((u) => ({ ...u }))
+
+  for (const elite of next) {
+    if (!elite.eliteKind || elite.dead || elite.isBarrier) continue
+    const passive = elite.passiveId
+
+    // REGENERATE — mend 12% of max HP each round (never overheals).
+    if (passive === 'regenerate' && elite.hp > 0) {
+      const heal = Math.max(1, Math.round(elite.hpMax * 0.12))
+      const before = elite.hp
+      elite.hp = Math.min(elite.hpMax, elite.hp + heal)
+      if (elite.hp > before) {
+        logs.push(`${elite.name} REGENERA +${elite.hp - before} HP.`)
+      }
+    }
+
+    // WARDING — accrue a 25-HP absorb shield, capped at 50 so it can't
+    // snowball into invincibility over a long fight.
+    if (passive === 'warding' && elite.hp > 0) {
+      const cur = elite.shieldHp ?? 0
+      elite.shieldHp = Math.min(50, cur + 25)
+      logs.push(`${elite.name} ergue uma ÉGIDE de ${elite.shieldHp}.`)
+    }
+
+    // SIPHON-AURA — heal every adjacent ally (same faction) for 8% of
+    // their max HP. The aura emanator does not heal itself here.
+    if (passive === 'siphon-aura' && elite.hp > 0) {
+      let healed = 0
+      for (const ally of next) {
+        if (ally.id === elite.id) continue
+        if (ally.dead || ally.isBarrier) continue
+        if (ally.faction !== elite.faction) continue
+        if (!isAdjacent(ally.pos, elite.pos)) continue
+        const heal = Math.max(1, Math.round(ally.hpMax * 0.08))
+        const before = ally.hp
+        ally.hp = Math.min(ally.hpMax, ally.hp + heal)
+        if (ally.hp > before) healed += 1
+      }
+      if (healed > 0) {
+        logs.push(`${elite.name} irradia CURA — ${healed} aliado(s) sarados.`)
+      }
+    }
+  }
+
+  return { units: next, logs }
 }
 
 /* ------- helpers ------- */
@@ -277,6 +404,22 @@ export function passiveLabel(id: ElitePassiveId): string {
       return 'DRENO'
     case 'time-stop':
       return 'BIFURCA'
+    case 'regenerate':
+      return 'REGENERA'
+    case 'warding':
+      return 'ÉGIDE'
+    case 'colossal':
+      return 'COLOSSAL'
+    case 'volatile':
+      return 'VOLÁTIL'
+    case 'split':
+      return 'CINDE'
+    case 'frenzy':
+      return 'FRENESI'
+    case 'siphon-aura':
+      return 'AURA VITAL'
+    case 'frostbite':
+      return 'SANGRIA'
   }
 }
 
@@ -299,5 +442,21 @@ export function passiveText(id: ElitePassiveId): string {
       return 'Cura 25% do dano causado.'
     case 'time-stop':
       return 'Ao matar um minion, age novamente no mesmo turno.'
+    case 'regenerate':
+      return 'Recupera 12% do HP máximo a cada round.'
+    case 'warding':
+      return 'Ganha um escudo de absorção a cada round (acumula até 50).'
+    case 'colossal':
+      return 'Recebe 30% menos dano de cada golpe.'
+    case 'volatile':
+      return 'Ao morrer, explode causando dano a tudo ao redor.'
+    case 'split':
+      return 'Ao morrer, o cadáver gera dois rebentos.'
+    case 'frenzy':
+      return 'Cada abate concede +20% ATK permanente (acumulável).'
+    case 'siphon-aura':
+      return 'No início do round, cura todos os aliados adjacentes.'
+    case 'frostbite':
+      return 'Todo golpe seu também faz o alvo SANGRAR por turnos.'
   }
 }

@@ -35,6 +35,8 @@ const KIND_ICON: Record<SkillDef["kind"], typeof Sparkles> = {
   "heal-ally": Sparkles,
   "teleport-self": Wand2,
   "revive-ally": Sparkles,
+  "ward-ally": Sparkles,
+  "hex-bleed": Wand2,
 }
 
 const KIND_TONE: Record<SkillDef["kind"], string> = {
@@ -46,6 +48,8 @@ const KIND_TONE: Record<SkillDef["kind"], string> = {
   "heal-ally": "text-accent border-accent/40 bg-accent/10",
   "teleport-self": "text-accent border-accent/40 bg-accent/10",
   "revive-ally": "text-gold border-gold/40 bg-gold/10",
+  "ward-ally": "text-primary border-primary/40 bg-primary/10",
+  "hex-bleed": "text-destructive border-destructive/40 bg-destructive/10",
 }
 
 export function SkillMap({

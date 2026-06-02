@@ -69,6 +69,14 @@ export type MinionArchetype =
  *  - curse    : ranged hex — full damage AND target's incoming damage +50% next round (bone, oracle, crowlord).
  *  - siphon   : melee — full damage AND attacker heals 30% of damage dealt (gorger, behemoth).
  *  - volley   : long-range AOE — target + every enemy within 2 hexes 50% (lich, spore).
+ *
+ *  v11 — ASCENSION expansion. Two new kinds that introduce lingering status:
+ *  - rend     : full damage AND applies BLEED to the target — flat damage at
+ *               the start of each of the victim's turns for a few turns,
+ *               independent of armor/resist. The bookkeeper of attrition.
+ *  - chain    : full damage to the target AND arcs to the NEAREST other enemy
+ *               within 3 hexes for 50% (a smart, distance-based cleave that
+ *               doesn't need adjacency — lightning that finds a second mark).
  */
 export type AttackKind =
   | 'basic'
@@ -80,6 +88,8 @@ export type AttackKind =
   | 'curse'
   | 'siphon'
   | 'volley'
+  | 'rend'
+  | 'chain'
 
 export type UnitTemplate = {
   archetype: MinionArchetype
@@ -172,6 +182,20 @@ export type Unit = {
   /** Set when `enrage` triggers — the engine multiplies outgoing ATK by
    * this value on every subsequent attack until end of battle. */
   enrageMult?: number
+
+  /* ---------- Status effects (v11) ---------- */
+  /** BLEED stacks. At the start of this unit's turn it loses `bleedDmg`
+   * HP, then the stack count drops by 1. Bleed ignores armor/resist and
+   * can't reduce HP below 1 on its own (never the killing blow). Applied
+   * by `rend` attacks, the `frostbite` elite passive, and some loot. */
+  bleedStacks?: number
+  /** Flat HP lost per bleed tick. Set alongside `bleedStacks`. */
+  bleedDmg?: number
+  /** Temporary absorb shield. Incoming damage is removed from this pool
+   * before it touches HP; the shield is consumed first and never blocks
+   * more than it has. Granted by the Overlord ÉGIDE-ally skill, the
+   * `warding` elite passive, and the Couraça boons. */
+  shieldHp?: number
 }
 
 /* ---------- Elite enemies (mini-bosses & bosses) ---------- */
@@ -200,13 +224,31 @@ export type ElitePassiveId =
   | 'summon'         // when HP first crosses 50%, spawns 2 archetype minions
   | 'lifesteal'      // hero heals 25% of damage dealt back to itself
   | 'time-stop'      // when killing a minion, hero acts again immediately
+  // v11 — ASCENSION expansion. Eight more unique boss/miniboss passives.
+  | 'regenerate'     // heals 12% of hpMax at the start of every round
+  | 'warding'        // gains a 25-HP absorb shield at the start of every round
+  | 'colossal'       // takes 30% less damage from every single hit (flat resist)
+  | 'volatile'       // on death, detonates for AOE damage to adjacent minions
+  | 'split'          // on death, spawns 2 archetype minions from the corpse
+  | 'frenzy'         // each kill grants a permanent +20% ATK stack (compounds)
+  | 'siphon-aura'    // at round start, heals every adjacent ally hero/minion
+  | 'frostbite'      // every hit it lands also BLEEDS the victim (chip attrition)
 
 /* ---------- Loot ---------- */
 
 /** Loot rarity ladder. `legendary` was added in v6 — drops only from
  * boss-tier regions and the Black Market. Cursed/relic remain the bulk
- * of mid/late drops. */
-export type LootRarity = 'common' | 'uncommon' | 'cursed' | 'relic' | 'legendary'
+ * of mid/late drops. v11 adds `mythic`: artifact-class gear above
+ * legendary that drops only from endgame/Ascension bosses + the Black
+ * Market, with the steepest taint and the biggest stat spikes in the
+ * game. Rendered with a prismatic holo border in the loot UI. */
+export type LootRarity =
+  | 'common'
+  | 'uncommon'
+  | 'cursed'
+  | 'relic'
+  | 'legendary'
+  | 'mythic'
 
 export type LootItem = {
   id: string
@@ -294,6 +336,10 @@ export type BattleObjective =
   | { kind: 'survive'; rounds: number }
   | { kind: 'assassinate'; targetHeroId: string }
   | { kind: 'protect'; protectId: string }
+  /** v11 — overwhelm: a rout under a clock. Kill every hero before round
+   * `rounds` elapses or the assault fails (instant defeat). Forces an
+   * aggressive tempo instead of a patient grind. */
+  | { kind: 'overwhelm'; rounds: number }
 
 /* ---------- Battle ---------- */
 
@@ -392,4 +438,20 @@ export type SaveState = {
    * stock. Stops them from re-buying the same offer. Cleared each day
    * automatically when the BM rotates. */
   blackMarketBought: string[]
+
+  /* ---- Ascension & endless replayability (v11) ---- */
+  /** Currently-selected Ascension tier (0 = base game). Each tier makes
+   * every hero/boss tougher and the rewards richer. Persisted so the
+   * choice survives between sessions. Save-safe: missing = 0. */
+  ascension?: number
+  /** Highest Ascension tier the player has CLEARED a boss on — gates how
+   * high they're allowed to set `ascension`. Missing = 0. */
+  ascensionUnlocked?: number
+  /** Run modifiers ("Maldições") toggled on for extra difficulty + loot.
+   * Ids resolve against `lib/underlord/ascension.ts`. Missing = []. */
+  curses?: string[]
+  /** YYYY-MM-DD of the last Trial of the Day the player completed. */
+  lastTrialDay?: string
+  /** Best round-count on the daily Trial (lower is better). Missing = 0. */
+  trialBest?: number
 }
