@@ -11,6 +11,7 @@ import {
   todayKey,
 } from "@/lib/underlord/economy"
 import { RARITY_LABEL, RARITY_TONE } from "@/lib/underlord/loot"
+import { LootIcon } from "./loot-icon"
 import type { LootItem, SaveState } from "@/lib/underlord/types"
 import { haptic } from "@/lib/underlord/haptics"
 
@@ -162,6 +163,9 @@ export function BlackMarket({
                       owned && "opacity-50",
                     )}
                   >
+                    <div className="size-12 shrink-0">
+                      <LootIcon item={item} />
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[8px] font-black uppercase tracking-[0.24em] opacity-80">
@@ -251,6 +255,9 @@ export function BlackMarket({
                         item.rarity === "mythic" && "holo-mythic",
                       )}
                     >
+                      <div className="size-9 shrink-0">
+                        <LootIcon item={item} />
+                      </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-display text-xs font-black uppercase tracking-tight">
                           {item.name}

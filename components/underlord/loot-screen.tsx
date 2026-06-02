@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils"
 import { haptic } from "@/lib/underlord/haptics"
 import { RARITY_LABEL, RARITY_TONE } from "@/lib/underlord/loot"
+import { LootIcon } from "./loot-icon"
 import type { LootItem, MinionArchetype } from "@/lib/underlord/types"
 import { MINION_TEMPLATES } from "@/lib/underlord/units"
 import { OVERLORD_SKILLS } from "@/lib/underlord/overlord-skills"
@@ -403,6 +404,11 @@ export function LootScreen({
                           item.rarity === "mythic" && "holo-mythic",
                         )}
                       >
+                        <div className="flex items-start gap-2.5">
+                          <div className="size-12 shrink-0">
+                            <LootIcon item={item} />
+                          </div>
+                          <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <p
                             className="font-display text-xs font-black uppercase leading-tight sm:text-sm"
@@ -435,6 +441,8 @@ export function LootScreen({
                         <p className="mt-1 text-[11px] leading-relaxed text-foreground/85">
                           {item.flavor}
                         </p>
+                          </div>
+                        </div>
                       </li>
                     ))}
                   </ul>
