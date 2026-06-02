@@ -67,7 +67,7 @@ export function TitleScreen({
       {/* Title block — always vertically centered. `overflow-hidden` and a
           tighter clamp guarantee the hero word never bleeds outside the
           viewport on small phones. */}
-      <main className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center overflow-hidden px-4 py-4 text-center sm:px-8 sm:py-12">
+      <main className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-4 py-4 text-center sm:px-8 sm:py-12">
         {/* Decorative chapter mark */}
         <div className="mb-2.5 flex items-center gap-2.5 opacity-90 sm:gap-3">
           <span className="h-px w-8 bg-gradient-to-r from-transparent to-accent/60 sm:w-10" />
@@ -87,7 +87,7 @@ export function TitleScreen({
         <h1
           className="mt-2 max-w-full px-1 font-display font-black uppercase leading-[0.82] tracking-tight text-foreground"
           style={{
-            fontSize: "clamp(2.5rem, 12.5vw, 7rem)",
+            fontSize: "clamp(2.25rem, 10vw, 6rem)",
             textShadow:
               "0 0 30px oklch(0.55 0.21 22 / 0.55), 0 0 60px oklch(0.72 0.17 60 / 0.30), 0 4px 0 oklch(0.10 0.012 22)",
           }}

@@ -94,10 +94,11 @@ export const haptic = {
   // v9 — sound coverage for the silent zones: movement, turn flow,
   // specials, undo, round breaks, healing pulses, deaths. Each maps
   // to an existing `sfx.*` channel so we don't add new audio assets.
-  /** A minion finishes a movement step. Footstep-like tap. */
+  /** A minion finishes a movement step. Soft muffled footstep (not the
+   * old piercing tick). */
   move: () => {
     vibrate(6)
-    uiSfx("move", () => sfx.tick(), 60)
+    uiSfx("move", () => sfx.step(), 60)
   },
   /** End-turn button confirms — heavier than `select`. */
   endTurn: () => {

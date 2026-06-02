@@ -383,7 +383,10 @@
     linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  animation: holo-spin 6s linear infinite, holo-shimmer 2.2s ease-in-out infinite;
+  /* NOTE: do NOT rotate the element — on wide cards `transform: rotate`
+     sweeps the whole border-rectangle across the screen as rainbow lines.
+     The prismatic conic gradient stays static and just shimmers. */
+  animation: holo-shimmer 2.2s ease-in-out infinite;
   z-index: -1;
   pointer-events: none;
 }

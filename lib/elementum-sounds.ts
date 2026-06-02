@@ -378,4 +378,11 @@ export const sfx = {
   tick: wrap(() => {
     tone({ freq: 1200, duration: 0.03, type: 'square', volume: 0.06 })
   }),
+  /** v13 — soft muffled FOOTSTEP for unit movement. Replaces the old
+   * piercing square-wave "tick" that played on every hex move. A low body
+   * thud + a quiet filtered noise tap = a footfall, not a beep. */
+  step: wrap(() => {
+    tone({ freq: 92, duration: 0.07, type: 'sine', volume: 0.1, sweepTo: 54 })
+    noise(0.045, 0.05, 0, 380)
+  }),
 }
