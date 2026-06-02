@@ -478,4 +478,39 @@ export type SaveState = {
   lastTrialDay?: string
   /** Best round-count on the daily Trial (lower is better). Missing = 0. */
   trialBest?: number
+
+  /* ---- O Poço Sem Fundo (endless gauntlet) ---- */
+  /** Deepest floor ever reached in the endless gauntlet. Missing = 0. */
+  gauntletBest?: number
+  /** Lifetime gauntlet runs played. Missing = 0. */
+  gauntletRuns?: number
+
+  /* ---- Contratos (rotating bounties / quests) ---- */
+  /** Bounty engagement state. Save-safe: missing = fresh rotation. */
+  bounties?: {
+    /** YYYY-MM-DD of the active daily set. */
+    day: string
+    /** ISO week key (YYYY-Www) of the active weekly set. */
+    week: string
+    /** Active daily bounty ids. */
+    daily: string[]
+    /** Active weekly bounty ids. */
+    weekly: string[]
+    /** id → accumulated progress. */
+    progress: Record<string, number>
+    /** ids already claimed (reward granted). */
+    claimed: string[]
+  }
+  /** Lifetime bounties completed (a vanity counter for the records screen). */
+  bountiesDone?: number
+
+  /* ---- O Mercante (gold vendor, v13) ---- */
+  merchant?: {
+    /** YYYY-MM-DD of the active stock. */
+    day: string
+    /** Item ids bought from the current stock (can't re-buy). */
+    bought: string[]
+    /** How many times the stock has been re-rolled today (seeds the stock). */
+    rerolls: number
+  }
 }

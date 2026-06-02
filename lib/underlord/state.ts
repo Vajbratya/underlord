@@ -36,6 +36,7 @@ import {
   winRewardShards,
 } from './economy'
 import { ascensionMods, CURSES, MAX_ASCENSION } from './ascension'
+import { BOUNTIES, bumpBounties, ensureBounties } from './bounties'
 
 const STORAGE_KEY = 'underlord-save-v5'
 const LEGACY_KEY_V4 = 'underlord-save-v4'
@@ -302,6 +303,19 @@ export type Action =
   /** v11 — set the Ascension tier + active Maldições (curses). The tier is
    * clamped to what the player has unlocked; curse ids are validated. */
   | { type: 'set-ascension'; tier: number; curses: string[] }
+  /** v13 — settle an endless-gauntlet run: bank the deepest floor as a
+   * high score and pay out shards + xp (with level-ups). */
+  | { type: 'gauntlet-end'; floorReached: number; shards: number; xp: number }
+  /** v13 — rotate the daily/weekly bounty sets for the given keys. */
+  | { type: 'refresh-bounties'; day: string; week: string }
+  /** v13 — claim a completed bounty's reward. */
+  | { type: 'claim-bounty'; bountyId: string }
+  /** v13 — ensure the merchant stock matches today (rotate if stale). */
+  | { type: 'refresh-merchant'; day: string }
+  /** v13 — buy an item from the merchant with GOLD. */
+  | { type: 'merchant-buy'; itemId: string; price: number; item: LootItem }
+  /** v13 — re-roll the merchant stock for a gold fee. */
+  | { type: 'merchant-reroll'; cost: number }
   | { type: 'reset' }
   /** v8 — Replace the entire game state with a fresh hydration from
    * persistence. Used by the Title screen's "CONTINUAR" button so we can
@@ -569,6 +583,19 @@ export function reduce(state: GameState, action: Action): GameState {
       save.achievements = achievements
       save.gold = save.gold + bonusGold
 
+      // v13 — feed bounty progress from this battle's outcome.
+      const bossKills = result.killedHeroIds.filter((id) =>
+        id.startsWith('boss-'),
+      ).length
+      save.bounties = bumpBounties(save.bounties, {
+        wins: result.victory ? 1 : 0,
+        kills: result.killedHeroIds.length,
+        combo: result.comboHigh,
+        crits: result.critsLanded,
+        flawless: result.victory && result.flawless ? 1 : 0,
+        bossKills,
+      })
+
       save.lastPlayedDay = todayKey()
 
       return {
@@ -717,6 +744,114 @@ export function reduce(state: GameState, action: Action): GameState {
       return {
         ...state,
         save: { ...state.save, ascension: tier, curses },
+      }
+    }
+    case 'refresh-bounties': {
+      return {
+        ...state,
+        save: {
+          ...state.save,
+          bounties: ensureBounties(state.save.bounties, action.day, action.week),
+        },
+      }
+    }
+    case 'gauntlet-end': {
+      const save: SaveState = { ...state.save }
+      save.gauntletBest = Math.max(save.gauntletBest ?? 0, action.floorReached)
+      save.gauntletRuns = (save.gauntletRuns ?? 0) + 1
+      save.soulshards = (save.soulshards ?? 0) + Math.max(0, action.shards)
+      // XP payout — handle level-ups the same way apply-result does so a
+      // deep run can level you, grant perk points, and unlock archetypes/skills.
+      const oldLevel = levelFromXP(save.xp)
+      save.xp = save.xp + Math.max(0, action.xp)
+      const newLevel = levelFromXP(save.xp)
+      if (newLevel > (save.highestLevel ?? 1)) {
+        save.perkPoints =
+          (save.perkPoints ?? 0) + (newLevel - (save.highestLevel ?? 1))
+        save.highestLevel = newLevel
+      }
+      const fresh = newlyUnlockedAt(newLevel, save.unlockedArchetypes)
+      if (fresh.length > 0) {
+        save.roster = [
+          ...rebuildRosterStats(save.roster, save.perks, save.boons ?? []),
+          ...fresh.map((arch) => recruitMinion(arch)),
+        ]
+        save.unlockedArchetypes = [...save.unlockedArchetypes, ...fresh]
+      }
+      const freshSkills: string[] = []
+      for (let lv = oldLevel + 1; lv <= newLevel; lv++) {
+        for (const sid of newlyUnlockedSkills(lv)) {
+          if (!save.unlockedSkills.includes(sid)) freshSkills.push(sid)
+        }
+      }
+      if (freshSkills.length > 0) {
+        save.unlockedSkills = [...save.unlockedSkills, ...freshSkills]
+      }
+      save.bounties = bumpBounties(save.bounties, { gauntletFloor: action.floorReached })
+      return { ...state, save }
+    }
+    case 'claim-bounty': {
+      const b = state.save.bounties
+      if (!b) return state
+      const def = BOUNTIES[action.bountyId]
+      if (!def) return state
+      if (!b.daily.includes(action.bountyId) && !b.weekly.includes(action.bountyId)) {
+        return state
+      }
+      if (b.claimed.includes(action.bountyId)) return state
+      if ((b.progress[action.bountyId] ?? 0) < def.target) return state
+      const save: SaveState = {
+        ...state.save,
+        gold: state.save.gold + (def.reward.gold ?? 0),
+        soulshards: (state.save.soulshards ?? 0) + (def.reward.shards ?? 0),
+        xp: state.save.xp + (def.reward.xp ?? 0),
+        bountiesDone: (state.save.bountiesDone ?? 0) + 1,
+        bounties: { ...b, claimed: [...b.claimed, action.bountyId] },
+      }
+      return { ...state, save }
+    }
+    case 'refresh-merchant': {
+      const m = state.save.merchant
+      if (m && m.day === action.day) return state
+      // New day → fresh stock, clear bought + rerolls.
+      return {
+        ...state,
+        save: {
+          ...state.save,
+          merchant: { day: action.day, bought: [], rerolls: 0 },
+        },
+      }
+    }
+    case 'merchant-buy': {
+      const m = state.save.merchant
+      if (!m) return state
+      if (state.save.gold < action.price) return state
+      if (m.bought.includes(action.itemId)) return state
+      const cloned: LootItem = {
+        ...action.item,
+        id: `${action.item.id}-m-${state.save.gold}-${m.bought.length}`,
+      }
+      return {
+        ...state,
+        save: {
+          ...state.save,
+          gold: state.save.gold - action.price,
+          inventory: [...state.save.inventory, cloned],
+          merchant: { ...m, bought: [...m.bought, action.itemId] },
+        },
+      }
+    }
+    case 'merchant-reroll': {
+      const m = state.save.merchant
+      if (!m) return state
+      if (state.save.gold < action.cost) return state
+      return {
+        ...state,
+        save: {
+          ...state.save,
+          gold: state.save.gold - action.cost,
+          merchant: { ...m, bought: [], rerolls: m.rerolls + 1 },
+        },
       }
     }
     case 'reset':

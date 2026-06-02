@@ -1234,6 +1234,474 @@ export const LOOT_POOL: LootItem[] = [
     taint: 4.7,
     flavor: 'Sete coroas afundaram. A oitava é forjada de tudo o que sobrou — inclusive de você. Use enquanto ainda há "você".',
   },
+
+  /* ============ v13b — ESTOQUE DO MERCANTE ============ */
+
+  // ---- COMMON (9) — saldão do mercante, qualidade duvidosa ----
+  {
+    id: 'v13b-common-clearance-shiv',
+    name: 'FACA "TUDO POR 1 MOEDA"',
+    rarity: 'common',
+    slot: 'weapon',
+    atkBonus: 6,
+    taint: 0,
+    flavor: 'Etiqueta do mercante ainda colada no cabo. Ele jura que afia sozinha. Não afia.',
+  },
+  {
+    id: 'v13b-common-promo-mace',
+    name: 'CLAVA DE BRINDE PROMOCIONAL',
+    rarity: 'common',
+    slot: 'weapon',
+    atkBonus: 10,
+    spdBonus: -1,
+    taint: 0,
+    flavor: 'Grátis na compra de duas adagas. As duas adagas quebraram. A clava aguenta.',
+  },
+  {
+    id: 'v13b-common-knockoff-blade',
+    name: 'RÉPLICA "BRYANNICA" (NÃO OFICIAL)',
+    rarity: 'common',
+    slot: 'weapon',
+    atkBonus: 9,
+    taint: 0,
+    flavor: 'Grita "BRY-" e engasga. O mercante diz que é "recurso de áudio limitado".',
+  },
+  {
+    id: 'v13b-common-dented-kettle',
+    name: 'CHALEIRA AMASSADA DE GUERRA',
+    rarity: 'common',
+    slot: 'helm',
+    hpBonus: 15,
+    taint: 0,
+    flavor: 'Ainda assobia quando você corre. Avisa o inimigo, mas mantém o chá quente.',
+  },
+  {
+    id: 'v13b-common-display-helm',
+    name: 'ELMO DE VITRINE (SEM FUNDO)',
+    rarity: 'common',
+    slot: 'helm',
+    hpBonus: 17,
+    spdBonus: 1,
+    taint: 0,
+    flavor: 'Modelo de exposição. Protege a parte da frente da cabeça. A de trás é "sob encomenda".',
+  },
+  {
+    id: 'v13b-common-foam-circlet',
+    name: 'COROA DE ESPUMA DE FEIRA',
+    rarity: 'common',
+    slot: 'helm',
+    hpBonus: 12,
+    moveBonus: 1,
+    taint: 0,
+    flavor: 'Dão de graça pra quem comprou ingresso do torneio. Leve. Inútil. Querida.',
+  },
+  {
+    id: 'v13b-common-loyalty-token',
+    name: 'FICHA DE FIDELIDADE DO MERCANTE',
+    rarity: 'common',
+    slot: 'trinket',
+    spdBonus: 1,
+    taint: 0,
+    flavor: 'Junte dez e ganhe um chá. Você está no zero. Sempre esteve.',
+  },
+  {
+    id: 'v13b-common-expired-charm',
+    name: 'AMULETO COM VALIDADE VENCIDA',
+    rarity: 'common',
+    slot: 'trinket',
+    hpBonus: 9,
+    taint: 0,
+    flavor: 'Vencido desde 814. O mercante diz que "encantamento não estraga". O mercante mente.',
+  },
+  {
+    id: 'v13b-common-receipt-fetish',
+    name: 'FETICHE DE NOTA FISCAL DOBRADA',
+    rarity: 'common',
+    slot: 'trinket',
+    spdBonus: 1,
+    moveBonus: 1,
+    taint: 0,
+    flavor: 'Comprovante de uma compra que o mercante nega ter feito. Dá sorte por puro rancor.',
+  },
+
+  // ---- UNCOMMON (9) ----
+  {
+    id: 'v13b-uncommon-haggle-saber',
+    name: 'SABRE DA PECHINCHA AGRESSIVA',
+    rarity: 'uncommon',
+    slot: 'weapon',
+    atkBonus: 21,
+    taint: 0.3,
+    flavor: 'O mercante baixou o preço três vezes. A lâmina baixa a guarda do inimigo de uma só.',
+  },
+  {
+    id: 'v13b-uncommon-restock-hatchet',
+    name: 'MACHADINHA DE REPOSIÇÃO',
+    rarity: 'uncommon',
+    slot: 'weapon',
+    atkBonus: 24,
+    spdBonus: 1,
+    taint: 0.4,
+    flavor: 'Sempre tem outra no estoque. O mercante nunca explica de onde vêm. Você não pergunta.',
+  },
+  {
+    id: 'v13b-uncommon-sparkwire-spear',
+    name: 'LANÇA DE FIO ENERGIZADO',
+    rarity: 'uncommon',
+    slot: 'weapon',
+    atkBonus: 19,
+    rangeBonus: 1,
+    taint: 0.4,
+    flavor: 'Um fiapo de raio enrolado na ponta. Estala feio. O selo de garantia já estava rompido.',
+  },
+  {
+    id: 'v13b-uncommon-counter-coif',
+    name: 'COIFA DO BALCONISTA VETERANO',
+    rarity: 'uncommon',
+    slot: 'helm',
+    hpBonus: 36,
+    taint: 0.3,
+    flavor: 'Quarenta anos atrás de um balcão sem levar um soco. Até hoje. A coifa aprendeu a aparar.',
+  },
+  {
+    id: 'v13b-uncommon-inventory-hood',
+    name: 'CAPUZ DO CONFERENTE DE ESTOQUE',
+    rarity: 'uncommon',
+    slot: 'helm',
+    hpBonus: 30,
+    rangeBonus: 1,
+    taint: 0.5,
+    flavor: 'Contou cada item do depósito do mercante. Inclusive os que não deviam existir. Por isso o capuz tampa os olhos.',
+  },
+  {
+    id: 'v13b-uncommon-bargain-barbut',
+    name: 'CELADA DO LIQUIDA-TUDO',
+    rarity: 'uncommon',
+    slot: 'helm',
+    hpBonus: 42,
+    moveBonus: -1,
+    taint: 0.4,
+    flavor: 'Pesada porque vem cheia de "brindes" que você não pediu. O mercante chama de valor agregado.',
+  },
+  {
+    id: 'v13b-uncommon-coin-charm',
+    name: 'BERLOQUE DO TROCO ESQUECIDO',
+    rarity: 'uncommon',
+    slot: 'trinket',
+    atkBonus: 15,
+    spdBonus: 1,
+    taint: 0.5,
+    flavor: 'Feito das moedinhas que o mercante "esqueceu" de devolver. Vingança rende juros.',
+  },
+  {
+    id: 'v13b-uncommon-warranty-seal',
+    name: 'SELO DE GARANTIA ESTENDIDA',
+    rarity: 'uncommon',
+    slot: 'trinket',
+    hpBonus: 26,
+    moveBonus: 1,
+    taint: 0.4,
+    flavor: 'Cobre defeitos de fabricação. Não cobre flechas, espadas, maldições, nem o Vazio. Leia as letras miúdas.',
+  },
+  {
+    id: 'v13b-uncommon-sample-vial',
+    name: 'FRASCO DE AMOSTRA GRÁTIS',
+    rarity: 'uncommon',
+    slot: 'trinket',
+    atkBonus: 13,
+    rangeBonus: 1,
+    taint: 0.5,
+    flavor: 'Cheirinho de cinza ainda morna. "Experimente antes de comprar", disse o mercante. Você experimentou. Agora compra sempre.',
+  },
+
+  // ---- CURSED (9) ----
+  {
+    id: 'v13b-cursed-layaway-cleaver',
+    name: 'CUTELO DO CREDIÁRIO ETERNO',
+    rarity: 'cursed',
+    slot: 'weapon',
+    atkBonus: 40,
+    hpBonus: 12,
+    taint: 0.9,
+    flavor: 'Parcelado em vidas. O mercante cobra a primeira agora. As outras, "quando der".',
+  },
+  {
+    id: 'v13b-cursed-stormreturn-blade',
+    name: 'LÂMINA DA TROCA SEM NOTA',
+    rarity: 'cursed',
+    slot: 'weapon',
+    atkBonus: 48,
+    spdBonus: -1,
+    taint: 1.0,
+    flavor: 'Solta um raio que às vezes volta pro vendedor. Por isso o mercante não aceita devolução.',
+  },
+  {
+    id: 'v13b-cursed-bleed-dagger',
+    name: 'ADAGA DA AMOSTRA QUE NÃO FECHA',
+    rarity: 'cursed',
+    slot: 'weapon',
+    atkBonus: 36,
+    rangeBonus: 1,
+    taint: 1.1,
+    flavor: 'O corte que ela abre nunca cicatriza — nem no inimigo, nem no balcão onde testaram.',
+  },
+  {
+    id: 'v13b-cursed-overstock-helm',
+    name: 'ELMO DO EXCESSO DE ESTOQUE',
+    rarity: 'cursed',
+    slot: 'helm',
+    hpBonus: 62,
+    atkBonus: 8,
+    taint: 1.0,
+    flavor: 'O mercante tinha mil. Vendeu novecentos. Os outros cem sussurram pedindo um dono.',
+  },
+  {
+    id: 'v13b-cursed-mirror-display',
+    name: 'CAPACETE-ESPELHO DE PROVADOR',
+    rarity: 'cursed',
+    slot: 'helm',
+    hpBonus: 56,
+    rangeBonus: 1,
+    taint: 1.1,
+    flavor: 'Reflete como você ficaria com o item. E como você ficou depois de usá-lo. Os dois não combinam.',
+  },
+  {
+    id: 'v13b-cursed-hostage-crown',
+    name: 'COROA DO CLIENTE REFÉM',
+    rarity: 'cursed',
+    slot: 'helm',
+    hpBonus: 68,
+    atkBonus: 10,
+    moveBonus: -1,
+    taint: 1.2,
+    flavor: 'Depois que você experimenta, não consegue mais sair da loja. O mercante chama de fidelização.',
+  },
+  {
+    id: 'v13b-cursed-debt-eye',
+    name: 'OLHO DO CADASTRO DE INADIMPLENTES',
+    rarity: 'cursed',
+    slot: 'trinket',
+    atkBonus: 20,
+    rangeBonus: 1,
+    spdBonus: 1,
+    taint: 1.1,
+    flavor: 'Vê quem deve ao mercante. Todo mundo deve ao mercante. Inclusive os seis Underlords anteriores.',
+  },
+  {
+    id: 'v13b-cursed-loyalty-locket',
+    name: 'RELICÁRIO DO PROGRAMA DE PONTOS',
+    rarity: 'cursed',
+    slot: 'trinket',
+    hpBonus: 46,
+    atkBonus: 14,
+    taint: 1.2,
+    flavor: 'Acumula um ponto por inimigo abatido. A recompensa final, o mercante garante, "vale a pena". Ninguém resgatou ainda.',
+  },
+  {
+    id: 'v13b-cursed-void-coupon',
+    name: 'CUPOM DE DESCONTO DO VAZIO',
+    rarity: 'cursed',
+    slot: 'trinket',
+    atkBonus: 24,
+    hpBonus: -14,
+    taint: 1.3,
+    flavor: 'Vinte por cento de desconto na sua própria existência. O Vazio aceita. O mercante carimba sorrindo.',
+  },
+
+  // ---- RELIC (8) ----
+  {
+    id: 'v13b-relic-flagship-falchion',
+    name: 'BRAQUEMARTE CARRO-CHEFE',
+    rarity: 'relic',
+    slot: 'weapon',
+    atkBonus: 64,
+    taint: 1.5,
+    flavor: 'O item da vitrine que o mercante nunca vende de verdade. Você levou. Ele ainda não percebeu.',
+  },
+  {
+    id: 'v13b-relic-lightning-warpike',
+    name: 'CHUÇO DA OFERTA RELÂMPAGO',
+    rarity: 'relic',
+    slot: 'weapon',
+    atkBonus: 57,
+    rangeBonus: 1,
+    spdBonus: 1,
+    taint: 1.7,
+    flavor: 'Promoção por tempo limitado. O tempo limitado é o do inimigo. Cada estocada raia o céu.',
+  },
+  {
+    id: 'v13b-relic-recall-greataxe',
+    name: 'MACHADO DO RECALL DE FÁBRICA',
+    rarity: 'relic',
+    slot: 'weapon',
+    atkBonus: 70,
+    spdBonus: -1,
+    taint: 1.8,
+    flavor: 'Recolhido por "decapitar usuários ocasionalmente". O defeito virou o argumento de venda.',
+  },
+  {
+    id: 'v13b-relic-vault-greathelm',
+    name: 'ELMO DO COFRE DO MERCANTE',
+    rarity: 'relic',
+    slot: 'helm',
+    hpBonus: 98,
+    moveBonus: -1,
+    taint: 1.6,
+    flavor: 'Forjado da porta do cofre onde ele guarda o que não está à venda. Você abriu. Você levou a porta.',
+  },
+  {
+    id: 'v13b-relic-ashen-display-crown',
+    name: 'COROA DE MOSTRUÁRIO DE CINZA',
+    rarity: 'relic',
+    slot: 'helm',
+    hpBonus: 86,
+    atkBonus: 17,
+    taint: 1.9,
+    flavor: 'Exposta sob vidro com a placa "NÃO TOCAR — CINZA AINDA NÃO ATIVA". A placa estava errada.',
+  },
+  {
+    id: 'v13b-relic-storm-barbute-deluxe',
+    name: 'CELADA EDIÇÃO TEMPESTADE DELUXE',
+    rarity: 'relic',
+    slot: 'helm',
+    hpBonus: 82,
+    spdBonus: 2,
+    atkBonus: 11,
+    taint: 1.8,
+    flavor: 'Versão "deluxe" porque vem com um raio de brinde por dentro. O raio não pediu pra estar ali.',
+  },
+  {
+    id: 'v13b-relic-author-invoice',
+    name: 'A FATURA RABISCADA PELO AUTOR',
+    rarity: 'relic',
+    slot: 'trinket',
+    atkBonus: 27,
+    rangeBonus: 2,
+    taint: 2.0,
+    flavor: 'Na margem, o Autor anotou: "cobrar caro deste; ele dura capítulos demais". O mercante engoliu seco.',
+  },
+  {
+    id: 'v13b-relic-bleeding-pricetag',
+    name: 'ETIQUETA DE PREÇO QUE SANGRA',
+    rarity: 'relic',
+    slot: 'trinket',
+    hpBonus: 72,
+    atkBonus: 16,
+    taint: 1.9,
+    flavor: 'O número escorre vermelho e muda sozinho. Sempre pra cima. O mercante chama de "preço dinâmico".',
+  },
+
+  // ---- LEGENDARY (6) ----
+  {
+    id: 'v13b-legendary-blackmarket-blade',
+    name: 'LÂMINA DO MERCADO NEGRO LACRADO',
+    rarity: 'legendary',
+    slot: 'weapon',
+    atkBonus: 88,
+    rangeBonus: 1,
+    taint: 2.7,
+    flavor: 'Vendida embaixo do balcão, embaixo do reino, embaixo do Vazio. O mercante nega que existe — enquanto te entrega.',
+  },
+  {
+    id: 'v13b-legendary-franchise-warhammer',
+    name: 'MARTELO DA FRANQUIA-MESTRA',
+    rarity: 'legendary',
+    slot: 'weapon',
+    atkBonus: 80,
+    hpBonus: 42,
+    spdBonus: -1,
+    taint: 2.9,
+    flavor: 'Licenciado pelas sete cidades-estado. Todas faliram. O mercante comprou a marca na liquidação.',
+  },
+  {
+    id: 'v13b-legendary-drowned-flagship-helm',
+    name: 'ELMO CARRO-CHEFE DA MARÉ COROADA',
+    rarity: 'legendary',
+    slot: 'helm',
+    hpBonus: 158,
+    atkBonus: 16,
+    taint: 2.9,
+    flavor: 'O mercante mergulhou pessoalmente até a coroa afogada por causa deste. Voltou rico. Voltou molhado. Voltou diferente.',
+  },
+  {
+    id: 'v13b-legendary-stormwrought-flagship',
+    name: 'COROA EDIÇÃO LIMITADA: TEMPESTADE',
+    rarity: 'legendary',
+    slot: 'helm',
+    hpBonus: 128,
+    atkBonus: 22,
+    spdBonus: 1,
+    taint: 3.0,
+    flavor: 'Tiragem de sete unidades, uma por Underlord. Seis sumiram com seus donos. Sobrou esta no estoque.',
+  },
+  {
+    id: 'v13b-legendary-readers-receipt',
+    name: 'O RECIBO ETERNO DO LEITOR',
+    rarity: 'legendary',
+    slot: 'trinket',
+    atkBonus: 36,
+    hpBonus: 88,
+    rangeBonus: 1,
+    taint: 2.9,
+    flavor: 'Enquanto o Leitor não confere o recibo, a transação — e você — não pode ser cancelada. Reze pra fila estar grande.',
+  },
+  {
+    id: 'v13b-legendary-debt-shield-charm',
+    name: 'ÉGIDE-AVAL DA DÍVIDA DO MERCANTE',
+    rarity: 'legendary',
+    slot: 'trinket',
+    hpBonus: 112,
+    atkBonus: 24,
+    spdBonus: -1,
+    taint: 2.8,
+    flavor: 'Absorve dano como quem absorve juros. Toda ferida evitada vira uma parcela. O mercante anota tudo.',
+  },
+
+  // ---- MYTHIC (4) — itens "fora de catálogo" do mercante ----
+  {
+    id: 'v13b-myth-weapon-final-sale-edge',
+    name: 'GUME DA LIQUIDAÇÃO TOTAL',
+    rarity: 'mythic',
+    slot: 'weapon',
+    atkBonus: 148,
+    spdBonus: 2,
+    hpBonus: -35,
+    taint: 4.4,
+    flavor: 'Última peça. Quando ela acaba, acaba o estoque, o mercante, o reino e o capítulo. Compre com pressa.',
+  },
+  {
+    id: 'v13b-myth-weapon-active-ash-clearance',
+    name: 'LÂMINA DE CINZA ATIVA "QUEIMA DE ESTOQUE"',
+    rarity: 'mythic',
+    slot: 'weapon',
+    atkBonus: 158,
+    rangeBonus: 1,
+    taint: 4.7,
+    flavor: 'O mercante chamou de "queima de estoque". Não era figura de linguagem. A loja ainda arde, lindamente.',
+  },
+  {
+    id: 'v13b-myth-helm-managers-drowned-crown',
+    name: 'A COROA AFOGADA DO GERENTE',
+    rarity: 'mythic',
+    slot: 'helm',
+    hpBonus: 265,
+    atkBonus: 28,
+    moveBonus: -1,
+    taint: 4.3,
+    flavor: 'Quando o mercante exige "falar com o gerente do reino", é esta coroa que ele veste. O gerente afogou. A coroa boiou.',
+  },
+  {
+    id: 'v13b-myth-trinket-blank-invoice-of-void',
+    name: 'A NOTA EM BRANCO DO VAZIO',
+    rarity: 'mythic',
+    slot: 'trinket',
+    hpBonus: 170,
+    atkBonus: 52,
+    spdBonus: 1,
+    rangeBonus: 1,
+    taint: 4.6,
+    flavor: 'Sem valor preenchido. Enquanto o Vazio não decide o que cobrar por você, ninguém pode te cobrar nada. Nem a morte.',
+  },
 ]
 
 /** Pick `count` items biased by region tier. Higher tier = better drops.
@@ -1280,6 +1748,102 @@ export function rollLoot(
     if (pick) out.push(pick)
   }
   return out
+}
+
+/* ==========================================================
+ * v13 — LOOT CHANCE PER AREA + grind.
+ *
+ * Instead of "every loot-bearing region always drops 2 items by stage
+ * tier", each area now has a DROP CHANCE (so wins don't always pay out —
+ * you grind) and a biome/stage-weighted RARITY table (so areas feel
+ * distinct: iron forges relics, the Void leaks mythics, the crown hoards
+ * legendaries). High rarities are deliberately rare weights — the grind.
+ * ========================================================== */
+
+export type LootWeights = Partial<Record<LootRarity, number>>
+
+export type LootProfile = {
+  /** 0..1 chance that ANY loot drops on a win (the grind gate). */
+  chance: number
+  /** How many items roll when it does drop. */
+  count: number
+  /** Rarity weight table for this area. */
+  weights: LootWeights
+}
+
+/** Per-area loot profile from biome + stage. Pure; no per-region authoring. */
+export function regionLootProfile(biome: string, stage: number): LootProfile {
+  // Grindy base chance: even late-game wins miss ~1 in 6.
+  const chance = Math.max(0.35, Math.min(0.85, 0.4 + stage * 0.018))
+  const count = stage >= 24 ? 2 : stage >= 14 ? 2 : 1
+  // Stage gates the rarity ladder; high tiers stay low-weight (grind).
+  let weights: LootWeights
+  if (stage >= 24) weights = { cursed: 7, relic: 11, legendary: 7, mythic: 2 }
+  else if (stage >= 18) weights = { cursed: 11, relic: 12, legendary: 5, mythic: 1 }
+  else if (stage >= 12) weights = { uncommon: 5, cursed: 15, relic: 7, legendary: 1 }
+  else if (stage >= 8) weights = { common: 5, uncommon: 15, cursed: 9, relic: 1 }
+  else if (stage >= 4) weights = { common: 15, uncommon: 12, cursed: 3 }
+  else weights = { common: 20, uncommon: 6, cursed: 1 }
+  // Biome flavor — bias the table so areas drop themed gear.
+  const boost: Record<string, LootWeights> = {
+    iron: { relic: 5, cursed: 2 },
+    void: { mythic: 4, legendary: 4 },
+    crown: { legendary: 4, relic: 2 },
+    abyss: { relic: 3, mythic: 1 },
+    ash: { cursed: 4, legendary: 1 },
+    dunes: { relic: 2, legendary: 1 },
+    tundra: { cursed: 3, relic: 1 },
+    verdant: { uncommon: 4, cursed: 2 },
+    moor: { common: 3, uncommon: 3 },
+  }
+  const b = boost[biome]
+  if (b) {
+    weights = { ...weights }
+    for (const k of Object.keys(b) as LootRarity[]) {
+      weights[k] = (weights[k] ?? 0) + (b[k] ?? 0)
+    }
+  }
+  return { chance, count, weights }
+}
+
+/** Roll loot from a weighted rarity table. `forceRare` guarantees the first
+ * pick is the highest-weighted rare-or-better present (pity / Ascension). */
+export function rollLootWeighted(
+  weights: LootWeights,
+  count: number,
+  forceRare: boolean = false,
+): LootItem[] {
+  const entries = (Object.entries(weights) as [LootRarity, number][]).filter(
+    ([, w]) => w > 0,
+  )
+  const total = entries.reduce((a, [, w]) => a + w, 0)
+  if (total <= 0) return []
+  const out: LootItem[] = []
+  for (let i = 0; i < count; i++) {
+    let want: LootRarity = 'common'
+    if (forceRare && i === 0) {
+      const order: LootRarity[] = ['mythic', 'legendary', 'relic', 'cursed', 'uncommon', 'common']
+      want = order.find((r) => (weights[r] ?? 0) > 0) ?? 'common'
+    } else {
+      let roll = Math.random() * total
+      for (const [r, w] of entries) {
+        roll -= w
+        if (roll <= 0) {
+          want = r
+          break
+        }
+      }
+    }
+    const candidates = LOOT_POOL.filter((p) => p.rarity === want)
+    const pick = candidates[Math.floor(Math.random() * candidates.length)]
+    if (pick) out.push(pick)
+  }
+  return out
+}
+
+/** Rarities that get a generated artifact image (relic → legendary → mythic). */
+export function lootHasImage(rarity: LootRarity): boolean {
+  return rarity === 'relic' || rarity === 'legendary' || rarity === 'mythic'
 }
 
 export const RARITY_LABEL: Record<LootRarity, string> = {

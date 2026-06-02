@@ -165,3 +165,65 @@ export function buildBlackMarket(day: string): BlackMarketOffer {
   }
   return { day, items, prices }
 }
+
+/* ------------------------------------------------------------------ */
+/* O MERCANTE — gold-based vendor (v13)                                */
+/*                                                                     */
+/* A counterpart to the shard-only Black Market: the Mercante stocks a */
+/* broad spread across ALL rarities and charges GOLD (the primary      */
+/* currency, which otherwise has few sinks once the Forja is maxed).   */
+/* Prices are steep on purpose — good gear is a grind. Stock rotates    */
+/* daily and can be re-rolled for a gold fee.                           */
+/* ------------------------------------------------------------------ */
+
+export const MERCHANT_GOLD_PRICES: Record<LootRarity, number> = {
+  common: 200,
+  uncommon: 550,
+  cursed: 1400,
+  relic: 3600,
+  legendary: 9000,
+  mythic: 24000,
+}
+
+/** Gold cost to re-roll the merchant's stock. */
+export const MERCHANT_REROLL_COST = 750
+
+export interface MerchantOffer {
+  day: string
+  rerolls: number
+  items: LootItem[]
+  prices: Record<string, number>
+}
+
+/**
+ * Build the merchant's stock for a day + reroll count. Always offers a
+ * broad spread (2 common, 2 uncommon, 2 cursed, 1 relic, 1 legendary) and,
+ * ~33% of the time, a single mythic at the bottom — the carrot you grind
+ * gold for. Deterministic per (day, rerolls).
+ */
+export function buildMerchant(day: string, rerolls = 0): MerchantOffer {
+  const rand = mulberry32(hashSeed(`mercante-${day}-${rerolls}`))
+  const pickFrom = (rarity: LootRarity): LootItem | null => {
+    const c = LOOT_POOL.filter((p) => p.rarity === rarity)
+    if (c.length === 0) return null
+    return c[Math.floor(rand() * c.length)]!
+  }
+  const want: LootRarity[] = [
+    'common',
+    'common',
+    'uncommon',
+    'uncommon',
+    'cursed',
+    'cursed',
+    'relic',
+    'legendary',
+  ]
+  const items = want.map((r) => pickFrom(r)).filter((it): it is LootItem => it != null)
+  if (rand() < 0.34) {
+    const m = pickFrom('mythic')
+    if (m) items.push(m)
+  }
+  const prices: Record<string, number> = {}
+  for (const it of items) prices[it.id] = MERCHANT_GOLD_PRICES[it.rarity] ?? 0
+  return { day, rerolls, items, prices }
+}

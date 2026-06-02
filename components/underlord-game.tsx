@@ -13,6 +13,21 @@ import { SkillMap } from "@/components/underlord/skill-map"
 import { BoonsPanel } from "@/components/underlord/boons-panel"
 import { BlackMarket } from "@/components/underlord/black-market"
 import { AscensionPanel } from "@/components/underlord/ascension-panel"
+import { MerchantPanel } from "@/components/underlord/merchant-panel"
+import { BountiesPanel } from "@/components/underlord/bounties-panel"
+import { Tutorial } from "@/components/underlord/tutorial"
+import {
+  GauntletRewardScreen,
+  GauntletEndScreen,
+} from "@/components/underlord/gauntlet-screens"
+import {
+  synthFloor,
+  gauntletAscension,
+  rollRewards,
+  gauntletPayout,
+  type GauntletReward,
+} from "@/lib/underlord/gauntlet"
+import { weekKey } from "@/lib/underlord/bounties"
 import {
   AchievementToaster,
   fireAchievement,
@@ -25,10 +40,10 @@ import {
   wipeSave,
   type GameState,
 } from "@/lib/underlord/state"
-import { rollLoot } from "@/lib/underlord/loot"
+import { regionLootProfile, rollLootWeighted } from "@/lib/underlord/loot"
 import { REGIONS } from "@/lib/underlord/regions"
 import { tickStreak, todayKey, shouldForceRare, xpProgress } from "@/lib/underlord/meta"
-import type { Unit } from "@/lib/underlord/types"
+import type { Region, Unit } from "@/lib/underlord/types"
 
 let fallenNameCache: string[] = []
 
@@ -44,8 +59,41 @@ export function UnderlordGame() {
   const [showBoons, setShowBoons] = useState(false)
   const [showMarket, setShowMarket] = useState(false)
   const [showAscension, setShowAscension] = useState(false)
+  const [showMerchant, setShowMerchant] = useState(false)
+  const [showBounties, setShowBounties] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
   const [streakBonusToShow, setStreakBonusToShow] = useState<number | null>(null)
   const dailyCheckedToday = useRef<string>("")
+
+  /* v13 — endless gauntlet ("O Poço") run state. Driven entirely by local
+   * state so the reducer's phase machine stays untouched; battles reuse the
+   * real BattleScreen with a synthesized floor + run-buffed squad copies. */
+  type GauntletRun = {
+    floor: number
+    region: Region
+    atkMult: number
+    hpMult: number
+    bankedShards: number
+    stage: "battle" | "reward" | "end"
+    rewardChoices: GauntletReward[]
+    payout: { shards: number; xp: number }
+    isRecord: boolean
+  }
+  const [gauntlet, setGauntlet] = useState<GauntletRun | null>(null)
+
+  function startGauntlet() {
+    setGauntlet({
+      floor: 1,
+      region: synthFloor(1),
+      atkMult: 1,
+      hpMult: 1,
+      bankedShards: 0,
+      stage: "battle",
+      rewardChoices: [],
+      payout: { shards: 0, xp: 0 },
+      isRecord: false,
+    })
+  }
 
   useEffect(() => {
     const saved = loadGame()
@@ -87,6 +135,28 @@ export function UnderlordGame() {
     return () => window.clearTimeout(t)
   }, [streakBonusToShow])
 
+  /* v13 — keep Contratos + Mercante rotated to today on warroom entry, and
+   * trigger the first-run tutorial once (gated by localStorage). */
+  useEffect(() => {
+    if (!hydrated || state.phase !== "warroom") return
+    const day = todayKey()
+    const wk = weekKey()
+    const b = state.save.bounties
+    if (!b || b.day !== day || b.week !== wk) {
+      dispatch({ type: "refresh-bounties", day, week: wk })
+    }
+    if (!state.save.merchant || state.save.merchant.day !== day) {
+      dispatch({ type: "refresh-merchant", day })
+    }
+    if (
+      typeof window !== "undefined" &&
+      !window.localStorage.getItem("underlord-tutorial-seen")
+    ) {
+      setShowTutorial(true)
+      window.localStorage.setItem("underlord-tutorial-seen", "1")
+    }
+  }, [hydrated, state.phase, state.save.bounties, state.save.merchant])
+
   if (!hydrated) {
     return (
       <div className="grid min-h-dvh place-items-center bg-background">
@@ -94,6 +164,99 @@ export function UnderlordGame() {
           DESPERTANDO…
         </span>
       </div>
+    )
+  }
+
+  /* v13 — O POÇO SEM FUNDO. Active run takes over the screen; on end it
+   * clears back to the war room (reducer phase is untouched throughout). */
+  if (gauntlet) {
+    if (gauntlet.stage === "reward") {
+      return (
+        <>
+          <GauntletRewardScreen
+            floorCleared={gauntlet.floor}
+            choices={gauntlet.rewardChoices}
+            onPick={(r) =>
+              setGauntlet((g) =>
+                g
+                  ? {
+                      ...g,
+                      atkMult: g.atkMult * (r.atkMult ?? 1),
+                      hpMult: g.hpMult * (r.hpMult ?? 1),
+                      bankedShards: g.bankedShards + (r.shards ?? 0),
+                      floor: g.floor + 1,
+                      region: synthFloor(g.floor + 1),
+                      stage: "battle",
+                      rewardChoices: [],
+                    }
+                  : g,
+              )
+            }
+          />
+          <AchievementToaster />
+        </>
+      )
+    }
+    if (gauntlet.stage === "end") {
+      return (
+        <>
+          <GauntletEndScreen
+            floorReached={gauntlet.floor}
+            best={state.save.gauntletBest ?? 0}
+            shards={gauntlet.payout.shards}
+            xp={gauntlet.payout.xp}
+            isRecord={gauntlet.isRecord}
+            onClose={() => setGauntlet(null)}
+          />
+          <AchievementToaster />
+        </>
+      )
+    }
+    // stage === "battle"
+    const g = gauntlet
+    const baseSquad = state.save.squad
+      .map((id) => state.save.roster.find((u) => u.id === id))
+      .filter((u): u is NonNullable<typeof u> => Boolean(u))
+    const buffed: Unit[] = baseSquad.map((u) => {
+      const hpMax = Math.max(1, Math.round(u.hpMax * g.hpMult))
+      return { ...u, hpMax, hp: hpMax, atk: Math.max(1, Math.round(u.atk * g.atkMult)) }
+    })
+    const overlordLevel = xpProgress(state.save.xp).level
+    return (
+      <>
+        <BattleScreen
+          key={`gauntlet-${g.floor}`}
+          squad={buffed}
+          region={g.region}
+          perks={state.save.perks}
+          overlordLevel={overlordLevel}
+          overlordName={state.save.underlordName}
+          equippedSkills={state.save.equippedSkills}
+          boons={state.save.boons ?? []}
+          ascension={gauntletAscension(g.floor)}
+          curses={[]}
+          onComplete={(result) => {
+            if (result.victory) {
+              setGauntlet((cur) =>
+                cur ? { ...cur, stage: "reward", rewardChoices: rollRewards() } : cur,
+              )
+            } else {
+              const payout = gauntletPayout(g.floor, g.bankedShards)
+              const isRecord = g.floor > (state.save.gauntletBest ?? 0)
+              dispatch({
+                type: "gauntlet-end",
+                floorReached: g.floor,
+                shards: payout.shards,
+                xp: payout.xp,
+              })
+              setGauntlet((cur) =>
+                cur ? { ...cur, stage: "end", payout, isRecord } : cur,
+              )
+            }
+          }}
+        />
+        <AchievementToaster />
+      </>
     )
   }
 
@@ -161,6 +324,10 @@ export function UnderlordGame() {
           onOpenBoons={() => setShowBoons(true)}
           onOpenMarket={() => setShowMarket(true)}
           onOpenAscension={() => setShowAscension(true)}
+          onOpenMerchant={() => setShowMerchant(true)}
+          onOpenBounties={() => setShowBounties(true)}
+          onOpenGauntlet={startGauntlet}
+          onOpenTutorial={() => setShowTutorial(true)}
           streakBonus={streakBonusToShow}
         />
         {showSquadPicker ? (
@@ -215,6 +382,26 @@ export function UnderlordGame() {
             onClose={() => setShowAscension(false)}
           />
         ) : null}
+        {showMerchant ? (
+          <MerchantPanel
+            save={state.save}
+            onBuy={(itemId, price, item) =>
+              dispatch({ type: "merchant-buy", itemId, price, item })
+            }
+            onReroll={(cost) => dispatch({ type: "merchant-reroll", cost })}
+            onClose={() => setShowMerchant(false)}
+          />
+        ) : null}
+        {showBounties ? (
+          <BountiesPanel
+            save={state.save}
+            onClaim={(bountyId) => dispatch({ type: "claim-bounty", bountyId })}
+            onClose={() => setShowBounties(false)}
+          />
+        ) : null}
+        {showTutorial ? (
+          <Tutorial onClose={() => setShowTutorial(false)} />
+        ) : null}
         <AchievementToaster />
       </>
     )
@@ -268,12 +455,17 @@ export function UnderlordGame() {
             const forceRare =
               (shouldForceRare(state.save) || (state.save.ascension ?? 0) > 0) &&
               result.victory
-            // Only loot-bearing regions actually drop equipment. Other wins
-            // still pay gold + XP, so true loot becomes a campaign milestone.
-            const loot =
-              result.victory && region.dropsLoot
-                ? rollLoot(region.stage, 2, forceRare)
-                : []
+            // v13 — loot chance PER AREA + grind. Each area has its own drop
+            // chance (so wins don't always pay) and a biome/stage-weighted
+            // rarity table. forceRare (pity/Ascension) bypasses the chance.
+            const profile = regionLootProfile(region.biome, region.stage)
+            const dropsThisTime =
+              result.victory &&
+              region.dropsLoot &&
+              (forceRare || Math.random() < profile.chance)
+            const loot = dropsThisTime
+              ? rollLootWeighted(profile.weights, profile.count, forceRare)
+              : []
             const fallenIds = result.fallenIds
             fallenNameCache = fallenIds
               .map((id) => state.save.roster.find((u) => u.id === id)?.name)

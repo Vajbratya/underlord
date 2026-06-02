@@ -4,6 +4,7 @@ import Image from "next/image"
 import { HeroPortrait } from "./hero-portrait"
 import { useMemo, useState } from "react"
 import {
+  ArrowDownToLine,
   ChevronRight,
   Coins,
   Crosshair,
@@ -11,11 +12,14 @@ import {
   Flame,
   Gem,
   Hammer,
+  HelpCircle,
   Hourglass,
   Lock,
   Map,
+  ScrollText,
   Shield,
   ShoppingBag,
+  Store,
   Skull,
   Sparkles,
   Swords,
@@ -84,6 +88,10 @@ export function WarRoom({
   onOpenBoons,
   onOpenMarket,
   onOpenAscension,
+  onOpenMerchant,
+  onOpenBounties,
+  onOpenGauntlet,
+  onOpenTutorial,
   streakBonus,
 }: {
   save: SaveState
@@ -94,6 +102,10 @@ export function WarRoom({
   onOpenBoons: () => void
   onOpenMarket: () => void
   onOpenAscension: () => void
+  onOpenMerchant: () => void
+  onOpenBounties: () => void
+  onOpenGauntlet: () => void
+  onOpenTutorial: () => void
   streakBonus?: number | null
 }) {
   const xp = xpProgress(save.xp)
@@ -312,6 +324,66 @@ export function WarRoom({
                   {save.ascension}
                 </span>
               ) : null}
+            </button>
+            {/* O Poço Sem Fundo — endless gauntlet run. */}
+            <button
+              type="button"
+              onClick={() => {
+                haptic.panelOpen()
+                onOpenGauntlet()
+              }}
+              aria-label="O Poço Sem Fundo"
+              title="O Poço Sem Fundo — run infinita por espólio e recordes"
+              className="relative flex h-7 shrink-0 items-center gap-1 rounded-sm border border-destructive/70 bg-destructive/10 px-2 font-mono text-[9px] font-black uppercase tracking-[0.18em] text-destructive transition active:scale-95 hover:bg-destructive/20"
+            >
+              <ArrowDownToLine className="size-3" />
+              <span className="hidden sm:inline">O POÇO</span>
+              {(save.gauntletBest ?? 0) > 0 ? (
+                <span className="rounded bg-destructive/80 px-1 font-display text-[10px] leading-none tabular-nums text-background">
+                  {save.gauntletBest}
+                </span>
+              ) : null}
+            </button>
+            {/* O Mercante — gold vendor. */}
+            <button
+              type="button"
+              onClick={() => {
+                haptic.panelOpen()
+                onOpenMerchant()
+              }}
+              aria-label="O Mercante"
+              title="O Mercante — compre espólio com ouro"
+              className="flex h-7 shrink-0 items-center gap-1 rounded-sm border border-gold/60 bg-gold/10 px-2 font-mono text-[9px] font-black uppercase tracking-[0.18em] text-gold transition active:scale-95 hover:bg-gold/20"
+            >
+              <Store className="size-3" />
+              <span className="hidden sm:inline">MERCANTE</span>
+            </button>
+            {/* Contratos — daily/weekly bounties. */}
+            <button
+              type="button"
+              onClick={() => {
+                haptic.panelOpen()
+                onOpenBounties()
+              }}
+              aria-label="Contratos"
+              title="Contratos — missões diárias e semanais"
+              className="flex h-7 shrink-0 items-center gap-1 rounded-sm border border-accent/60 bg-accent/10 px-2 font-mono text-[9px] font-black uppercase tracking-[0.18em] text-accent transition active:scale-95 hover:bg-accent/20"
+            >
+              <ScrollText className="size-3" />
+              <span className="hidden sm:inline">CONTRATOS</span>
+            </button>
+            {/* Tutorial / help. */}
+            <button
+              type="button"
+              onClick={() => {
+                haptic.tap()
+                onOpenTutorial()
+              }}
+              aria-label="Como jogar"
+              title="Como jogar"
+              className="grid size-7 shrink-0 place-items-center rounded-sm border border-border bg-card/70 text-muted-foreground transition active:scale-95 hover:text-foreground"
+            >
+              <HelpCircle className="size-3.5" />
             </button>
           </div>
         </div>
