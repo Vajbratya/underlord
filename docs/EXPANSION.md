@@ -1,3 +1,17 @@
+# v12 — "A SÉTIMA TEMPORADA" expansion
+
+Builds on v11. Focus: kill the repetition, add way more loot + bosses, and give every unit real art. Build + `tsc --noEmit` green; verified by a headless engine smoke test.
+
+- **Presságios (battle omens)** — `lib/underlord/modifiers.ts`. Every battle rolls 1–2 random battlefield conditions (Maré de Sangue, Névoa, Frenesi, Pacto de Ferro, Chuva de Brasas, Véu Quebradiço, Gigantismo, Passos Pesados, Ira Arcana) that reshape *all* units' ATK/HP/move/range or scatter fire. Higher Ascension rolls more omens. Revealed in a slam-in banner + HUD chips. The same region now plays differently every run — the core anti-repetition fix.
+- **soundcn** — pulled the sibling variation takes (`impact-metal-*-000…004`, `impact-glass-*`, `explosion-crunch-*`) from the soundcn CC0 registry (the same source the originals came from) into `lib/sounds/`, and wired **randomized sample selection + pitch jitter** into the sfx engine so hits/crits/booms never sound identical twice.
+- **+12 bosses & minibosses** — a new act "A Sétima Temporada" (12 regions, stages 25–40) satirizing the games industry, ending on the superboss *Os Créditos Finais*. All use existing elite passives.
+- **+55 loot** (→116 items, 20 mythic), **+13 boons** (→49), **+6 skills** (→24), **+10 achievements** (→36), **+1 codex section / +12 entries** (→12 sections).
+- **Objective variety** — spread survive/overwhelm/assassinate across ~10 existing mid-game regions so battles stop feeling identical.
+- **Graph repair** — fixed 12 pre-existing orphaned regions; the campaign is now **95/95 reachable**.
+- **Real sprites** — generated unit/hero/boss portraits via OpenRouter **`openai/gpt-5.4-image-2`** (`scripts/gen-sprites.mts`, idempotent) so the procedural-sigil fallback is no longer needed for the new content. 45/45 minions + all heroes now have art.
+
+---
+
 # v11 — "ASCENSÃO" expansion
 
 A large content + mechanics expansion of the Underlord hex-tactics roguelike. Everything below was added on top of the v10 base while keeping the production build and `tsc --noEmit` green, verified by a 34-check headless engine smoke test driving the real battle engine.

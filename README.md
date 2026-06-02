@@ -20,10 +20,11 @@ You fight on a hex grid. Each unit gets one **move** and one **action** per turn
 
 - **Tactics** — `cleave`, `splash`, `pierce`, `execute`, `heal`, `curse`, `siphon`, `volley`, and the v11 additions **`rend`** (applies BLEED — flat attrition that ignores armor) and **`chain`** (lightning that arcs to the nearest second mark). Plus **shields** (absorb pools), interactive map hazards (vents, spike-pits), fire, taunts, terrain, and flying.
 - **Your army** — **45 minion archetypes** across five broods, unlocked as your Underlord levels up; an on-field **Overlord** avatar with an alterable **skill loadout**; a **Forja** perk tree; roguelite **Bençãos** (boons).
-- **The enemies** — **42 heroes, minibosses & bosses**, each with flavor, taunts, themed entourages, and **16 unique elite passives** (thorns, enrage, revive, summon, time-stop, regenerate, warding, colossal, volatile, split, frenzy, siphon-aura, frostbite…).
+- **The enemies** — **54 heroes, minibosses & bosses**, each with flavor, taunts, themed entourages, and **16 unique elite passives** (thorns, enrage, revive, summon, time-stop, regenerate, warding, colossal, volatile, split, frenzy, siphon-aura, frostbite…).
+- **Presságios (battle omens)** — every fight rolls 1–2 random battlefield conditions (blood tide, fog, ember rain, gigantism, fragile veil…) that reshape both sides, so the same region never plays the same way twice. Sound effects randomize their take + pitch per hit (via the soundcn registry) so combat never sounds repetitive either.
 - **Loot** — hand-authored named items across six rarities up to the new **MÍTICO** (mythic) tier, with a prismatic holo treatment. Power has a price: every item carries **Taint**.
 - **Economy** — Gold + **Soulshards**, a daily-rotating **Mercado Negro**, dismantling, a daily login pouch.
-- **Campaign** — **83 regions** across nine biomes (ash, moor, iron, verdant, crown, tundra, dunes, abyss, and the new **VAZIO/void**), with battle objectives beyond "kill them all": *survive*, *assassinate*, *protect*, and the new **overwhelm** (blitz before the clock).
+- **Campaign** — **95 regions** across nine biomes (ash, moor, iron, verdant, crown, tundra, dunes, abyss, and the **VAZIO/void**), with battle objectives beyond "kill them all": *survive*, *assassinate*, *protect*, and **overwhelm** (blitz before the clock). Two endgame acts — the Void and **A Sétima Temporada** (a games-industry satire ending on *Os Créditos Finais*).
 
 ## Ascensão — endgame replayability
 
