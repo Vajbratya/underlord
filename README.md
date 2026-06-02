@@ -1,33 +1,58 @@
-# v0-rock-paper-scissors-game
+# UNDERLORD — Ascensão
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+> *Você é o sétimo Underlord, ressuscitado depois de catorze séculos para retomar o reino de Vael'Thrand das mãos de "heróis" insuportáveis — influencers, burocratas, paladinos com posto de gasolina do pai. Comande seus minions em táticas hex turn-based. Pedra-papel-tesoura virou guerra.*
 
-## Built with v0
+A turn-based **hex-tactics roguelike** built around an elemental rock-paper-scissors combat triangle, wrapped in a darkly comedic Brazilian-Portuguese world. Originally a v0 rock-paper-scissors prototype, expanded **hugely** into a full campaign with deep meta-progression, an endgame difficulty ladder, and a lot of lore.
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
-
-[Continue working on v0 →](https://v0.app/chat/projects/prj_XQivIfOQnnHADYSJaplS7Peg41U3)
-
-## Getting Started
-
-First, run the development server:
+Built with **Next.js 16 + React 19 + Tailwind v4**. No backend — the whole game (save, economy, progression) runs client-side in `localStorage`.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+pnpm install
+pnpm dev      # http://localhost:3000
+pnpm build    # production build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## The game
 
-## Learn More
+You fight on a hex grid. Each unit gets one **move** and one **action** per turn (XCOM-style). The "rock-paper-scissors" lives in **attack kinds** + **roles** that counter each other — bring the wrong squad to the wrong fight and you lose.
 
-To learn more, take a look at the following resources:
+- **Tactics** — `cleave`, `splash`, `pierce`, `execute`, `heal`, `curse`, `siphon`, `volley`, and the v11 additions **`rend`** (applies BLEED — flat attrition that ignores armor) and **`chain`** (lightning that arcs to the nearest second mark). Plus **shields** (absorb pools), interactive map hazards (vents, spike-pits), fire, taunts, terrain, and flying.
+- **Your army** — **45 minion archetypes** across five broods, unlocked as your Underlord levels up; an on-field **Overlord** avatar with an alterable **skill loadout**; a **Forja** perk tree; roguelite **Bençãos** (boons).
+- **The enemies** — **42 heroes, minibosses & bosses**, each with flavor, taunts, themed entourages, and **16 unique elite passives** (thorns, enrage, revive, summon, time-stop, regenerate, warding, colossal, volatile, split, frenzy, siphon-aura, frostbite…).
+- **Loot** — hand-authored named items across six rarities up to the new **MÍTICO** (mythic) tier, with a prismatic holo treatment. Power has a price: every item carries **Taint**.
+- **Economy** — Gold + **Soulshards**, a daily-rotating **Mercado Negro**, dismantling, a daily login pouch.
+- **Campaign** — **83 regions** across nine biomes (ash, moor, iron, verdant, crown, tundra, dunes, abyss, and the new **VAZIO/void**), with battle objectives beyond "kill them all": *survive*, *assassinate*, *protect*, and the new **overwhelm** (blitz before the clock).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+## Ascensão — endgame replayability
+
+Beat the campaign and the real game begins. The **Ascensão** panel (war-room) lets you ramp difficulty for fatter rewards:
+
+- **12 Ascension tiers** — each scales every enemy's HP/ATK and multiplies gold/XP/Soulshards. Win at your frontier tier to unlock the next.
+- **6 Maldições (curses)** — toggleable run modifiers (tankier heroes, faster heroes, blood-for-blood ATK, the Greed pact…) that stack on top for even bigger payouts.
+- **The Void act** — an eight-region finale descending the Subtorre to confront the six Void bosses: the Hollow King, the Plague-Mother, the Unwritten, the Mirror-Self, the First Underlord, and finally **THE READER**.
+
+## Lore
+
+The Codex (war-room) holds **11 sections / 81 entries**: the world of Vael'Thrand, the seven crowns, the full history of all **seven Underlords**, a bestiary, the influencer-industrial **Liga**, the meta-textual **Vazio**, and the factions. It's the best writing in the game; go read it.
+
+---
+
+## Project layout
+
+| Path | What |
+| --- | --- |
+| `lib/underlord/types.ts` | The data model (units, loot, regions, objectives, save state). |
+| `lib/underlord/battle.ts` | Pure, React-independent battle engine (movement, attack kinds, statuses, AI, objectives). |
+| `lib/underlord/state.ts` | Phase-driven reducer + `localStorage` persistence + migrations. |
+| `lib/underlord/{units,regions,maps,loot,boons,perks,overlord-skills,specials,elite-passives,meta,economy,ascension,lore}.ts` | Content + systems. |
+| `lib/elementum-flavor.ts` | The hero/boss catalog + flavor. |
+| `components/underlord/*` | All screens (title, war-room, battle, loot, forge, skill-map, black-market, ascension-panel, codex…). |
+| `components/underlord-game.tsx` | The phase router. |
+
+Combat is fully decoupled from React: `lib/underlord/battle.ts` is pure and unit-testable.
+
+See [`docs/EXPANSION.md`](docs/EXPANSION.md) for the full v11 "Ascensão" changelog.
+
+🤖 Expanded with [Claude Code](https://claude.com/claude-code).
