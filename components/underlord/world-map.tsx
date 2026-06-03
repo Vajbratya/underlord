@@ -29,8 +29,8 @@
  * lets the parent open the existing RegionDrawer.
  */
 
-import { useMemo } from "react"
-import { Coins, Crown, HelpCircle } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Coins, Crown, HelpCircle, Locate, Minus, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Region, SaveState } from "@/lib/underlord/types"
 import { REGIONS } from "@/lib/underlord/regions"
@@ -350,6 +350,74 @@ export function WorldMap({
     [save.regions],
   )
 
+  // ---------------------------------------------------------------
+  // v13 — manual PAN + ZOOM. `cam` is the live viewBox; it starts at
+  // the auto-frame `view` and snaps back to it when the frame changes
+  // (after clearing a region) or via the recenter button. Drag to pan,
+  // wheel / +/- buttons to zoom.
+  // ---------------------------------------------------------------
+  const [cam, setCam] = useState(view)
+  useEffect(() => setCam(view), [view])
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const dragRef = useRef<{ x: number; y: number; cam: typeof view } | null>(null)
+  const movedRef = useRef(false)
+
+  const MIN_W = Math.max(14, view.w * 0.32)
+  const MAX_W = 108
+
+  const clampCam = useCallback(
+    (c: { x: number; y: number; w: number; h: number }) => {
+      const w = Math.min(MAX_W, Math.max(MIN_W, c.w))
+      const h = Math.min(MAX_W, Math.max(MIN_W, c.h))
+      const x = Math.min(104 - w * 0.25, Math.max(-8, c.x))
+      const y = Math.min(104 - h * 0.25, Math.max(-8, c.y))
+      return { x, y, w, h }
+    },
+    [MIN_W],
+  )
+
+  const zoomBy = useCallback(
+    (factor: number, fx = 0.5, fy = 0.5) => {
+      setCam((c) => {
+        const w = Math.min(MAX_W, Math.max(MIN_W, c.w * factor))
+        const h = w * (c.h / c.w)
+        const x = c.x + (c.w - w) * fx
+        const y = c.y + (c.h - h) * fy
+        return clampCam({ x, y, w, h })
+      })
+    },
+    [MIN_W, clampCam],
+  )
+
+  function onMapPointerDown(e: React.PointerEvent<SVGSVGElement>) {
+    movedRef.current = false
+    dragRef.current = { x: e.clientX, y: e.clientY, cam }
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }
+  function onMapPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    const d = dragRef.current
+    if (!d) return
+    const rect = svgRef.current?.getBoundingClientRect()
+    if (!rect || rect.width === 0) return
+    const dxPx = e.clientX - d.x
+    const dyPx = e.clientY - d.y
+    if (Math.abs(dxPx) + Math.abs(dyPx) > 4) movedRef.current = true
+    const dxSvg = (dxPx * d.cam.w) / rect.width
+    const dySvg = (dyPx * d.cam.h) / rect.height
+    setCam(
+      clampCam({ x: d.cam.x - dxSvg, y: d.cam.y - dySvg, w: d.cam.w, h: d.cam.h }),
+    )
+  }
+  function onMapPointerUp() {
+    dragRef.current = null
+  }
+  function onMapWheel(e: React.WheelEvent<SVGSVGElement>) {
+    const rect = svgRef.current?.getBoundingClientRect()
+    const fx = rect ? (e.clientX - rect.left) / rect.width : 0.5
+    const fy = rect ? (e.clientY - rect.top) / rect.height : 0.5
+    zoomBy(e.deltaY < 0 ? 0.85 : 1.18, fx, fy)
+  }
+
   return (
     <div className="relative">
       {/* Legend — simple dots matching reference UI */}
@@ -383,11 +451,17 @@ export function WorldMap({
         />
 
         <svg
-          viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
+          ref={svgRef}
+          viewBox={`${cam.x} ${cam.y} ${cam.w} ${cam.h}`}
           preserveAspectRatio="xMidYMid meet"
-          className="relative block h-[460px] w-full sm:h-[520px]"
+          onPointerDown={onMapPointerDown}
+          onPointerMove={onMapPointerMove}
+          onPointerUp={onMapPointerUp}
+          onPointerLeave={onMapPointerUp}
+          onWheel={onMapWheel}
+          className="relative block h-[460px] w-full touch-none select-none [cursor:grab] active:[cursor:grabbing] sm:h-[560px]"
           role="img"
-          aria-label="Mapa da Cruzada"
+          aria-label="Mapa da Cruzada — arraste para mover, role/+/- para zoom"
         >
           <defs>
             {/* Gold glow for available nodes — strong teal-cyan pop */}
@@ -696,6 +770,7 @@ export function WorldMap({
                   fill="transparent"
                   onClick={(e) => {
                     e.stopPropagation()
+                    if (movedRef.current) return // was a pan drag, not a tap
                     if (isPeek) return // peeks are not selectable
                     onSelectRegion(r.id)
                   }}
@@ -766,6 +841,37 @@ export function WorldMap({
               })()
             : null}
         </svg>
+
+        {/* v13 — pan/zoom controls */}
+        <div className="absolute bottom-2 right-2 z-10 flex flex-col gap-1.5">
+          <button
+            type="button"
+            aria-label="Aproximar"
+            onClick={() => zoomBy(0.8)}
+            className="grid size-9 place-items-center rounded-md border border-gold/50 bg-background/80 text-gold backdrop-blur transition active:scale-90 hover:bg-background"
+          >
+            <Plus className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Afastar"
+            onClick={() => zoomBy(1.25)}
+            className="grid size-9 place-items-center rounded-md border border-gold/50 bg-background/80 text-gold backdrop-blur transition active:scale-90 hover:bg-background"
+          >
+            <Minus className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Recentrar"
+            onClick={() => setCam(view)}
+            className="grid size-9 place-items-center rounded-md border border-accent/50 bg-background/80 text-accent backdrop-blur transition active:scale-90 hover:bg-background"
+          >
+            <Locate className="size-4" />
+          </button>
+        </div>
+        <span className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-background/70 px-2 py-1 font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground backdrop-blur">
+          arraste · zoom
+        </span>
 
         <style>{`
           @keyframes wm-pulse {
