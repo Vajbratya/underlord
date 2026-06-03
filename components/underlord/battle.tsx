@@ -1464,14 +1464,27 @@ export function BattleScreen({
               units sit exactly on their tiles regardless of viewport. */}
           <div
             className="relative mx-auto flex h-full w-full max-h-full items-center justify-center"
-            style={{ paddingTop: "1.5rem", paddingBottom: "1.5rem" }}
+            style={{
+              paddingTop: "1.5rem",
+              paddingBottom: "1.5rem",
+              // v13 — make this a size container so the board can be sized
+              // by BOTH the available width AND height (true contain),
+              // killing the aspect mismatch that drifted units to center.
+              containerType: "size",
+            }}
           >
             <div
-              className="relative w-full max-w-full"
+              className="relative"
               style={{
                 aspectRatio: `${viewW} / ${viewH}`,
-                // Don't let the locked aspect push the board taller than
-                // the available main area when the device is short.
+                // The board is the LARGEST viewW/viewH-aspect box that fits
+                // the parent on BOTH axes. Width is capped by the parent
+                // width (100%) AND by what the parent height allows
+                // (100cqh × aspect). Because the rendered aspect now always
+                // equals the SVG viewBox aspect, the SVG fills it with zero
+                // letterbox and the HTML unit overlay maps 1:1 — no drift,
+                // so a tile you click is exactly the tile you land on.
+                width: `min(100%, calc(100cqh * (${viewW} / ${viewH})))`,
                 maxHeight: "100%",
               }}
             >
