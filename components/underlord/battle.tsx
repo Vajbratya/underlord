@@ -55,6 +55,7 @@ import {
   makeHeroMinion,
   makeOverlord,
   makeUnit,
+  unitImageSrc,
 } from "@/lib/underlord/units"
 import { SPECIALS } from "@/lib/underlord/specials"
 import { aggregateBoons } from "@/lib/underlord/boons"
@@ -1807,12 +1808,7 @@ export function BattleScreen({
               const sizePct = ((HEX_SIZE * 1.55) / viewW) * 100
               const isOverlordUnit = !!u.isOverlord
               const isHero = u.faction === "hero"
-              const isHeroBoss = isHero && !!u.heroId
-              const src = isOverlordUnit
-                ? "/images/overlord.jpg"
-                : isHeroBoss
-                  ? `/images/heroes/${u.heroId}.jpg`
-                  : `/images/minions/${u.templateId}.jpg`
+              const src = unitImageSrc(u)
               const ringColor = isOverlordUnit
                 ? "oklch(0.78 0.16 78)" // gold halo for the commander
                 : isHero
@@ -2399,11 +2395,7 @@ function InitiativeLadder({ state }: { state: BattleState }) {
         const u = state.units.find((x) => x.id === id)
         if (!u) return null
         const isCurrent = i === state.turn
-        const src = u.isOverlord
-          ? "/images/overlord.jpg"
-          : u.faction === "hero" && u.heroId
-            ? `/images/heroes/${u.heroId}.jpg`
-            : `/images/minions/${u.templateId}.jpg`
+        const src = unitImageSrc(u)
         return (
           <span
             key={id}
@@ -2609,11 +2601,7 @@ function ActiveUnitCard({ unit }: { unit: Unit }) {
     unit.faction === "minion" && !unit.isOverlord
       ? MINION_TEMPLATES[unit.templateId]
       : null
-  const src = unit.isOverlord
-    ? "/images/overlord.jpg"
-    : unit.faction === "hero" && unit.heroId
-      ? `/images/heroes/${unit.heroId}.jpg`
-      : `/images/minions/${unit.templateId}.jpg`
+  const src = unitImageSrc(unit)
   const borderColor = unit.isOverlord
     ? "oklch(0.78 0.16 78)"
     : unit.faction === "hero"

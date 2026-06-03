@@ -2,8 +2,62 @@
  * Minion archetypes and starter roster generation.
  */
 
-import type { MinionArchetype, Unit, UnitTemplate, Axial } from './types'
+import type { AttackKind, MinionArchetype, Unit, UnitTemplate, Axial } from './types'
 import { BARRIER_HP } from './specials'
+
+/* ------------------------------------------------------------------ */
+/* v13 — THE LIGHT'S TROOPS.                                           */
+/*                                                                     */
+/* The dark broods (our 41 minion archetypes) are the Underlord's      */
+/* ALONE. The "heroes" that invade are the light — so THEIR entourage  */
+/* must be holy soldiers (squires, clerics, templars…), not our        */
+/* demons. We reuse a template's STATS (so no balance/engine change)   */
+/* but re-skin the name, glyph, and portrait by attack kind.           */
+/* ------------------------------------------------------------------ */
+
+export function heroMinionSkin(kind: AttackKind): {
+  title: string
+  glyph: string
+  role: string
+} {
+  switch (kind) {
+    case 'heal':
+      return { title: 'CLÉRIGO', glyph: '✚', role: 'cleric' }
+    case 'cleave':
+      return { title: 'ESCUDEIRO', glyph: '⚔', role: 'squire' }
+    case 'splash':
+      return { title: 'ZELOTE', glyph: '✷', role: 'zealot' }
+    case 'execute':
+      return { title: 'CAÇADOR', glyph: '➶', role: 'hunter' }
+    case 'pierce':
+      return { title: 'BESTEIRO', glyph: '➹', role: 'crossbow' }
+    case 'curse':
+      return { title: 'CONFESSOR', glyph: '☩', role: 'confessor' }
+    case 'siphon':
+      return { title: 'FLAGELANTE', glyph: '†', role: 'flagellant' }
+    case 'volley':
+      return { title: 'MAGO BRANCO', glyph: '✦', role: 'mage' }
+    case 'rend':
+      return { title: 'PENITENTE', glyph: '✟', role: 'penitent' }
+    case 'chain':
+      return { title: 'TEMPLÁRIO', glyph: '⚡', role: 'templar' }
+    case 'basic':
+    default:
+      return { title: 'SOLDADO', glyph: '⊹', role: 'soldier' }
+  }
+}
+
+/** Centralized portrait path for ANY unit. Hero entourage minions point
+ * at the LIGHT troop art (/images/hero-minions/<role>.jpg); our broods
+ * keep their painted dark sprites. */
+export function unitImageSrc(unit: Unit): string {
+  if (unit.isOverlord) return '/images/overlord.jpg'
+  if (unit.faction === 'hero') {
+    if (unit.heroId) return `/images/heroes/${unit.heroId}.jpg`
+    return `/images/hero-minions/${heroMinionSkin(unit.attackKind).role}.jpg`
+  }
+  return `/images/minions/${unit.templateId}.jpg`
+}
 
 /* ----------------------------------------------------------------------- */
 /*  All numbers are intentionally LARGE — Underlord vs. Overlord is a      */
@@ -1114,11 +1168,12 @@ export function makeHeroMinion(
   const atkMul = 0.85 + tier * 0.025
   const hp = Math.round(t.hp * hpMul)
   const atk = Math.round(t.atk * atkMul)
+  const skin = heroMinionSkin(t.attackKind)
   return {
     id: nextUnitId(),
     templateId: archetype,
-    name: `${ownerName} ${archMinionTitle(archetype)}`,
-    glyph: t.glyph,
+    name: `${skin.title} · ${ownerName}`,
+    glyph: skin.glyph,
     faction: 'hero',
     pos,
     hp,

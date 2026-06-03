@@ -4,7 +4,7 @@ import Image from "next/image"
 import { ArrowLeft, Map as MapIcon, Swords } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Region, SaveState } from "@/lib/underlord/types"
-import { MINION_TEMPLATES } from "@/lib/underlord/units"
+import { MINION_TEMPLATES, heroMinionSkin } from "@/lib/underlord/units"
 import { getHeroById } from "@/lib/elementum-flavor"
 import { haptic } from "@/lib/underlord/haptics"
 import { TERRAIN_GLYPH, pickMapLayout } from "@/lib/underlord/maps"
@@ -170,29 +170,27 @@ export function Briefing({
                   </p>
                   {/* Entourage: tiny portraits of the minions this hero brings. */}
                   {h.entourage.length > 0 ? (
-                    <div className="mt-2 flex items-center gap-1.5">
-                      <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-destructive/80">
-                        +
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-gold/80">
+                        Escolta da Luz +
                       </span>
                       <div className="flex -space-x-1.5">
-                        {h.entourage.map((arch, idx) => (
-                          <span
-                            key={`${h.id}-ent-${idx}`}
-                            className="relative size-5 overflow-hidden rounded-full border border-destructive/70 ring-1 ring-background sm:size-6"
-                            style={{ borderColor: TONE_TO_VAR[MINION_TEMPLATES[arch].tone] }}
-                            title={`${MINION_TEMPLATES[arch].name} (escolta)`}
-                          >
-                            <Image
-                              src={`/images/minions/${arch}.jpg`}
-                              alt={MINION_TEMPLATES[arch].name}
-                              fill
-                              sizes="24px"
-                              className="object-cover opacity-90"
-                            />
-                          </span>
-                        ))}
+                        {h.entourage.map((arch, idx) => {
+                          const skin = heroMinionSkin(MINION_TEMPLATES[arch].attackKind)
+                          return (
+                            <span
+                              key={`${h.id}-ent-${idx}`}
+                              className="grid size-5 place-items-center rounded-full border border-gold/70 bg-gold/10 text-gold ring-1 ring-background sm:size-6"
+                              title={`${skin.title} (escolta sagrada)`}
+                            >
+                              <span aria-hidden className="text-[10px] leading-none">
+                                {skin.glyph}
+                              </span>
+                            </span>
+                          )
+                        })}
                       </div>
-                      <span className="line-clamp-1 font-mono text-[9px] tracking-wide text-muted-foreground/90">
+                      <span className="font-mono text-[9px] leading-snug tracking-wide text-muted-foreground/90">
                         {h.entourageLabel}
                       </span>
                     </div>
@@ -252,6 +250,18 @@ export function Briefing({
                         <span>{u.move} MOV</span>
                         <span>{u.range} ALC</span>
                       </div>
+                      <p
+                        className="mt-1 font-mono text-[9px] uppercase tracking-wider"
+                        style={{ color: tone }}
+                      >
+                        {tpl.abilityTag}
+                        <span className="ml-1 normal-case tracking-normal text-foreground/75">
+                          {tpl.abilityText}
+                        </span>
+                      </p>
+                      <p className="mt-1 text-pretty text-[11px] italic leading-snug text-foreground/70">
+                        &ldquo;{tpl.flavor}&rdquo;
+                      </p>
                     </div>
                   </li>
                 )

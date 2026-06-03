@@ -703,7 +703,7 @@ export function castTaunt(s: BattleState, casterId: string): SpecialOutcome {
   if (!unit) return fail(s, reason ?? 'inválido')
   if (unit.templateId !== 'brown') return fail(s, 'errado')
   const def = SPECIALS.brown!
-  const tauntRange = 2
+  const tauntRange = 3
   const taunted = s.units
     .filter(
       (e) =>
@@ -720,7 +720,7 @@ export function castTaunt(s: BattleState, casterId: string): SpecialOutcome {
         ...u,
         acted: true,
         specialCd: def.cooldown,
-        damageTakenMod: 0.5,
+        damageTakenMod: 0.35,
       }
     }
     if (taunted.includes(u.id)) {
@@ -751,8 +751,8 @@ export function castInferno(s: BattleState, casterId: string, target: Axial): Sp
   // Tile must be empty
   const occ = blockedSet(s)
   if (occ.has(axialKey(target))) return fail(s, 'hex ocupado')
-  const dmg = Math.max(2, Math.round(unit.atk * 0.6))
-  const newFire: FireTile = { pos: target, ttl: 2, damage: dmg, source: unit.id }
+  const dmg = Math.max(2, Math.round(unit.atk * 1.1))
+  const newFire: FireTile = { pos: target, ttl: 3, damage: dmg, source: unit.id }
   const nextUnits = s.units.map((u) =>
     u.id === unit.id ? { ...u, acted: true, specialCd: def.cooldown } : u,
   )
@@ -788,11 +788,11 @@ export function castShadow(s: BattleState, casterId: string, target: Axial): Spe
           pos: target,
           moved: true,
           specialCd: def.cooldown,
-          nextAttackBonus: 1.6,
+          nextAttackBonus: 2.3,
         }
       : u,
   )
-  const log = [...s.log, `${unit.name} mergulha na sombra. Próximo golpe ardente.`].slice(-6)
+  const log = [...s.log, `${unit.name} mergulha na sombra. Próximo golpe ARDENTE (+130%).`].slice(-6)
   return {
     state: { ...s, units: nextUnits, log },
     ok: true,
@@ -827,7 +827,7 @@ export function castResurrect(s: BattleState, casterId: string, allyId: string):
     if (!free) return fail(s, 'sem hex livre')
     revivePos = free
   }
-  const reviveHp = Math.max(1, Math.round(ally.hpMax * 0.5))
+  const reviveHp = Math.max(1, Math.round(ally.hpMax * 0.8))
   const nextUnits = s.units.map((u) => {
     if (u.id === ally.id) {
       return {
@@ -941,9 +941,9 @@ export function castOverlordSkill(
   switch (skill.kind) {
     case 'shield-self': {
       const next = s.units.map((x) =>
-        x.id === u.id ? { ...consume(x), damageTakenMod: 0.5 } : x,
+        x.id === u.id ? { ...consume(x), damageTakenMod: 0.35 } : x,
       )
-      const log = [...s.log, `${u.name} ergue a ÉGIDE.`].slice(-6)
+      const log = [...s.log, `${u.name} ergue a ÉGIDE — dano recebido -65%.`].slice(-6)
       return { state: { ...s, units: next, log }, ok: true, reason: 'Égide.', fxAt: u.pos, fxKind: 'taunt' }
     }
 
@@ -957,11 +957,11 @@ export function castOverlordSkill(
           !x.isOverlord &&
           hexDistance(x.pos, u.pos) <= skill.aoeRadius
         ) {
-          return { ...x, nextAttackBonus: 1.6 }
+          return { ...x, nextAttackBonus: 2.0 }
         }
         return x
       })
-      const log = [...s.log, `${u.name} ruge: VOZ DE COMANDO.`].slice(-6)
+      const log = [...s.log, `${u.name} ruge: VOZ DE COMANDO — aliados +100%!`].slice(-6)
       return { state: { ...s, units: next, log }, ok: true, reason: 'Rally.', fxAt: u.pos, fxKind: 'taunt' }
     }
 
@@ -986,7 +986,7 @@ export function castOverlordSkill(
         return fail(s, 'alvo precisa ser aliado')
       }
       if (hexDistance(u.pos, ally.pos) > skill.range) return fail(s, 'fora de alcance')
-      const heal = Math.round(ally.hpMax * 0.6)
+      const heal = Math.round(ally.hpMax * 0.85)
       const newHp = Math.min(ally.hpMax, ally.hp + heal)
       const next = s.units.map((x) => {
         if (x.id === u.id) return consume(x)
@@ -1045,7 +1045,7 @@ export function castOverlordSkill(
       if (hexDistance(u.pos, enemy.pos) > skill.range) return fail(s, 'fora de alcance')
       const next = s.units.map((x) => {
         if (x.id === u.id) return consume(x)
-        if (x.id === enemy.id) return { ...x, damageTakenMod: 2 }
+        if (x.id === enemy.id) return { ...x, damageTakenMod: 2.5 }
         return x
       })
       const log = [...s.log, `${u.name} CONDENA ${enemy.name}.`].slice(-6)
