@@ -1560,8 +1560,24 @@ export function BattleScreen({
                             : ground.stroke
                 const highlighted =
                   inMove || inAttack || inHeal || inSpecialHex || inSpecialFallen || !!fire
+                // v13 — FFT-style depth: extrude each tile into a raised
+                // block by drawing a darker "side" polygon offset downward
+                // behind the top face. Obstacles sit taller (walls/rocks).
+                // Purely visual — top face keeps all hit-testing/highlights.
+                const depth = obstacle ? HEX_SIZE * 0.5 : HEX_SIZE * 0.3
+                const sidePoints = hexPoints(cx, cy + depth, HEX_SIZE - 1.5)
+                const sideFill = obstacle
+                  ? "oklch(0.07 0.012 260 / 0.96)"
+                  : "oklch(0.11 0.014 255 / 0.88)"
                 return (
                   <g key={k}>
+                    {/* v13 — extruded side hex (offset down) = tile thickness.
+                        Its bottom peeks below the top face → raised-block depth. */}
+                    <polygon
+                      points={sidePoints}
+                      fill={sideFill}
+                      pointerEvents="none"
+                    />
                     <polygon
                       points={points}
                       fill={fillId}

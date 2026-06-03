@@ -116,7 +116,7 @@ export function LootIcon({ item, className }: { item: LootItem; className?: stri
         >
           <div
             className={cn(
-              "relative w-full max-w-sm overflow-hidden rounded-2xl border-2 bg-background p-5 shadow-2xl",
+              "relative max-h-[88dvh] w-full max-w-sm overflow-y-auto rounded-2xl border-2 bg-background p-5 shadow-2xl",
               TONE_CLASS[tone] ?? TONE_CLASS.foreground,
               isMythic && "holo-mythic",
             )}
@@ -130,7 +130,7 @@ export function LootIcon({ item, className }: { item: LootItem; className?: stri
             >
               <X className="size-4" />
             </button>
-            <div className="relative mx-auto grid aspect-square w-full max-w-[18rem] place-items-center overflow-hidden rounded-xl border border-border/50 bg-secondary/30">
+            <div className="relative mx-auto grid aspect-square w-full max-w-[13rem] place-items-center overflow-hidden rounded-xl border border-border/50 bg-secondary/30">
               <Thumb item={item} big />
             </div>
             <div className="mt-4 text-center">
