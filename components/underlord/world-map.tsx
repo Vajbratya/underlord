@@ -506,16 +506,16 @@ export function WorldMap({
                 x={b.cx}
                 y={b.cy - b.r * 0.45}
                 textAnchor="middle"
-                fontSize={2.2}
-                fontWeight={900}
-                letterSpacing={0.28}
+                fontSize={1.9}
+                fontWeight={800}
+                letterSpacing={0.4}
                 fill={BIOME[b.biome].core}
-                opacity={0.95}
+                opacity={0.42}
                 pointerEvents="none"
                 style={{
                   fontFamily:
                     "var(--font-display, ui-sans-serif), system-ui, sans-serif",
-                  textShadow: "0 1px 4px oklch(0 0 0 / 0.9)",
+                  textShadow: "0 1px 4px oklch(0 0 0 / 0.95)",
                 }}
               >
                 {txt}
